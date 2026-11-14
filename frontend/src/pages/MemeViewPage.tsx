@@ -1,6 +1,8 @@
 /** Screen 4b · Профіль — перегляд мему (US-08, US-16). Also used as the public share page /m/:id. */
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
+import type { Meme } from "../api/types";
 import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
 import { Button, IconButton } from "../components/Button";
@@ -14,6 +16,11 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const { memeId = "" } = useParams();
   const navigate = useNavigate();
   const meme = useApi(() => api.meme(memeId), [memeId]);
+  // Bookmark: un-saving deletes the meme on the server but keeps showing it here until the user leaves.
+  // undefined = still the loaded meme; null = un-saved; string = id of the (re-)saved meme.
+  const [liveId, setLiveId] = useState<string | null | undefined>(undefined);
+  const [pngCache, setPngCache] = useState<string | null>(null); // image kept in the browser while un-saved
+  const [actionError, setActionError] = useState<string | null>(null);
   const artworkId = meme.data?.artwork.id;
   const artistSlug = meme.data?.artwork.artist.slug;
   const detail = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
@@ -30,11 +37,30 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
 
   const m = meme.data;
   const a = m.artwork;
-  const toggleFavorite = async () => meme.setData(await api.updateMeme(m.id, { is_favorite: !m.is_favorite }));
-  const remove = async () => {
-    if (!confirm("Видалити цей мем?")) return;
-    await api.deleteMeme(m.id);
-    navigate("/me");
+  const currentId = liveId === undefined ? m.id : liveId;
+  const saved = currentId !== null;
+  const toggleFavorite = async () => {
+    if (currentId) meme.setData(await api.updateMeme(currentId, { is_favorite: !m.is_favorite }));
+  };
+  const toggleSaved = async () => {
+    setActionError(null);
+    try {
+      if (currentId) {
+        // The server deletes the PNG with the meme, so keep a copy first (used to display it and to re-save).
+        const png = m.image_url ? await urlToDataUrl(m.image_url) : null;
+        await api.deleteMeme(currentId);
+        setPngCache(png);
+        setLiveId(null);
+      } else {
+        const created: Meme = await api.createMeme(a.id, m.style, pngCache ?? undefined);
+        setPngCache(null);
+        meme.setData(created);
+        setLiveId(created.id);
+        window.history.replaceState(null, "", `/me/memes/${created.id}`); // keep the URL valid without reloading
+      }
+    } catch (e) {
+      setActionError((e as Error).message);
+    }
   };
   const share = async () => {
     // TODO(B, US-16): public link with preview image (OG tags need server-side rendering or a backend route)
@@ -86,15 +112,20 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
         <div className="flex flex-col gap-3">
           <IconButton icon="download" label="Завантажити" onClick={() => m.image_url && downloadDataUrl(m.image_url)} />
           <IconButton icon="share" label="Поділитися" onClick={share} />
-          {!isPublic && <IconButton icon="heart" label="Улюблене" active={m.is_favorite} onClick={toggleFavorite} />}
+          {!isPublic && (
+            <>
+              <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={toggleSaved} />
+              <IconButton icon="heart" label="Додати до улюблених" active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
+            </>
+          )}
         </div>
 
         <div>
-          <Artwork src={m.image_url ?? a.image_url} alt={m.caption} />
+          <Artwork src={(!saved && pngCache) || m.image_url || a.image_url} alt={m.caption} />
+          {actionError && <ErrorMessage error={actionError} />}
           {!isPublic && (
             <div className="mt-4 flex gap-3">
-              <Button variant="secondary" onClick={() => navigate(`/me/memes/${m.id}/edit`)}>Редагувати</Button>
-              <Button variant="soft" onClick={remove}>Видалити</Button>
+              <Button variant="secondary" disabled={!saved} onClick={() => currentId && navigate(`/me/memes/${currentId}/edit`)}>Редагувати</Button>
             </div>
           )}
           {isPublic && <ArtworkCardLink id={a.id} />}
@@ -110,4 +141,16 @@ function ArtworkCardLink({ id }: { id: number }) {
       <Button>Зробити свій мем з цієї картини</Button>
     </Link>
   );
+}
+
+async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Не вдалося завантажити зображення мему");
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }

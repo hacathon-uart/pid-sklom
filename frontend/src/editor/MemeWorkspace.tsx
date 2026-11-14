@@ -6,18 +6,20 @@
  * Caption editing: clicking the caption on the canvas calls onEditingChange(true); clicking the canvas
  * background or anything outside the canvas and the controls calls onEditingChange(false). The page decides what
  * «editing» shows (CaptionControls panel).
- * The heart = «save to my account» (asks to log in first), same as the header «Зберегти» button.
+ * The bookmark icon = «save to my account» (asks to log in first), same as the header «Зберегти» button.
+ * There is no heart here: ♥ (is_favorite) exists only on saved memes, in the account (MemeViewPage).
  *
  * The page owns `stageRef` (from useSaveMeme) so its header «Зберегти» button can export the canvas.
  */
 import type Konva from "konva";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { useNavigate } from "react-router";
-import { ApiError } from "../api/client";
+import { Link } from "react-router";
+import { api, ApiError } from "../api/client";
 import type { ArtworkSummary, MemeStyle, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
+import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
 import { downloadDataUrl, exportPng, shareMeme } from "./exportPng";
 import { MemeCanvas } from "./MemeCanvas";
@@ -30,6 +32,7 @@ export function MemeWorkspace({
   editing,
   onEditingChange,
   onSave,
+  saved = false,
   stageRef,
   onAnotherPainting,
   children,
@@ -39,7 +42,8 @@ export function MemeWorkspace({
   draft: MemeDraft;
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
-  onSave: () => void;
+  onSave: () => void; // bookmark: save / un-save
+  saved?: boolean; // fills the bookmark
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
   children?: ReactNode;
@@ -84,7 +88,7 @@ export function MemeWorkspace({
         </Artwork>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <IconButton icon="heart" label="Зберегти в «Мої меми»" onClick={onSave} />
+          <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={onSave} />
           <IconButton
             icon="download"
             label="Завантажити PNG"
@@ -105,31 +109,68 @@ export function MemeWorkspace({
 }
 
 /**
- * «Зберегти в «Мої меми»». Asks to log in first if needed (US-06), exports the PNG,
- * calls `persist` (create or update), then opens the saved meme.
+ * Bookmark logic for every editor screen. `toggle` saves, or un-saves if already saved (no confirmation).
+ * Asks to log in first if needed (US-06). The user stays on the page; saving again after the first save
+ * updates the same meme, and saving after an un-save creates a new one (via `persist`).
+ * `initialId`: the meme is already saved (edit screen).
  */
-export function useSaveMeme(persist: (style: MemeStyle, png: string) => Promise<{ id: string }>) {
+export function useSaveMeme(
+  persist: (style: MemeStyle, png: string) => Promise<{ id: string }>,
+  initialId: string | null = null,
+) {
   const stageRef = useRef<Konva.Stage | null>(null);
   const { requireLogin } = useAuth();
-  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(initialId);
+  const [justSaved, setJustSaved] = useState(false); // shows the «Збережено» notice
 
-  const save = (style: MemeStyle) =>
+  const run = (fn: () => Promise<void>) =>
     requireLogin(async () => {
-      const stage = stageRef.current;
-      if (!stage) return;
       setSaving(true);
       setError(null);
       try {
-        const meme = await persist(style, exportPng(stage));
-        navigate(`/me/memes/${meme.id}`);
+        await fn();
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Не вдалося зберегти мем");
+        setError(e instanceof ApiError ? e.message : "Не вдалося виконати дію");
       } finally {
         setSaving(false);
       }
     });
 
-  return { stageRef, save, saving, error };
+  const save = (style: MemeStyle) =>
+    run(async () => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const png = exportPng(stage);
+      const meme = savedId ? await api.updateMeme(savedId, { style, image_data_url: png }) : await persist(style, png);
+      setSavedId(meme.id);
+      setJustSaved(true);
+    });
+
+  const unsave = () =>
+    run(async () => {
+      if (!savedId) return;
+      await api.deleteMeme(savedId);
+      setSavedId(null);
+      setJustSaved(false);
+    });
+
+  const toggle = (style: MemeStyle) => (savedId ? unsave() : save(style));
+
+  return { stageRef, save, toggle, saving, error, savedId, justSaved };
+}
+
+/** Error or «Збережено» message under the page header. */
+export function SaveStatus({ error, savedId, justSaved }: { error: string | null; savedId: string | null; justSaved: boolean }) {
+  if (error) return <ErrorMessage error={error} />;
+  if (!savedId || !justSaved) return null;
+  return (
+    <p className="t-small mb-4 rounded-control bg-muted px-4 py-3" role="status">
+      Збережено в «Мої меми».{" "}
+      <Link to={`/me/memes/${savedId}`} className="font-semibold text-accent">
+        Відкрити →
+      </Link>
+    </p>
+  );
 }

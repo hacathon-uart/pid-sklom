@@ -13,7 +13,7 @@ import { Input } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, useSaveMeme } from "../editor/MemeWorkspace";
+import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
 import { useMemeDraft } from "../editor/useMemeDraft";
 
 export function PhraseResultPage() {
@@ -26,7 +26,7 @@ export function PhraseResultPage() {
   const [editing, setEditing] = useState(false);
   const current = selected;
   const draft = useMemeDraft(phrase);
-  const { stageRef, save, saving, error: saveError } = useSaveMeme((style, png) =>
+  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) =>
     api.createMeme(current!.artwork.id, style, png),
   );
 
@@ -67,14 +67,15 @@ export function PhraseResultPage() {
         )
       }
     >
-      {saveError && <ErrorMessage error={saveError} />}
+      <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
         artwork={current.artwork}
         story={current.story}
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
-        onSave={() => save(draft.style)}
+        onSave={() => toggle(draft.style)}
+        saved={!!savedId}
         stageRef={stageRef}
         onAnotherPainting={editing ? nextAlternative : undefined}
       >

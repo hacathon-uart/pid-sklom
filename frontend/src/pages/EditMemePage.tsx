@@ -6,7 +6,7 @@ import { useApi } from "../api/useApi";
 import { Button } from "../components/Button";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, useSaveMeme } from "../editor/MemeWorkspace";
+import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
 import { useMemeDraft } from "../editor/useMemeDraft";
 
 export function EditMemePage() {
@@ -17,7 +17,10 @@ export function EditMemePage() {
   const artwork = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
   const [editing, setEditing] = useState(true);
   const draft = useMemeDraft();
-  const { stageRef, save, saving, error } = useSaveMeme((style, png) => api.updateMeme(memeId, { style, image_data_url: png }));
+  const { stageRef, save, saving, error, savedId, justSaved, toggle } = useSaveMeme(
+    (style, png) => api.createMeme(artworkId!, style, png),
+    memeId,
+  );
 
   useEffect(() => {
     if (meme.data) draft.setBlocks(meme.data.style.blocks);
@@ -38,8 +41,9 @@ export function EditMemePage() {
         </>
       }
     >
-      {error && <ErrorMessage error={error} />}
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => save(draft.style)} stageRef={stageRef}>
+      <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => toggle(draft.style)}
+        saved={!!savedId} stageRef={stageRef}>
         {editing ? (
           <CaptionControls draft={draft} />
         ) : (

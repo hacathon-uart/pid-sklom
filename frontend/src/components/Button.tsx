@@ -34,7 +34,7 @@ export function IconButton({
     <button
       aria-label={label}
       title={label}
-      className={`flex h-11 w-11 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-muted ${active ? "text-accent" : "text-text"} ${className}`}
+      className={`flex h-11 w-11 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-surface ${active ? "text-accent" : "text-text"} ${className}`}
       {...props}
     >
       <Icon name={icon} filled={active} size={20} />

@@ -7,7 +7,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, useSaveMeme } from "../editor/MemeWorkspace";
+import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
 import { useMemeDraft } from "../editor/useMemeDraft";
 
 export function OwnCaptionPage() {
@@ -16,7 +16,7 @@ export function OwnCaptionPage() {
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
   const draft = useMemeDraft("Ваш підпис тут", "top");
-  const { stageRef, save, saving, error: saveError } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
 
   const back = (
     <Link to={`/create/painting?artwork=${artworkId}`} className="t-strong flex items-center gap-2 text-accent">
@@ -40,14 +40,15 @@ export function OwnCaptionPage() {
         </>
       }
     >
-      {saveError && <ErrorMessage error={saveError} />}
+      <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
         artwork={artwork.data}
         story={artwork.data.story}
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
-        onSave={() => save(draft.style)}
+        onSave={() => toggle(draft.style)}
+        saved={!!savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}
       >

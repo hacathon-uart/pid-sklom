@@ -9,7 +9,7 @@ import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
 import { describeStyle } from "../editor/model";
-import { MemeWorkspace, useSaveMeme } from "../editor/MemeWorkspace";
+import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
 import { useMemeDraft } from "../editor/useMemeDraft";
 
 export function AiCaptionsPage() {
@@ -21,7 +21,7 @@ export function AiCaptionsPage() {
   const [captionsError, setCaptionsError] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState(false);
   const draft = useMemeDraft("");
-  const { stageRef, save, saving, error: saveError } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
 
   const loadCaptions = async (exclude: string[]) => {
     setLoadingCaptions(true);
@@ -61,8 +61,9 @@ export function AiCaptionsPage() {
       back={back}
       actions={<Button onClick={() => save(draft.style)} disabled={saving || !text}>Зберегти в «Мої меми»</Button>}
     >
-      {saveError && <ErrorMessage error={saveError} />}
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => save(draft.style)} stageRef={stageRef}>
+      <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => toggle(draft.style)}
+        saved={!!savedId} stageRef={stageRef}>
         <div className="mb-3 flex items-center justify-between">
           <div className="t-label">Підписи від ШІ</div>
           <button className="t-strong flex items-center gap-2 text-accent" onClick={() => loadCaptions(seen)} disabled={loadingCaptions}>
