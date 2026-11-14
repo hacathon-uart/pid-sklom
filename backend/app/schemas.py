@@ -118,7 +118,6 @@ class MatchResult(BaseModel):
 
 
 class CaptionsRequest(BaseModel):
-    artwork_id: int
     exclude: list[str] = []  # captions already shown («Ще варіанти»)
 
 

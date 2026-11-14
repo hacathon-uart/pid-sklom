@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.data import get_repo
-from app.schemas import ArtistDetail, ArtistSummary, ArtworkDetail, ArtworkPage, ArtworkSummary, Genre
+from app.schemas import ArtistDetail, ArtistSummary, ArtworkDetail, ArtworkPage, Genre
 
 router = APIRouter(tags=["content"])
 
@@ -28,17 +28,14 @@ def list_artworks(
     q: str | None = Query(None, description="Search: artist, title, tag or mood"),
     genre: Genre | None = None,
     artist: str | None = Query(None, description="Artist slug"),
+    random: bool = Query(False, description="One random artwork instead (use with limit=1)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    """Gallery 5 and painting picker 2b (US-14)."""
+    """Gallery 5 and painting picker 2b (US-14). `?random=true` = «Випадкова картина»."""
+    if random:
+        return ArtworkPage(items=[get_repo().random_artwork()], total=1)
     return get_repo().list_artworks(q=q, genre=genre, artist_slug=artist, limit=limit, offset=offset)
-
-
-@router.get("/artworks/random", response_model=ArtworkSummary)
-def random_artwork():
-    """«Випадкова картина» on 2b; bot /random."""
-    return get_repo().random_artwork()
 
 
 @router.get("/artworks/{artwork_id}", response_model=ArtworkDetail)

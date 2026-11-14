@@ -45,19 +45,19 @@ def test_content(client):
 
 
 def test_match(client):
-    r = client.post("/api/match", json={"phrase": "коли дедлайн завтра"})
-    assert r.status_code == 200
+    r = client.post("/api/matches", json={"phrase": "коли дедлайн завтра"})
+    assert r.status_code == 201
     body = r.json()
     assert body["caption"] == "коли дедлайн завтра"
     assert 1 <= len(body["alternatives"]) <= 5
     assert body["alternatives"][0]["artwork"]["id"] == body["artwork"]["id"]
-    assert client.post("/api/match", json={"phrase": ""}).status_code == 422
+    assert client.post("/api/matches", json={"phrase": ""}).status_code == 422
 
 
 def test_captions(client):
-    body = client.post("/api/captions", json={"artwork_id": 1}).json()
+    body = client.post("/api/artworks/1/captions", json={}).json()
     assert len(body["captions"]) == 3
-    again = client.post("/api/captions", json={"artwork_id": 1, "exclude": [c["text"] for c in body["captions"]]}).json()
+    again = client.post("/api/artworks/1/captions", json={"exclude": [c["text"] for c in body["captions"]]}).json()
     assert not {c["text"] for c in again["captions"]} & {c["text"] for c in body["captions"]}
 
 

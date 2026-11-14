@@ -67,12 +67,12 @@ export const api = {
   artworks: (p: { q?: string; genre?: Genre | null; artist?: string; limit?: number; offset?: number } = {}) =>
     request<ArtworkPage>(`/api/artworks${qs(p)}`),
   artwork: (id: number) => request<ArtworkDetail>(`/api/artworks/${id}`),
-  randomArtwork: () => request<ArtworkSummary>("/api/artworks/random"),
+  randomArtwork: async () => (await request<{ items: ArtworkSummary[] }>("/api/artworks?random=true&limit=1")).items[0],
 
   // AI flows
-  match: (phrase: string, description?: string) => request<MatchResult>("/api/match", post({ phrase, description })),
+  match: (phrase: string, description?: string) => request<MatchResult>("/api/matches", post({ phrase, description })),
   captions: (artworkId: number, exclude: string[] = []) =>
-    request<CaptionsResult>("/api/captions", post({ artwork_id: artworkId, exclude })),
+    request<CaptionsResult>(`/api/artworks/${artworkId}/captions`, post({ exclude })),
 
   // memes (login required)
   memes: (favorite?: boolean) => request<Meme[]>(`/api/memes${qs({ favorite })}`),
