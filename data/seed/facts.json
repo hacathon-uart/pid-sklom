@@ -1,0 +1,14 @@
+[
+  {"id": 1,  "artist_id": 1, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Шевченка-художника (1–2 речення).", "source_url": null, "verified": true},
+  {"id": 2,  "artist_id": 1, "artwork_id": null, "text_uk": "ЗАГЛУШКА: ще один факт про Шевченка.", "source_url": null, "verified": true},
+  {"id": 3,  "artist_id": 2, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Куїнджі.", "source_url": null, "verified": true},
+  {"id": 4,  "artist_id": 3, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Пимоненка.", "source_url": null, "verified": true},
+  {"id": 5,  "artist_id": 4, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Мурашка.", "source_url": null, "verified": true},
+  {"id": 6,  "artist_id": 5, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Малевича.", "source_url": null, "verified": true},
+  {"id": 7,  "artist_id": 6, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Нарбута.", "source_url": null, "verified": true},
+  {"id": 8,  "artist_id": null, "artwork_id": 1, "text_uk": "ЗАГЛУШКА: факт про картину №1, після якого хочеться переслати мем друзям.", "source_url": null, "verified": true},
+  {"id": 9,  "artist_id": null, "artwork_id": 3, "text_uk": "ЗАГЛУШКА: факт про місячний пейзаж.", "source_url": null, "verified": true},
+  {"id": 10, "artist_id": null, "artwork_id": 5, "text_uk": "ЗАГЛУШКА: факт про сільську сцену.", "source_url": null, "verified": true},
+  {"id": 11, "artist_id": null, "artwork_id": 8, "text_uk": "ЗАГЛУШКА: факт про авангардну роботу.", "source_url": null, "verified": true},
+  {"id": 12, "artist_id": null, "artwork_id": 8, "text_uk": "ЗАГЛУШКА: неперевірений факт — не має показуватися.", "source_url": null, "verified": false}
+]

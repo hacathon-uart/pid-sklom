@@ -1,7 +1,6 @@
 # Dependencies
 node_modules/
 *.npm
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -13,19 +12,20 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+/build/
+/develop-eggs/
+/dist/
+/downloads/
+/eggs/
+/.eggs/
+/lib/
+/lib64/
+/parts/
+/sdist/
+/var/
+/wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -56,8 +56,8 @@ Thumbs.db
 .LSOverride
 
 # Build artifacts
-dist/
-build/
+/dist/
+/build/
 *.o
 *.a
 *.lib
@@ -86,3 +86,7 @@ tmp/
 .Spotlight-V100
 .Trashes
 $RECYCLE.BIN/
+
+# Project
+backend/media/
+frontend/dist/

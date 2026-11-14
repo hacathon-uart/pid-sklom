@@ -102,7 +102,9 @@ Story → art
 
 > If the team changes a colour in Figma (for example a lighter `bg`), update this table and `tokens.css` so the code stays in sync. Figma is the source.
 
-### `tokens.css` (copy to `frontend/src/styles/tokens.css`)
+### `tokens.css` (lives in `frontend/src/styles/tokens.css`)
+
+In code, the same variables are declared inside Tailwind's `@theme { … }` block (not `:root`), so each one is also a utility class: `bg-accent`, `text-text-secondary`, `border-line`, `font-heading`, `rounded-card`. Update the values there when Figma changes.
 
 ```css
 :root {
