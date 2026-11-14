@@ -20,11 +20,12 @@ interface Props {
   editable?: boolean;
   active?: number;
   onSelect?: (index: number) => void;
+  onBackgroundClick?: () => void;
   onMove?: (index: number, x: number, y: number) => void;
   stageRef?: RefObject<Konva.Stage | null>;
 }
 
-export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelect, onMove, stageRef }: Props) {
+export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelect, onBackgroundClick, onMove, stageRef }: Props) {
   // crossOrigin="anonymous" is REQUIRED, otherwise PNG export throws (tainted canvas).
   const [image] = useImage(imageUrl, "anonymous");
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -53,9 +54,15 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
 
   return (
     <div ref={wrapRef} className="w-full">
-      <Stage width={width} height={height} ref={stageRef}>
+      <Stage
+        width={width}
+        height={height}
+        ref={stageRef}
+        onMouseDown={(e) => e.target === e.target.getStage() || e.target.name() === "bg" ? onBackgroundClick?.() : undefined}
+        onTouchStart={(e) => e.target === e.target.getStage() || e.target.name() === "bg" ? onBackgroundClick?.() : undefined}
+      >
         <Layer>
-          {image && <KImage image={image} width={width} height={height} />}
+          {image && <KImage name="bg" image={image} width={width} height={height} />}
           {blocks.map((b, i) => {
             const fontSize = b.size * scale;
             const boxW = (b.width ?? 0.9) * width;
@@ -86,11 +93,13 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
                 stroke={b.outline ? "#000000" : undefined}
                 strokeWidth={b.outline ? Math.max(2, fontSize / 12) : 0}
                 fillAfterStrokeEnabled
-                draggable={editable}
+                draggable
+                onMouseEnter={(e) => (e.target.getStage()!.container().style.cursor = "pointer")}
+                onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = "")}
                 shadowColor={editable && active === i ? "#C9B08F" : undefined}
                 shadowBlur={editable && active === i ? 12 : 0}
                 onMouseDown={() => onSelect?.(i)}
-                onTap={() => onSelect?.(i)}
+                onTouchStart={() => onSelect?.(i)}
                 onDragEnd={(e) => onMove?.(i, clamp01(e.target.x() / width), clamp01(e.target.y() / height))}
               />
             );

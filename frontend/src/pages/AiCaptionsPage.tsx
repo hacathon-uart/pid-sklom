@@ -62,7 +62,7 @@ export function AiCaptionsPage() {
       actions={<Button onClick={() => save(draft.style)} disabled={saving || !text}>Зберегти в «Мої меми»</Button>}
     >
       {saveError && <ErrorMessage error={saveError} />}
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editable={styleOpen} stageRef={stageRef}>
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => save(draft.style)} stageRef={stageRef}>
         <div className="mb-3 flex items-center justify-between">
           <div className="t-label">Підписи від ШІ</div>
           <button className="t-strong flex items-center gap-2 text-accent" onClick={() => loadCaptions(seen)} disabled={loadingCaptions}>

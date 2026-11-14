@@ -3,10 +3,15 @@
  *   left  — meme canvas, action icons, page-specific controls (`children`)
  *   right — StoryCard
  *
+ * Caption editing: clicking the caption on the canvas calls onEditingChange(true); clicking the canvas
+ * background or anything outside the canvas and the controls calls onEditingChange(false). The page decides what
+ * «editing» shows (CaptionControls panel).
+ * The heart = «save to my account» (asks to log in first), same as the header «Зберегти» button.
+ *
  * The page owns `stageRef` (from useSaveMeme) so its header «Зберегти» button can export the canvas.
  */
 import type Konva from "konva";
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useNavigate } from "react-router";
 import { ApiError } from "../api/client";
 import type { ArtworkSummary, MemeStyle, Story } from "../api/types";
@@ -22,7 +27,9 @@ export function MemeWorkspace({
   artwork,
   story,
   draft,
-  editable,
+  editing,
+  onEditingChange,
+  onSave,
   stageRef,
   onAnotherPainting,
   children,
@@ -30,31 +37,54 @@ export function MemeWorkspace({
   artwork: ArtworkSummary;
   story: Story | null;
   draft: MemeDraft;
-  editable: boolean;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onSave: () => void;
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
   children?: ReactNode;
 }) {
-  const [liked, setLiked] = useState(false);
-  const labels = ["Подобається", "Завантажити PNG", "Поділитися", onAnotherPainting && "Інша картина"].filter(Boolean);
+  const canvasZone = useRef<HTMLDivElement>(null);
+  const controlsZone = useRef<HTMLDivElement>(null);
+
+  // A click anywhere except the canvas and the page controls (`children`) closes the caption editor,
+  // including the icon row and the empty space around it.
+  useEffect(() => {
+    if (!editing) return;
+    const close = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (!canvasZone.current?.contains(t) && !controlsZone.current?.contains(t)) onEditingChange(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, [editing, onEditingChange]);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
       <div>
+        <div ref={canvasZone}>
         <Artwork>
           <MemeCanvas
             imageUrl={artwork.image_url}
             blocks={draft.blocks}
-            editable={editable}
+            editable={editing}
             active={draft.active}
-            onSelect={draft.setActive}
+            onSelect={(i) => {
+              draft.setActive(i);
+              onEditingChange(true);
+            }}
+            onBackgroundClick={() => onEditingChange(false)}
             onMove={(i, x, y) => draft.update(i, { x, y })}
             stageRef={stageRef}
           />
         </Artwork>
+        </div>
         <div className="mt-4 flex items-center gap-2">
-          {/* TODO(team): what does «Подобається» do before the meme is saved? See docs/ARCHITECTURE.md → Open questions */}
-          <IconButton icon="heart" label="Подобається" active={liked} onClick={() => setLiked(!liked)} />
+          <IconButton icon="heart" label="Зберегти в «Мої меми»" onClick={onSave} />
           <IconButton
             icon="download"
             label="Завантажити PNG"
@@ -66,9 +96,8 @@ export function MemeWorkspace({
             onClick={() => stageRef.current && shareMeme(exportPng(stageRef.current))}
           />
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
-          <span className="t-caption ml-2 text-text-secondary">{labels.join(" · ")}</span>
         </div>
-        <div className="mt-6">{children}</div>
+        <div ref={controlsZone} className="mt-6">{children}</div>
       </div>
       {story ? <StoryCard artwork={artwork} story={story} /> : <div className="h-96 animate-pulse rounded-story bg-muted" />}
     </div>

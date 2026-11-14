@@ -87,7 +87,7 @@ data/
 Gaps between the plan, the Figma screens and the DB schema. The code takes the noted default; decide as a team.
 
 1. **The artwork needs more fields than the plan's table.** The StoryCard shows «Про картину», the gallery filters by Портрет/Пейзаж/Побут/Авангард, and the author page shows «полотно, олія» and a «найвідоміша картина». So `about_uk`, `genre`, `medium` and `is_featured` were added to `artworks` (`schema.sql`, seed). **C:** please fill them.
-2. **«Подобається» (heart) on an unsaved meme** (screens 3, 3b, 3c, 3d). Saved memes have `is_favorite` for the «Улюблені» filter, but what should the heart do before saving? Currently it is a local toggle only. Suggestion: heart = save + mark as favourite (needs login).
+2. ~~«Подобається» (heart) on an unsaved meme~~ — decided: the heart saves the meme to the account (asks to log in first), same as «Зберегти в «Мої меми»».
 3. **The refresh icon next to the caption on screen 3.** Regenerate the caption, or another painting? Currently it means «Інша картина», as on 3b.
 4. **There is no artwork detail screen.** The gallery says «Натисніть на картину, щоб прочитати її історію…». Currently a click opens 2b with the painting preselected.
 5. **The «Усі автори» page (US-09, Must) is not designed.** `/artists` is a simple placeholder grid.

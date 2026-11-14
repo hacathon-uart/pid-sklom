@@ -1,5 +1,5 @@
 /** «Редагувати» from screen 4b: the editor (3b) preloaded with a saved meme; saving PATCHes it. */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
@@ -15,6 +15,7 @@ export function EditMemePage() {
   const meme = useApi(() => api.meme(memeId), [memeId]);
   const artworkId = meme.data?.artwork.id;
   const artwork = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
+  const [editing, setEditing] = useState(true);
   const draft = useMemeDraft();
   const { stageRef, save, saving, error } = useSaveMeme((style, png) => api.updateMeme(memeId, { style, image_data_url: png }));
 
@@ -38,8 +39,12 @@ export function EditMemePage() {
       }
     >
       {error && <ErrorMessage error={error} />}
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editable stageRef={stageRef}>
-        <CaptionControls draft={draft} />
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => save(draft.style)} stageRef={stageRef}>
+        {editing ? (
+          <CaptionControls draft={draft} />
+        ) : (
+          <p className="t-small text-text-secondary">Натисніть на підпис на картині, щоб змінити його.</p>
+        )}
       </MemeWorkspace>
     </Page>
   );

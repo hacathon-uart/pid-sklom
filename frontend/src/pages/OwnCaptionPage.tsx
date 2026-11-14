@@ -1,4 +1,5 @@
 /** Screen 3d · Картина → свій підпис — fully manual meme (US-02, US-04). */
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
@@ -13,6 +14,7 @@ export function OwnCaptionPage() {
   const artworkId = Number(useParams().artworkId);
   const navigate = useNavigate();
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
+  const [editing, setEditing] = useState(true);
   const draft = useMemeDraft("Ваш підпис тут", "top");
   const { stageRef, save, saving, error: saveError } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
 
@@ -43,10 +45,15 @@ export function OwnCaptionPage() {
         artwork={artwork.data}
         story={artwork.data.story}
         draft={draft}
-        editable
+        editing={editing}
+        onEditingChange={setEditing}
+        onSave={() => save(draft.style)}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}
       >
+        {!editing ? (
+          <p className="t-small text-text-secondary">Натисніть на підпис на картині, щоб змінити його.</p>
+        ) : (
         <CaptionControls
           draft={draft}
           hint={
@@ -58,6 +65,7 @@ export function OwnCaptionPage() {
             </>
           }
         />
+        )}
       </MemeWorkspace>
     </Page>
   );

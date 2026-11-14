@@ -58,13 +58,10 @@ export function PhraseResultPage() {
   return (
     <Page
       title={editing ? "Редагування" : "Ваш мем"}
-      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче."}
+      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Натисніть на підпис, щоб його змінити."}
       actions={
         editing ? (
-          <>
-            <Button variant="soft" onClick={() => setEditing(false)}>Скасувати</Button>
-            <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти в «Мої меми»</Button>
-          </>
+          <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти в «Мої меми»</Button>
         ) : (
           <ModeSwitch />
         )
@@ -75,7 +72,9 @@ export function PhraseResultPage() {
         artwork={current.artwork}
         story={current.story}
         draft={draft}
-        editable={editing}
+        editing={editing}
+        onEditingChange={setEditing}
+        onSave={() => save(draft.style)}
         stageRef={stageRef}
         onAnotherPainting={editing ? nextAlternative : undefined}
       >
@@ -89,8 +88,7 @@ export function PhraseResultPage() {
               {/* TODO(team): design shows a refresh icon here — regenerate caption? another painting? */}
               <IconButton icon="refresh" label="Інша картина" onClick={nextAlternative} />
             </div>
-            <div className="mt-4 flex gap-3">
-              <Button onClick={() => setEditing(true)}>Редагувати підпис</Button>
+            <div className="mt-4">
               <Button variant="secondary" onClick={nextAlternative}>Інша картина</Button>
             </div>
           </>
