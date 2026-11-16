@@ -26,6 +26,7 @@ export function ArtworkCard({
         who={artwork.artist.name}
         what={`${artwork.title}${artwork.year ? `, ${artwork.year}` : ""}`}
         inv={meta ?? `Інв. № ${inventoryNo(artwork.id)}`}
+        invRight
       />
     </button>
   );
@@ -43,7 +44,7 @@ export function AuthorCard({ artist }: { artist: ArtistSummary }) {
 
 /** Saved meme in «Мої меми». Favourites (♥) are marked with cracked glass, the collection's best pieces. */
 export function MemeCard({ meme }: { meme: Meme }) {
-  const date = new Date(meme.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "numeric" });
+  const date = new Date(meme.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "numeric", year: "numeric" });
   return (
     <Link to={`/me/memes/${meme.id}`} className="block">
       <Artwork
@@ -58,7 +59,8 @@ export function MemeCard({ meme }: { meme: Meme }) {
         className="mt-4"
         who={meme.artwork.artist.name}
         what={meme.artwork.title}
-        inv={`${meme.is_favorite ? "♥ Улюблений · " : ""}збережено ${date}`}
+        inv={date}
+        invRight
       />
     </Link>
   );

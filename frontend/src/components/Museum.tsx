@@ -30,12 +30,12 @@ export const inventoryNo = (id: number | string) =>
   `ПС-${typeof id === "number" ? String(id).padStart(4, "0") : id.slice(0, 4).toUpperCase()}`;
 
 /** White museum label under a painting (D1). */
-export function WallLabel({ who, what, inv, className = "" }: { who: ReactNode; what: ReactNode; inv?: ReactNode; className?: string }) {
+export function WallLabel({ who, what, inv, invRight = false, className = "" }: { who: ReactNode; what: ReactNode; inv?: ReactNode; invRight?: boolean; className?: string }) {
   return (
     <div className={`wall-label ${className}`}>
       <div className="wl-who truncate">{who}</div>
       <div className="wl-what">{what}</div>
-      {inv && <div className="wl-inv">{inv}</div>}
+      {inv && <div className={`wl-inv ${invRight ? "text-right" : ""}`}>{inv}</div>}
     </div>
   );
 }
