@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import type { MemeStyle, Position, TextBlock } from "../api/types";
+import type { Frame, MemeStyle, Position, TextBlock } from "../api/types";
 import { MAX_BLOCKS, newBlock } from "./model";
 
 /** Editor state shared by screens 3, 3b, 3c, 3d and 4b-edit. */
 export function useMemeDraft(initialText = "", position: Position = "bottom") {
   const [blocks, setBlocks] = useState<TextBlock[]>([newBlock(initialText, position)]);
   const [active, setActive] = useState(0);
+  const [frame, setFrame] = useState<Frame>("gold");
 
   const update = useCallback((index: number, patch: Partial<TextBlock>) => {
     setBlocks((bs) => bs.map((b, i) => (i === index ? { ...b, ...patch } : b)));
@@ -24,8 +25,8 @@ export function useMemeDraft(initialText = "", position: Position = "bottom") {
     setActive(0);
   }, []);
 
-  const style: MemeStyle = { blocks };
-  return { blocks, setBlocks, active, setActive, update, setText, addBlock, removeBlock, style };
+  const style: MemeStyle = { blocks, frame };
+  return { blocks, setBlocks, active, setActive, update, setText, addBlock, removeBlock, frame, setFrame, style };
 }
 
 export type MemeDraft = ReturnType<typeof useMemeDraft>;

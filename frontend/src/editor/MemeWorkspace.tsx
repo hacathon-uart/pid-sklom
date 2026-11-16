@@ -6,8 +6,10 @@
  * Caption editing: clicking the caption on the canvas calls onEditingChange(true); clicking the canvas
  * background or anything outside the canvas and the controls calls onEditingChange(false). The page decides what
  * «editing» shows (CaptionControls panel).
- * The bookmark icon = «save to my account» (asks to log in first), same as the header «Зберегти» button.
- * There is no heart here: ♥ (is_favorite) exists only on saved memes, in the account (MemeViewPage).
+ * The bookmark (ticket) icon = «save to my account» (asks to log in first). Saving cracks the glass for a
+ * moment (G3). There is no heart here: ♥ (is_favorite) exists only on saved memes, in the account
+ * (MemeViewPage), where favourites keep the crack.
+ * The frame (draft.frame) is part of the style; picking one on a saved meme saves it right away.
  *
  * The page owns `stageRef` (from useSaveMeme) so its header «Зберегти» button can export the canvas.
  */
@@ -21,7 +23,9 @@ import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
 import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
-import { downloadDataUrl, exportPng, shareMeme } from "./exportPng";
+import type { Frame } from "../api/types";
+import { downloadDataUrl, exportPng, framePng, shareMeme } from "./exportPng";
+import { FramePicker } from "./FramePicker";
 import { MemeCanvas } from "./MemeCanvas";
 import type { MemeDraft } from "./useMemeDraft";
 
@@ -32,7 +36,7 @@ export function MemeWorkspace({
   editing,
   onEditingChange,
   onSave,
-  saved = false,
+  savedId = null,
   stageRef,
   onAnotherPainting,
   children,
@@ -43,12 +47,31 @@ export function MemeWorkspace({
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   onSave: () => void; // bookmark: save / un-save
-  saved?: boolean; // fills the bookmark
+  savedId?: string | null; // fills the bookmark; frame changes are saved to it
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
   children?: ReactNode;
 }) {
+  const saved = !!savedId;
   const canvasZone = useRef<HTMLDivElement>(null);
+  const [withFrame, setWithFrame] = useState(true);
+
+  // Crack the glass when the meme becomes saved (not when an already-saved meme is opened).
+  const [crackRun, setCrackRun] = useState(0);
+  const wasSaved = useRef(saved);
+  useEffect(() => {
+    if (saved && !wasSaved.current) setCrackRun((n) => n + 1);
+    wasSaved.current = saved;
+  }, [saved]);
+
+  const changeFrame = (frame: Frame) => {
+    draft.setFrame(frame);
+    if (savedId) api.updateMeme(savedId, { style: { ...draft.style, frame } }).catch(() => {});
+  };
+  const png = async () => {
+    const plain = exportPng(stageRef.current!);
+    return withFrame ? framePng(plain, draft.frame) : plain;
+  };
   const controlsZone = useRef<HTMLDivElement>(null);
 
   // A click anywhere except the canvas and the page controls (`children`) closes the caption editor,
@@ -71,7 +94,7 @@ export function MemeWorkspace({
     <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
       <div>
         <div ref={canvasZone}>
-        <Artwork>
+        <Artwork frame={draft.frame} size="lg" crack={crackRun ? "fleeting" : null} crackKey={crackRun}>
           <MemeCanvas
             imageUrl={artwork.image_url}
             blocks={draft.blocks}
@@ -92,14 +115,17 @@ export function MemeWorkspace({
           <IconButton
             icon="download"
             label="Завантажити PNG"
-            onClick={() => stageRef.current && downloadDataUrl(exportPng(stageRef.current))}
+            onClick={async () => stageRef.current && downloadDataUrl(await png())}
           />
           <IconButton
             icon="share"
             label="Поділитися"
-            onClick={() => stageRef.current && shareMeme(exportPng(stageRef.current))}
+            onClick={async () => stageRef.current && shareMeme(await png())}
           />
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
+        </div>
+        <div className="mt-5">
+          <FramePicker frame={draft.frame} onFrameChange={changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
         </div>
         <div ref={controlsZone} className="mt-6">{children}</div>
       </div>
@@ -167,7 +193,7 @@ export function SaveStatus({ error, savedId, justSaved }: { error: string | null
   if (!savedId || !justSaved) return null;
   return (
     <p className="t-small mb-4 rounded-control bg-muted px-4 py-3" role="status">
-      Збережено в «Мої меми».{" "}
+      Додано до колекції «Мої меми».{" "}
       <Link to={`/me/memes/${savedId}`} className="font-semibold text-accent">
         Відкрити →
       </Link>

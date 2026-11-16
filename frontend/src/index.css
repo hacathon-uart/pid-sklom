@@ -21,3 +21,100 @@ body {
   color: var(--color-text);
   font-family: var(--font-ui);
 }
+
+/* ======================================================================
+ * Museum visuals (direction board, Nov 2026): frames, glass, crack, walls,
+ * wall labels, cameo portraits, entrance ticket. Components live in
+ * components/Artwork.tsx, components/Museum.tsx, components/Portrait.tsx.
+ * ====================================================================== */
+
+/* ---- Frames (MemeStyle.frame). --fw = moulding thickness, set by size. ---- */
+.frame { --fw: 14px; position: relative; display: block; }
+.frame-sm { --fw: 8px; }
+.frame-lg { --fw: 20px; }
+.frame-inner { position: relative; }
+
+.frame-gold {
+  padding: var(--fw);
+  background: linear-gradient(145deg, #6e4f17 0%, #e3bd62 18%, #a27a2a 35%, #f5dc93 52%, #8a6420 70%, #d9b356 85%, #5c4112 100%);
+  box-shadow: inset 0 0 0 1px #4a340c, inset 0 0 0 3px #b8913c, inset 0 0 0 4px #5c4112, inset 0 0 10px rgba(0,0,0,.45), 0 14px 28px -12px rgba(46,38,32,.55);
+}
+.frame-gold::before { /* bead moulding */
+  content: ""; position: absolute; inset: calc(var(--fw) * .38); pointer-events: none;
+  border: 2px dotted rgba(255, 238, 190, .75);
+}
+.frame-gold > .frame-inner, .frame-oak > .frame-inner {
+  padding: calc(var(--fw) * .7); background: #f4ecdc; box-shadow: inset 1px 1px 3px rgba(0,0,0,.35);
+}
+.frame-gallery { padding: max(3px, calc(var(--fw) * .35)); background: #151311; box-shadow: 0 12px 26px -12px rgba(46,38,32,.55); }
+.frame-gallery > .frame-inner { padding: calc(var(--fw) * 1.2); background: #fbfaf7; box-shadow: inset 0 0 0 1px #ddd6c9; }
+.frame-oak {
+  padding: var(--fw);
+  background: repeating-linear-gradient(90deg, #8a5a32 0 3px, #9b6a3e 3px 7px, #7d5029 7px 9px, #a5734a 9px 14px);
+  box-shadow: inset 0 0 0 1px #4c2f17, inset 2px 2px 0 rgba(255,255,255,.18), inset -3px -3px 6px rgba(0,0,0,.35), 0 12px 26px -12px rgba(46,38,32,.55);
+}
+.frame-mat { padding: calc(var(--fw) * .7); background: #fff; border: 1px solid var(--color-accent-soft); }
+.frame-selected { outline: 3px solid var(--color-accent); outline-offset: 4px; }
+
+/* ---- Glass: static sheen + a glare that glides across once on hover (G1). ---- */
+.glass { position: relative; overflow: hidden; }
+.glass::before, .glass::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.glass::before { background: linear-gradient(160deg, rgba(255,255,255,.14), transparent 30%); }
+.glass::after {
+  background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.4) 45%, rgba(255,255,255,.1) 52%, transparent 60%);
+  transform: translateX(-120%); transition: transform 1s ease;
+}
+.frame:hover .glass::after, a:focus-visible .glass::after, button:focus-visible .glass::after { transform: translateX(120%); }
+
+/* ---- Cracked glass (G3): on save in the editor, and on favourite memes. ---- */
+.crack { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
+.crack path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.crack .shade { stroke: rgba(0,0,0,.35); stroke-width: 2.4px; }
+.crack .shine { stroke: rgba(255,255,255,.92); stroke-width: 1.1px; }
+.crack-animate { transform-origin: 72% 26%; animation: crack-in .45s ease-out both; }
+.crack-fleeting { transform-origin: 72% 26%; animation: crack-in .45s ease-out both, crack-out .6s ease-in 2.4s forwards; }
+@keyframes crack-in { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: scale(1); } }
+@keyframes crack-out { to { opacity: 0; } }
+
+/* ---- Wall label / етикетка (D1) ---- */
+.wall-label {
+  background: #fff; color: #2E2620; padding: 10px 12px; border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(46,38,32,.14); font-size: 13px; line-height: 1.4;
+}
+.wall-label .wl-who { font-weight: 700; }
+.wall-label .wl-what { font-family: var(--font-heading); font-style: italic; font-size: 18px; line-height: 1.2; margin-top: 2px; }
+.wall-label .wl-inv { margin-top: 6px; padding-top: 5px; border-top: 1px solid #E6DDCF; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: #7A6E62; }
+
+/* ---- Hall walls by genre (W6): full-bleed band inside a Page. ---- */
+.wall {
+  --wall: #EFE6D6; --wall-text: #2E2620; --wall-text-2: #7A6E62; --spot: rgba(255,255,255,.75);
+  position: relative; background: var(--wall); color: var(--wall-text); transition: background-color .4s ease, color .4s ease;
+}
+.wall::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 35% 420px at 25% 0, var(--spot), transparent 70%), radial-gradient(ellipse 35% 420px at 75% 0, var(--spot), transparent 70%);
+}
+.wall > * { position: relative; }
+.wall-portrait   { --wall: #5E1F25; --wall-text: #F3E7D3; --wall-text-2: #D9C3A9; --spot: rgba(255,226,180,.22); }
+.wall-landscape  { --wall: #1F3B2D; --wall-text: #EFE6D2; --wall-text-2: #C4CDB8; --spot: rgba(255,232,190,.2); }
+.wall-everyday   { --wall: #EFE6D6; }
+.wall-avantgarde { --wall: #1C2E4A; --wall-text: #EAE3D6; --wall-text-2: #BCC4D2; --spot: rgba(255,236,205,.2); }
+
+/* ---- Hall number (D2) ---- */
+.hall-no { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: .9; color: var(--color-accent); }
+.wall .hall-no { color: inherit; opacity: .55; }
+
+/* ---- Entrance ticket (D5) ---- */
+.ticket {
+  display: inline-grid; grid-template-columns: auto auto; background: #F1E3C4; color: #3B2A0E; border-radius: 4px;
+  -webkit-mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+          mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+}
+.ticket > div { padding: 10px 20px; }
+.ticket > div + div { border-left: 2px dashed rgba(59,42,14,.35); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .glass::after { transition: none; }
+  .crack-animate, .crack-fleeting { animation: none; }
+  .wall { transition: none; }
+}

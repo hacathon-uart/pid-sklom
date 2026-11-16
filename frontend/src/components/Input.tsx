@@ -1,10 +1,23 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { Icon } from "./Icon";
 
 const BASE =
   "w-full rounded-control border border-line bg-surface px-4 text-base placeholder:text-text-secondary focus:border-accent focus:outline-none";
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={`${BASE} h-[52px] ${className}`} {...props} />;
+}
+
+/** Input with a leading magnifier icon; pass a placeholder without the «Пошук:» prefix. */
+export function SearchInput({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className={`relative w-full ${className}`}>
+      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
+        <Icon name="search" size={20} />
+      </span>
+      <input type="search" aria-label="Пошук" className={`${BASE} h-[52px] pl-12`} {...props} />
+    </div>
+  );
 }
 
 export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {

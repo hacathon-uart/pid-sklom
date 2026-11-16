@@ -23,7 +23,10 @@ export function EditMemePage() {
   );
 
   useEffect(() => {
-    if (meme.data) draft.setBlocks(meme.data.style.blocks);
+    if (meme.data) {
+      draft.setBlocks(meme.data.style.blocks);
+      draft.setFrame(meme.data.style.frame ?? "gold");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meme.data]);
 
@@ -43,7 +46,7 @@ export function EditMemePage() {
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => toggle(draft.style)}
-        saved={!!savedId} stageRef={stageRef}>
+        savedId={savedId} stageRef={stageRef}>
         {editing ? (
           <CaptionControls draft={draft} />
         ) : (

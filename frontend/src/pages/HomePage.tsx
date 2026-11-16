@@ -1,18 +1,41 @@
-/** Screen 1 · Головна + Про проєкт (US-01, US-06). TODO(design): add the other ways to create a meme. */
-import { useState, type FormEvent } from "react";
+/**
+ * Screen 1 · Головна + Про проєкт (US-01, US-06).
+ * Three ways to make a meme (one per «шлях»):
+ *   I   phrase → AI finds the painting           (hero form → screen 3)
+ *   II  pick a painting → AI writes the caption  (2b → 3c, /create/painting?mode=ai)
+ *   III pick a painting → write your own caption (2b → 3d, /create/painting?mode=own)
+ */
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
+import { LogoMark } from "../components/Museum";
 import { Tag } from "../components/Tag";
 
 const EXAMPLES = ["коли понеділок", "дедлайн завтра", "мама кличе вечеряти", "чекаю на зарплату"];
-const STEPS = [
-  ["01", "Напишіть фразу", "Опишіть ситуацію своїми словами: від понеділкового настрою до дедлайну, що горить."],
-  ["02", "ШІ підбере картину", "Шукаємо серед творів українських художників, які вже стали суспільним надбанням."],
-  ["03", "Дізнайтеся історію", "Кожен мем має історію: несподіваний факт про автора і саму картину."],
+const PAINTING_PATHS = [
+  {
+    no: "II",
+    title: "Картина → підпис від ШІ",
+    text: "Оберіть картину в галереї, а ШІ запропонує три смішні підписи до неї.",
+    to: "/create/painting?mode=ai",
+  },
+  {
+    no: "III",
+    title: "Картина → свій підпис",
+    text: "Усе самі: оберіть картину і напишіть підпис. Історія картини підкаже ідею.",
+    to: "/create/painting?mode=own",
+  },
 ];
+const FEATURES = [
+  ["Українські картини", "Твори українських художників, які вже стали суспільним надбанням: від Шевченка до Екстер."],
+  ["Історія за кожним мемом", "Поруч із мемом є коротка історія картини і несподівані факти про автора. Ви можете дізнатись більше у галереї."],
+  ["ШІ на підхваті", "Підбирає картину до вашої фрази або вигадує підпис до обраної картини. Або не заважає, якщо ви самі."],
+];
+const TEAM = ["Алла Ковальчук", "Олена Попова", "Герман Гавва", "Вікторія Лозяк"];
+const EMAIL = "kov.koalla@gmail.com";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -27,7 +50,7 @@ export function HomePage() {
 
   return (
     <>
-      <section className="relative flex min-h-[640px] flex-col items-center justify-center px-8 text-center">
+      <section className="relative flex flex-col items-center px-8 pb-10 pt-24 text-center">
         <div className="absolute right-10 top-8 flex gap-3">
           {user ? (
             <Link to="/me" className="t-strong">
@@ -42,26 +65,39 @@ export function HomePage() {
           )}
         </div>
 
-        <div className="t-label">Українське мистецтво · гумор</div>
-        <h1 className="t-logo mt-6">Під склом</h1>
+        <LogoMark size={88} className="mb-6 text-accent" />
+        <h1 className="t-logo">Під склом</h1>
         <p className="t-quote mt-6 text-text-secondary">Мистецтво крізь жарти</p>
+        <p className="t-body mt-10 text-text-secondary">Три шляхи до мему. Оберіть свій.</p>
 
-        <form onSubmit={onSubmit} className="mt-14 flex w-full max-w-[720px] gap-3">
-          <Input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
-          <Button type="submit" className="shrink-0">Створити мем</Button>
-        </form>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <span className="t-small text-text-secondary">Спробуйте:</span>
-          {EXAMPLES.map((ex) => (
-            <Tag key={ex} onClick={() => go(ex)}>{ex}</Tag>
+        {/* Path I — the fastest one, right here */}
+        <div className="mt-6 w-full max-w-[920px] rounded-card border border-line bg-surface p-6 text-left">
+          <PathHead no="I" title="Фраза → картина" text="Напишіть фразу чи опишіть ситуацію, а ШІ знайде українську картину, яка пасує найкраще." />
+          <form onSubmit={onSubmit} className="mt-5 flex gap-3">
+            <Input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
+            <Button type="submit" className="shrink-0">Створити мем</Button>
+          </form>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="t-small text-text-secondary">Спробуйте:</span>
+            {EXAMPLES.map((ex) => (
+              <Tag key={ex} onClick={() => go(ex)}>{ex}</Tag>
+            ))}
+          </div>
+        </div>
+
+        {/* Paths II and III start from a painting */}
+        <div className="mt-6 grid w-full max-w-[920px] grid-cols-2 gap-6 text-left">
+          {PAINTING_PATHS.map((p) => (
+            <Link key={p.no} to={p.to} className="group flex flex-col rounded-card border border-line bg-surface p-6 transition hover:border-accent">
+              <PathHead no={p.no} title={p.title} text={p.text} />
+              <span className="t-strong mt-5 flex items-center gap-2 text-accent">
+                Обрати картину <Icon name="arrowRight" size={18} />
+              </span>
+            </Link>
           ))}
         </div>
-        <div className="mt-8 flex items-center gap-4">
-          <span className="t-small text-text-secondary">або</span>
-          <Button variant="secondary" onClick={() => navigate("/create/painting")}>Обрати картину в галереї</Button>
-        </div>
 
-        <a href="#about" className="t-small absolute bottom-8 flex flex-col items-center text-text-secondary">
+        <a href="#about" className="t-small mt-16 flex flex-col items-center text-text-secondary hover:text-accent">
           Про проєкт <Icon name="chevronDown" size={18} />
         </a>
       </section>
@@ -72,48 +108,68 @@ export function HomePage() {
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
           {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
-            «Під склом» — платформа, де українські картини стають мемами. Напишіть фразу чи опишіть ситуацію, і штучний
-            інтелект знайде твір українського художника, який пасує найкраще, та додасть коротку історію про автора й
-            картину. Без реєстрації і без лекцій: лише гумор і трохи несподіваних фактів.
+            «Під склом» — платформа, де українські картини стають мемами. Почніть із фрази, і штучний інтелект знайде
+            картину, яка пасує найкраще. Або почніть із картини: підпис запропонує ШІ чи напишете ви самі. До кожного
+            мему додаємо коротку історію про автора й картину. Без лекцій: лише гумор і трохи несподіваних фактів.
           </p>
           <div className="mt-12 grid grid-cols-3 gap-6">
-            {STEPS.map(([n, title, text]) => (
-              <div key={n} className="rounded-card border border-line bg-bg p-6">
-                <div className="font-heading text-3xl text-accent">{n}</div>
-                <h3 className="t-h3 mt-3">{title}</h3>
+            {FEATURES.map(([title, text]) => (
+              <div key={title} className="rounded-card border border-line bg-bg p-6">
+                <h3 className="t-h3">{title}</h3>
                 <p className="t-small mt-2 text-text-secondary">{text}</p>
               </div>
             ))}
           </div>
           <blockquote className="mt-12 border-l-2 border-accent-soft pl-6">
             <p className="t-quote">«Мистецтво має бути поруч, а не за склом музейної вітрини».</p>
-            <p className="t-caption mt-2 text-text-secondary">Звідси й назва: ми дістаємо картини з-під скла і повертаємо їх у щоденні розмови.</p>
+            <p className="t-body mt-3 text-text-secondary">Звідси й назва: ми дістаємо картини з-під скла і повертаємо їх у щоденні розмови.</p>
           </blockquote>
         </div>
       </section>
 
       <footer className="bg-muted px-8 py-12">
-        {/* TODO(D): replace placeholder contacts, bot handle, GitHub link */}
+        {/* TODO(D): real bot handle and GitHub link */}
         <div className="mx-auto flex max-w-[1000px] justify-between">
           <div>
-            <div className="font-heading text-3xl italic">Під склом</div>
+            <div className="flex items-center gap-3">
+              <LogoMark size={36} className="text-accent" />
+              <span className="font-heading text-3xl italic">Під склом</span>
+            </div>
             <div className="t-small mt-2 text-text-secondary">Хакатон-проєкт, 2026</div>
           </div>
-          <FooterCol title="Контакти" items={["hello@pidsklom.ua", "Telegram-бот: @pidsklom_bot"]} />
+          <FooterCol
+            title="Контакти"
+            items={[
+              <a key="mail" href={`mailto:${EMAIL}`} className="hover:text-accent">{EMAIL}</a>,
+              "Telegram-бот: @pidsklom_bot",
+            ]}
+          />
           <FooterCol title="Проєкт" items={["Код на GitHub", "Звідки картини і факти"]} />
-          <FooterCol title="Команда" items={["4 учасники", "Київ, Україна"]} />
+          <FooterCol title="Команда" items={TEAM} />
         </div>
       </footer>
     </>
   );
 }
 
-function FooterCol({ title, items }: { title: string; items: string[] }) {
+function PathHead({ no, title, text }: { no: string; title: string; text: string }) {
+  return (
+    <div className="flex items-start gap-4">
+      <span className="hall-no w-10 shrink-0 text-center">{no}</span>
+      <div>
+        <h2 className="t-h3">{title}</h2>
+        <p className="t-small mt-1 text-text-secondary">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function FooterCol({ title, items }: { title: string; items: ReactNode[] }) {
   return (
     <div>
       <div className="t-label">{title}</div>
-      {items.map((i) => (
-        <div key={i} className="t-small mt-3">{i}</div>
+      {items.map((i, n) => (
+        <div key={n} className="t-small mt-3">{i}</div>
       ))}
     </div>
   );

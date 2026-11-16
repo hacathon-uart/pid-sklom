@@ -16,7 +16,7 @@ export function OwnCaptionPage() {
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
   const draft = useMemeDraft("Ваш підпис тут", "top");
-  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
 
   const back = (
     <Link to={`/create/painting?artwork=${artworkId}`} className="t-strong flex items-center gap-2 text-accent">
@@ -33,12 +33,7 @@ export function OwnCaptionPage() {
       title="Свій підпис"
       subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею."
       back={back}
-      actions={
-        <>
-          <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
-          <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти в «Мої меми»</Button>
-        </>
-      }
+      actions={<Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
@@ -48,7 +43,7 @@ export function OwnCaptionPage() {
         editing={editing}
         onEditingChange={setEditing}
         onSave={() => toggle(draft.style)}
-        saved={!!savedId}
+        savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}
       >

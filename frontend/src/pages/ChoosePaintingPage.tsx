@@ -1,4 +1,4 @@
-/** Screen 2b · Картина → підпис — вибір картини (US-02). URL: /create/painting?artwork=<id> preselects. */
+/** Screen 2b · Картина → підпис — вибір картини (US-02). URL: ?artwork=<id> preselects; ?mode=own|ai picks the main button. */
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api/client";
@@ -7,7 +7,7 @@ import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
 import { Button } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
-import { Input } from "../components/Input";
+import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { Tag } from "../components/Tag";
@@ -18,6 +18,7 @@ export function ChoosePaintingPage() {
   const [q, setQ] = useState("");
   const [genre, setGenre] = useState<Genre | null>(null);
   const [selected, setSelected] = useState<ArtworkSummary | null>(null);
+  const ownFirst = params.get("mode") === "own";
   // TODO(B): debounce search; pagination when the catalogue grows past ~50
   const { data, error, loading, reload } = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
 
@@ -31,7 +32,7 @@ export function ChoosePaintingPage() {
   return (
     <Page title="Створити мем" subtitle="Оберіть картину, а підпис запропонує ШІ або напишете ви самі" actions={<ModeSwitch />}>
       <div className="mb-8 flex items-center gap-3">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Пошук: автор, назва або настрій" className="max-w-[370px]" />
+        <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Автор, назва або настрій" className="max-w-[370px]" />
         <Tag active={genre === null} onClick={() => setGenre(null)}>Усі</Tag>
         {(Object.keys(GENRE_LABELS) as Genre[]).map((g) => (
           <Tag key={g} active={genre === g} onClick={() => setGenre(g)}>{GENRE_LABELS[g]}</Tag>
@@ -64,8 +65,9 @@ export function ChoosePaintingPage() {
             </div>
             <div className="ml-auto flex gap-3">
               <Button variant="soft" onClick={() => setSelected(null)}>Скинути вибір</Button>
-              <Button variant="secondary" onClick={() => navigate(`/create/painting/${selected.id}/own`)}>Написати свій підпис</Button>
-              <Button onClick={() => navigate(`/create/painting/${selected.id}/ai`)}>Згенерувати підпис</Button>
+              {/* ?mode=own (home page, path III) makes «own caption» the main button */}
+              <Button variant={ownFirst ? "primary" : "secondary"} onClick={() => navigate(`/create/painting/${selected.id}/own`)}>Написати свій підпис</Button>
+              <Button variant={ownFirst ? "secondary" : "primary"} onClick={() => navigate(`/create/painting/${selected.id}/ai`)}>Згенерувати підпис</Button>
             </div>
           </div>
         </div>

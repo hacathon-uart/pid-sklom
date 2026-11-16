@@ -121,8 +121,19 @@ export interface TextBlock {
   width: number | null;
 }
 
+/** Picture frame around a meme (MemeStyle.frame). The stored PNG is frameless. */
+export type Frame = "gold" | "gallery" | "oak" | "mat";
+
+export const FRAME_LABELS: Record<Frame, string> = {
+  gold: "Золота",
+  gallery: "Галерейна",
+  oak: "Дубова",
+  mat: "Паспарту",
+};
+
 export interface MemeStyle {
   blocks: TextBlock[];
+  frame?: Frame; // older memes have none → "gold"
 }
 
 export interface Meme {

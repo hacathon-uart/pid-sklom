@@ -63,7 +63,9 @@ Auth: `Authorization: Bearer <token>`. With `AUTH_MODE=stub` any token works and
     "position": "bottom",// preset, used when x/y are null
     "x": null, "y": null,// top-left of the text box, relative 0..1 (set after dragging)
     "width": null }      // relative 0..1, default 0.9
-]}
+  ],
+  "frame": "gold"        // gold | gallery | oak | mat — frame shown around the meme on the site;
+}                        // the stored PNG is always frameless (frame is added only on «Завантажувати з рамкою»)
 ```
 
 Text is always drawn **uppercase, centred, line height 1.1, black stroke = size/12**. Keep `MemeCanvas.tsx` and `render/meme.py` in sync.

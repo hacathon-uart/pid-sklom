@@ -1,5 +1,6 @@
 import { NavLink } from "react-router";
 import { Icon, type IconName } from "./Icon";
+import { LogoMark } from "./Museum";
 
 export function NavItem({ to, icon, label, end }: { to: string; icon: IconName; label: string; end?: boolean }) {
   return (
@@ -20,8 +21,8 @@ export function NavItem({ to, icon, label, end }: { to: string; icon: IconName; 
 export function Sidebar() {
   return (
     <nav className="fixed inset-y-0 left-0 flex w-[var(--sidebar-width)] flex-col items-center gap-2 bg-muted py-6">
-      <NavLink to="/" className="mb-4 font-heading text-3xl italic text-accent" aria-label="Під склом">
-        П
+      <NavLink to="/" className="mb-4 text-accent" aria-label="Під склом">
+        <LogoMark size={40} />
       </NavLink>
       <NavItem to="/" icon="home" label="Головна" end />
       <NavItem to="/create" icon="pencil" label="Створити" />

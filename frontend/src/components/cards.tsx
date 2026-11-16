@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import type { ArtistSummary, ArtworkSummary, Meme } from "../api/types";
 import { Artwork } from "./Artwork";
+import { inventoryNo, WallLabel } from "./Museum";
 import { Portrait } from "./Portrait";
 
 export const years = (a: { birth_year: number | null; death_year: number | null }) =>
@@ -14,16 +15,18 @@ export function ArtworkCard({
 }: {
   artwork: ArtworkSummary;
   selected?: boolean;
-  meta?: string; // default «Автор · рік»; Top-5 uses «Автор · збіг 95%»
+  meta?: string; // bottom line of the label; default «Інв. № ПС-0042», Top-5 uses «Збіг 95%»
   onClick?: () => void;
 }) {
   return (
     <button onClick={onClick} className="block w-full text-left">
-      <Artwork src={artwork.thumb_url} alt={artwork.title} selected={selected} aspect="4/5" />
-      <div className={`t-strong mt-3 truncate ${selected ? "text-accent" : ""}`}>{artwork.title}</div>
-      <div className="t-small mt-1 text-text-secondary">
-        {meta ?? `${artwork.artist.name}${artwork.year ? ` · ${artwork.year}` : ""}`}
-      </div>
+      <Artwork src={artwork.thumb_url} alt={artwork.title} selected={selected} aspect="4/5" size="sm" />
+      <WallLabel
+        className={`mt-4 ${selected ? "ring-2 ring-accent" : ""}`}
+        who={artwork.artist.name}
+        what={`${artwork.title}${artwork.year ? `, ${artwork.year}` : ""}`}
+        inv={meta ?? `Інв. № ${inventoryNo(artwork.id)}`}
+      />
     </button>
   );
 }
@@ -38,14 +41,25 @@ export function AuthorCard({ artist }: { artist: ArtistSummary }) {
   );
 }
 
+/** Saved meme in «Мої меми». Favourites (♥) are marked with cracked glass, the collection's best pieces. */
 export function MemeCard({ meme }: { meme: Meme }) {
   const date = new Date(meme.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "numeric" });
   return (
     <Link to={`/me/memes/${meme.id}`} className="block">
-      <Artwork src={meme.image_url ?? meme.artwork.thumb_url} alt={meme.caption} aspect="1/1" />
-      <div className="t-small mt-3 text-text-secondary">
-        {meme.artwork.artist.name} · збережено {date}
-      </div>
+      <Artwork
+        src={meme.image_url ?? meme.artwork.thumb_url}
+        alt={meme.caption}
+        aspect="1/1"
+        size="sm"
+        frame={meme.style.frame ?? "gold"}
+        crack={meme.is_favorite ? "static" : null}
+      />
+      <WallLabel
+        className="mt-4"
+        who={meme.artwork.artist.name}
+        what={meme.artwork.title}
+        inv={`${meme.is_favorite ? "♥ Улюблений · " : ""}збережено ${date}`}
+      />
     </Link>
   );
 }

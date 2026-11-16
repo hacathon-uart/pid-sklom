@@ -6,7 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { MemeCard } from "../components/cards";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
-import { Portrait } from "../components/Portrait";
+import { RopedOff, Ticket } from "../components/Museum";
 import { Tag } from "../components/Tag";
 
 export function MyMemesPage() {
@@ -18,10 +18,10 @@ export function MyMemesPage() {
       </Page>
     );
   }
-  return <MyMemes name={user.name} avatar={user.avatarUrl} onLogout={logout} />;
+  return <MyMemes name={user.name} onLogout={logout} />;
 }
 
-function MyMemes({ name, avatar, onLogout }: { name: string; avatar?: string | null; onLogout: () => void }) {
+function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
   const [favorite, setFavorite] = useState(false);
   const [oldestFirst, setOldestFirst] = useState(false);
   const { data, error, loading, reload } = useApi(() => api.memes(favorite || undefined), [favorite]);
@@ -30,11 +30,10 @@ function MyMemes({ name, avatar, onLogout }: { name: string; avatar?: string | n
   return (
     <Page
       title="Мої меми"
-      subtitle={data ? `${data.length} збережених мемів` : " "}
+      subtitle={data ? `${data.length} у вашій колекції · улюблені позначені тріснутим склом` : " "}
       actions={
         <>
-          <Portrait src={avatar} name={name} size={44} />
-          <span className="t-body">{name}</span>
+          <Ticket title={name} subtitle="Відвідувач «Під склом»" number={data ? data.length : "…"} />
           <Button variant="soft" onClick={onLogout}>Вийти</Button>
         </>
       }
@@ -49,9 +48,13 @@ function MyMemes({ name, avatar, onLogout }: { name: string; avatar?: string | n
       ) : error ? (
         <ErrorMessage error={error} onRetry={reload} />
       ) : memes!.length === 0 ? (
-        <p className="t-body text-text-secondary">Тут поки порожньо. Створіть свій перший мем!</p>
+        <RopedOff>
+          {favorite
+            ? "Улюблених поки немає. Поставте ♥ найкращому мему, і скло на ньому трісне від гордості."
+            : "Тут поки порожньо. Не торкатися — бо нічого. Створіть свій перший мем!"}
+        </RopedOff>
       ) : (
-        <div className="grid grid-cols-4 gap-8">
+        <div className="grid grid-cols-4 gap-x-8 gap-y-10">
           {memes!.map((m) => (
             <MemeCard key={m.id} meme={m} />
           ))}
