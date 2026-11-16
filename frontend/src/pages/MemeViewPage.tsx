@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
-import type { Meme } from "../api/types";
+import type { Frame, Meme } from "../api/types";
 import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
 import { Button, IconButton } from "../components/Button";
@@ -10,7 +10,8 @@ import { years } from "../components/cards";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { Portrait } from "../components/Portrait";
-import { downloadDataUrl } from "../editor/exportPng";
+import { downloadDataUrl, framePng } from "../editor/exportPng";
+import { FramePicker } from "../editor/FramePicker";
 
 export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const { memeId = "" } = useParams();
@@ -21,6 +22,8 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const [liveId, setLiveId] = useState<string | null | undefined>(undefined);
   const [pngCache, setPngCache] = useState<string | null>(null); // image kept in the browser while un-saved
   const [actionError, setActionError] = useState<string | null>(null);
+  const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
+  const [withFrame, setWithFrame] = useState(true);
   const artworkId = meme.data?.artwork.id;
   const artistSlug = meme.data?.artwork.artist.slug;
   const detail = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
@@ -40,7 +43,24 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const currentId = liveId === undefined ? m.id : liveId;
   const saved = currentId !== null;
   const toggleFavorite = async () => {
-    if (currentId) meme.setData(await api.updateMeme(currentId, { is_favorite: !m.is_favorite }));
+    if (!currentId) return;
+    setJustLiked(!m.is_favorite);
+    meme.setData(await api.updateMeme(currentId, { is_favorite: !m.is_favorite }));
+  };
+  const frame: Frame = m.style.frame ?? "gold";
+  const changeFrame = async (f: Frame) => {
+    const style = { ...m.style, frame: f };
+    meme.setData({ ...m, style }); // show it at once
+    if (currentId) meme.setData(await api.updateMeme(currentId, { style }));
+  };
+  const download = async () => {
+    const src = (!saved && pngCache) || m.image_url;
+    if (!src) return;
+    try {
+      downloadDataUrl(withFrame ? await framePng(src, frame) : await urlToDataUrl(src));
+    } catch (e) {
+      setActionError((e as Error).message);
+    }
   };
   const toggleSaved = async () => {
     setActionError(null);
@@ -110,18 +130,29 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
         </div>
 
         <div className="flex flex-col gap-3">
-          <IconButton icon="download" label="Завантажити" onClick={() => m.image_url && downloadDataUrl(m.image_url)} />
+          <IconButton icon="download" label="Завантажити" onClick={download} />
           <IconButton icon="share" label="Поділитися" onClick={share} />
           {!isPublic && (
             <>
               <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={toggleSaved} />
-              <IconButton icon="heart" label="Додати до улюблених" active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
+              <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
             </>
           )}
         </div>
 
         <div>
-          <Artwork src={(!saved && pngCache) || m.image_url || a.image_url} alt={m.caption} />
+          <Artwork
+            src={(!saved && pngCache) || m.image_url || a.image_url}
+            alt={m.caption}
+            frame={frame}
+            size="lg"
+            // The crack marks favourites only in the «Мої меми» grid; here the meme stays clear.
+            // Pressing ♥ plays the crack once and it fades away.
+            crack={saved && m.is_favorite && justLiked ? "fleeting" : null}
+          />
+          <div className="mt-5">
+            <FramePicker frame={frame} onFrameChange={isPublic ? undefined : changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
+          </div>
           {actionError && <ErrorMessage error={actionError} />}
           {!isPublic && (
             <div className="mt-4 flex gap-3">

@@ -154,8 +154,14 @@ class TextBlock(BaseModel):
     width: float | None = Field(default=None, gt=0, le=1)
 
 
+Frame = Literal["gold", "gallery", "oak", "mat"]
+
+
 class MemeStyle(BaseModel):
     blocks: list[TextBlock] = Field(min_length=1, max_length=2)
+    # Picture frame shown around the meme on the site (and in the PNG if the user downloads «з рамкою»).
+    # The stored PNG itself is always frameless.
+    frame: Frame = "gold"
 
 
 class MemeCreate(BaseModel):

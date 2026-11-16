@@ -71,7 +71,7 @@ export function PhraseResultPage() {
         editing={editing}
         onEditingChange={setEditing}
         onSave={() => toggle(draft.style)}
-        saved={!!savedId}
+        savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={editing ? nextAlternative : undefined}
       >
@@ -101,7 +101,7 @@ export function PhraseResultPage() {
                 key={artwork.id}
                 artwork={artwork}
                 selected={artwork.id === current.artwork.id}
-                meta={`${artwork.artist.name}${score !== null ? ` · збіг ${Math.round(score * 100)}%` : ""}`}
+                meta={score !== null ? `Збіг ${Math.round(score * 100)}%` : undefined}
                 onClick={() => (i === 0 ? setSelected({ artwork: match.artwork, story: match.story }) : pick(artwork))}
               />
             ))}

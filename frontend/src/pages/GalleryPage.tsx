@@ -7,6 +7,7 @@ import { useApi } from "../api/useApi";
 import { ArtworkCard, AuthorCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
+import { HallTitle, RopedOff, VelvetRope, Wall } from "../components/Museum";
 import { Tag } from "../components/Tag";
 
 export function GalleryPage() {
@@ -28,8 +29,8 @@ export function GalleryPage() {
       }
     >
       <section>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="t-h2">Автори</h2>
+        <div className="mb-8 flex items-end justify-between">
+          <HallTitle n={1}>Автори</HallTitle>
           <Link to="/artists" className="t-strong text-accent">Усі автори →</Link>
         </div>
         {artists.loading ? (
@@ -45,9 +46,10 @@ export function GalleryPage() {
         )}
       </section>
 
-      <section className="mt-16">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="t-h2">Картини</h2>
+      {/* Each genre is its own hall with its own wall colour (W6). */}
+      <Wall genre={genre} className="-mb-12 mt-16 pb-20">
+        <div className="mb-10 flex items-end justify-between">
+          <HallTitle n={2}>Картини</HallTitle>
           <div className="flex gap-2">
             <Tag active={genre === null} onClick={() => setGenre(null)}>Усі</Tag>
             {(Object.keys(GENRE_LABELS) as Genre[]).map((g) => (
@@ -59,16 +61,21 @@ export function GalleryPage() {
           <Loading />
         ) : artworks.error ? (
           <ErrorMessage error={artworks.error} onRetry={artworks.reload} />
+        ) : artworks.data!.items.length === 0 ? (
+          <RopedOff>У цьому залі такої картини немає. Спробуйте інше слово або інший жанр.</RopedOff>
         ) : (
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-5 gap-x-6 gap-y-10">
             {artworks.data!.items.map((a) => (
               // TODO(team): no artwork detail screen is designed — for now a click opens the picker (2b) preselected
               <ArtworkCard key={a.id} artwork={a} onClick={() => navigate(`/create/painting?artwork=${a.id}`)} />
             ))}
           </div>
         )}
-        <p className="t-small mt-8 text-text-secondary">Натисніть на картину, щоб прочитати її історію або зробити з неї мем.</p>
-      </section>
+        <div className="mt-12 flex flex-col items-center gap-2">
+          <VelvetRope />
+          <p className="t-small" style={{ color: "var(--wall-text-2)" }}>Натисніть на картину, щоб прочитати її історію або зробити з неї мем.</p>
+        </div>
+      </Wall>
     </Page>
   );
 }

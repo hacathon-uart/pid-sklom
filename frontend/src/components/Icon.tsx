@@ -1,18 +1,19 @@
-/** Icon/* from Figma: 24 px stroke icons. Replace paths with exported SVGs if they differ. */
+/** 24 px stroke icons, drawn as museum objects. Each entry is one SVG path (subpaths allowed). */
 const PATHS = {
-  home: "M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z",
-  pencil: "M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4",
-  image: "M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 9.5h.01",
-  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  // Museum objects (direction board, I1). Heart stays a heart.
+  home: "M3 9 12 4l9 5zM4.5 11h15M6 11v8M10 11v8M14 11v8M18 11v8M3 21h18", // museum portico
+  pencil: "M20 3C12 4 7 10 5 19l-1 2M5 19c7-1 12-6 15-16M9 14h4", // quill
+  image: "M3 6h18v15H3zM6.5 9.5h11v8h-11zM9 6l3-3.5L15 6", // painting on a hanging cord
+  user: "M9 2.5h6v3H9zM5.5 5.5h13V21h-13zM12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9 17.5h6", // visitor badge
   heart: "M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z",
-  bookmark: "M6 3h12v18l-6-4-6 4z",
-  download: "M12 4v11m0 0-4-4m4 4 4-4M4 20h16",
-  share: "M12 15V4m0 0L8 8m4-4 4 4M5 13v7h14v-7",
+  bookmark: "M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v2M14 11v2M14 15v2", // ticket to the collection
+  download: "M4 10h16v10H4zM4 10l2-4h12l2 4M12 2.5v9M9 8.5l3 3 3-3", // into a crate
+  share: "M3 6h18v12H3zM15 8.5h3.5V12H15zM6 10h6M6 13h5M6 15.5h4", // museum-shop postcard
   refresh: "M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5",
   chevronDown: "m6 9 6 6 6-6",
   arrowRight: "M5 12h14m0 0-5-5m5 5-5 5",
   arrowLeft: "M19 12H5m0 0 5-5m-5 5 5 5",
-  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm9 3-4.5-4.5",
+  search: "M10.5 16a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM14.5 14.5 20 20M7.5 9a3 3 0 0 1 2.5-2", // restorer's loupe
 } as const;
 
 export type IconName = keyof typeof PATHS;

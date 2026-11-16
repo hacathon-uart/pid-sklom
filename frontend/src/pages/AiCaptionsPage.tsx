@@ -61,7 +61,7 @@ export function AiCaptionsPage() {
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => toggle(draft.style)}
-        saved={!!savedId} stageRef={stageRef}>
+        savedId={savedId} stageRef={stageRef}>
         <div className="mb-3 flex items-center justify-between">
           <div className="t-label">Підписи від ШІ</div>
           <button className="t-strong flex items-center gap-2 text-accent" onClick={() => loadCaptions(seen)} disabled={loadingCaptions}>

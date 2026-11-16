@@ -1,4 +1,4 @@
-/** Screen 2b · Картина → підпис — вибір картини (US-02). URL: /create/painting?artwork=<id> preselects. */
+/** Screen 2b · Картина → підпис — вибір картини (US-02). URL: ?artwork=<id> preselects; ?mode=own|ai picks the main button. */
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api/client";
@@ -18,6 +18,7 @@ export function ChoosePaintingPage() {
   const [q, setQ] = useState("");
   const [genre, setGenre] = useState<Genre | null>(null);
   const [selected, setSelected] = useState<ArtworkSummary | null>(null);
+  const ownFirst = params.get("mode") === "own";
   // TODO(B): debounce search; pagination when the catalogue grows past ~50
   const { data, error, loading, reload } = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
 
@@ -64,8 +65,9 @@ export function ChoosePaintingPage() {
             </div>
             <div className="ml-auto flex gap-3">
               <Button variant="soft" onClick={() => setSelected(null)}>Скинути вибір</Button>
-              <Button variant="secondary" onClick={() => navigate(`/create/painting/${selected.id}/own`)}>Написати свій підпис</Button>
-              <Button onClick={() => navigate(`/create/painting/${selected.id}/ai`)}>Згенерувати підпис</Button>
+              {/* ?mode=own (home page, path III) makes «own caption» the main button */}
+              <Button variant={ownFirst ? "primary" : "secondary"} onClick={() => navigate(`/create/painting/${selected.id}/own`)}>Написати свій підпис</Button>
+              <Button variant={ownFirst ? "secondary" : "primary"} onClick={() => navigate(`/create/painting/${selected.id}/ai`)}>Згенерувати підпис</Button>
             </div>
           </div>
         </div>

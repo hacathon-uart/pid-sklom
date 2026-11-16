@@ -43,7 +43,7 @@ export function OwnCaptionPage() {
         editing={editing}
         onEditingChange={setEditing}
         onSave={() => toggle(draft.style)}
-        saved={!!savedId}
+        savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}
       >
