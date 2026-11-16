@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { Input, Label, Textarea } from "../components/Input";
 import { Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
+import { VelvetRope } from "../components/Museum";
 
 export function CreatePhrasePage() {
   const navigate = useNavigate();
@@ -27,10 +28,10 @@ export function CreatePhrasePage() {
           <span className="t-body text-text-secondary">Тут з'явиться картина</span>
         </Artwork>
         <form onSubmit={onSubmit}>
-          <Label htmlFor="phrase">Підпис</Label>
-          <Input id="phrase" value={phrase} onChange={(e) => setPhrase(e.target.value)} maxLength={200} placeholder="Напр.: «Коли дедлайн був учора»" />
+          <Label htmlFor="phrase" required>Підпис</Label>
+          <Input id="phrase" value={phrase} onChange={(e) => setPhrase(e.target.value)} maxLength={200} placeholder="«Коли дедлайн був учора»" />
           <div className="mt-10">
-            <Label htmlFor="desc">Опис зображення</Label>
+            <Label htmlFor="desc" hint="допомагає ШІ точніше знайти картину">Опис зображення</Label>
             <Textarea
               id="desc"
               value={description}
@@ -38,13 +39,15 @@ export function CreatePhrasePage() {
               maxLength={500}
               placeholder="Що має бути на картині? Наприклад: людина дивиться у вікно, осінь, легкий сум."
             />
-            <p className="t-small mt-3 text-text-secondary">Необов'язково: опис допомагає ШІ точніше знайти картину.</p>
           </div>
           <Button type="submit" className="mt-6" disabled={!phrase.trim()}>Знайти картину</Button>
           <div className="t-small mt-6 rounded-card bg-muted p-5">
             Після генерації ви зможете змінити шрифт, розмір, колір і розташування підпису, а також прочитати історію картини.
           </div>
         </form>
+      </div>
+      <div className="mt-20 flex justify-center">
+        <VelvetRope />
       </div>
     </Page>
   );

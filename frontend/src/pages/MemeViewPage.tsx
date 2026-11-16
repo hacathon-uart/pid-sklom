@@ -47,6 +47,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
     setJustLiked(!m.is_favorite);
     meme.setData(await api.updateMeme(currentId, { is_favorite: !m.is_favorite }));
   };
+  const canEdit = !isPublic && saved;
   const frame: Frame = m.style.frame ?? "gold";
   const changeFrame = async (f: Frame) => {
     const style = { ...m.style, frame: f };
@@ -91,7 +92,45 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
 
   return (
     <Page title={isPublic ? "Мем" : "Мій мем"} subtitle={`Збережено ${savedOn}`} back={back}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-8">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
+        <div>
+          {/* The caption is part of the PNG, so the whole picture is the click target for editing. */}
+          <div
+            role={canEdit ? "button" : undefined}
+            tabIndex={canEdit ? 0 : undefined}
+            aria-label={canEdit ? "Редагувати підпис" : undefined}
+            title={canEdit ? "Натисніть, щоб змінити підпис" : undefined}
+            onClick={canEdit ? () => currentId && navigate(`/me/memes/${currentId}/edit`) : undefined}
+            onKeyDown={canEdit ? (e) => e.key === "Enter" && currentId && navigate(`/me/memes/${currentId}/edit`) : undefined}
+            className={canEdit ? "cursor-pointer" : undefined}
+          >
+            <Artwork
+              src={(!saved && pngCache) || m.image_url || a.image_url}
+              alt={m.caption}
+              frame={frame}
+              size="lg"
+              // The crack marks favourites only in the «Мої меми» grid; here the meme stays clear.
+              // Pressing ♥ plays the crack once and it fades away.
+              crack={saved && m.is_favorite && justLiked ? "fleeting" : null}
+            />
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <IconButton icon="download" label="Завантажити" onClick={download} />
+            <IconButton icon="share" label="Поділитися" onClick={share} />
+            {!isPublic && (
+              <>
+                <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={toggleSaved} />
+                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
+              </>
+            )}
+          </div>
+          <div className="mt-5">
+            <FramePicker frame={frame} onFrameChange={isPublic ? undefined : changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
+          </div>
+          {actionError && <ErrorMessage error={actionError} />}
+          {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
+          {isPublic && <ArtworkCardLink id={a.id} />}
+        </div>
         <div>
           <div className="flex items-center gap-5">
             <Portrait src={a.artist.portrait_url} name={a.artist.name} />
@@ -129,38 +168,6 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-3">
-          <IconButton icon="download" label="Завантажити" onClick={download} />
-          <IconButton icon="share" label="Поділитися" onClick={share} />
-          {!isPublic && (
-            <>
-              <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={toggleSaved} />
-              <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
-            </>
-          )}
-        </div>
-
-        <div>
-          <Artwork
-            src={(!saved && pngCache) || m.image_url || a.image_url}
-            alt={m.caption}
-            frame={frame}
-            size="lg"
-            // The crack marks favourites only in the «Мої меми» grid; here the meme stays clear.
-            // Pressing ♥ plays the crack once and it fades away.
-            crack={saved && m.is_favorite && justLiked ? "fleeting" : null}
-          />
-          <div className="mt-5">
-            <FramePicker frame={frame} onFrameChange={isPublic ? undefined : changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
-          </div>
-          {actionError && <ErrorMessage error={actionError} />}
-          {!isPublic && (
-            <div className="mt-4 flex gap-3">
-              <Button variant="secondary" disabled={!saved} onClick={() => currentId && navigate(`/me/memes/${currentId}/edit`)}>Редагувати</Button>
-            </div>
-          )}
-          {isPublic && <ArtworkCardLink id={a.id} />}
-        </div>
       </div>
     </Page>
   );

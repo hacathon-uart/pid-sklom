@@ -37,16 +37,16 @@ export function EditMemePage() {
     <Page
       title="Редагування"
       subtitle="Перетягніть підпис на картині або змініть його стиль під нею"
-      actions={
-        <>
-          <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
-          <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти зміни</Button>
-        </>
-      }
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => toggle(draft.style)}
-        savedId={savedId} stageRef={stageRef}>
+        savedId={savedId} stageRef={stageRef}
+        toolbarEnd={
+          <>
+            <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
+            <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти зміни</Button>
+          </>
+        }>
         {editing ? (
           <CaptionControls draft={draft} />
         ) : (

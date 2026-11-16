@@ -28,7 +28,7 @@ export function ArtistPage() {
   return (
     <main className="mx-auto max-w-[1280px] px-16 py-12">
       <div className="mb-8">{back}</div>
-      <div className="grid grid-cols-[minmax(0,1fr)_384px] gap-12">
+      <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-12">
         <div>
           <header className="flex items-center gap-7">
             <Portrait src={artist.portrait_url} name={artist.name} size={146} />
@@ -68,16 +68,15 @@ export function ArtistPage() {
           )}
         </div>
 
-        <aside className="border-l border-line pl-12">
+        <aside className="border-l border-line pl-10">
           <div className="t-label mb-4">Картини автора</div>
           <div className="grid grid-cols-2 gap-4">
             {artist.artworks.map((w) => (
               <Link key={w.id} to={`/create/painting?artwork=${w.id}`} title={w.title}>
-                <Artwork src={w.thumb_url} alt={w.title} aspect="4/5" />
+                <Artwork src={w.thumb_url} alt={w.title} aspect="4/5" size="sm" />
               </Link>
             ))}
           </div>
-          <p className="t-small mt-4 text-text-secondary">Натисніть на картину, щоб прочитати її історію.</p>
         </aside>
       </div>
     </main>

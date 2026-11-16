@@ -24,11 +24,19 @@ export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HT
   return <textarea className={`${BASE} h-32 resize-none py-3 ${className}`} {...props} />;
 }
 
-/** Section label above inputs: «ПІДПИС», «ОПИС ЗОБРАЖЕННЯ». */
-export function Label({ children, htmlFor }: { children: string; htmlFor?: string }) {
+/** Section label above inputs: «ПІДПИС *», «ОПИС ЗОБРАЖЕННЯ · допомагає…». `required` adds a star; `hint` follows on the same line. */
+export function Label({ children, htmlFor, required, hint }: { children: string; htmlFor?: string; required?: boolean; hint?: string }) {
   return (
-    <label htmlFor={htmlFor} className="t-label mb-3 block">
-      {children}
+    <label htmlFor={htmlFor} className="mb-3 flex flex-wrap items-baseline gap-x-3">
+      <span className="t-label">
+        {children}
+        {required && (
+          <span className="ml-1" aria-hidden title="Обов'язкове поле">
+            *
+          </span>
+        )}
+      </span>
+      {hint && <span className="t-small text-text-secondary">{hint}</span>}
     </label>
   );
 }

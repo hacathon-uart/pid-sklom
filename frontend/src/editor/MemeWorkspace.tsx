@@ -39,6 +39,7 @@ export function MemeWorkspace({
   savedId = null,
   stageRef,
   onAnotherPainting,
+  toolbarEnd,
   children,
 }: {
   artwork: ArtworkSummary;
@@ -50,6 +51,7 @@ export function MemeWorkspace({
   savedId?: string | null; // fills the bookmark; frame changes are saved to it
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
+  toolbarEnd?: ReactNode; // right end of the icon row under the meme (e.g. «Скасувати» / «Зберегти зміни»)
   children?: ReactNode;
 }) {
   const saved = !!savedId;
@@ -123,6 +125,7 @@ export function MemeWorkspace({
             onClick={async () => stageRef.current && shareMeme(await png())}
           />
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
+          {toolbarEnd && <div className="ml-auto flex items-center gap-3">{toolbarEnd}</div>}
         </div>
         <div className="mt-5">
           <FramePicker frame={draft.frame} onFrameChange={changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
