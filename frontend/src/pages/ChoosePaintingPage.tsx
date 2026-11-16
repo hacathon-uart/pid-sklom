@@ -7,7 +7,7 @@ import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
 import { Button } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
-import { Input } from "../components/Input";
+import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { Tag } from "../components/Tag";
@@ -31,7 +31,7 @@ export function ChoosePaintingPage() {
   return (
     <Page title="Створити мем" subtitle="Оберіть картину, а підпис запропонує ШІ або напишете ви самі" actions={<ModeSwitch />}>
       <div className="mb-8 flex items-center gap-3">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Пошук: автор, назва або настрій" className="max-w-[370px]" />
+        <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Автор, назва або настрій" className="max-w-[370px]" />
         <Tag active={genre === null} onClick={() => setGenre(null)}>Усі</Tag>
         {(Object.keys(GENRE_LABELS) as Genre[]).map((g) => (
           <Tag key={g} active={genre === g} onClick={() => setGenre(g)}>{GENRE_LABELS[g]}</Tag>

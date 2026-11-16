@@ -26,7 +26,7 @@ export function PhraseResultPage() {
   const [editing, setEditing] = useState(false);
   const current = selected;
   const draft = useMemeDraft(phrase);
-  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) =>
+  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) =>
     api.createMeme(current!.artwork.id, style, png),
   );
 
@@ -60,11 +60,7 @@ export function PhraseResultPage() {
       title={editing ? "Редагування" : "Ваш мем"}
       subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Натисніть на підпис, щоб його змінити."}
       actions={
-        editing ? (
-          <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти в «Мої меми»</Button>
-        ) : (
-          <ModeSwitch />
-        )
+        editing ? null : <ModeSwitch />
       }
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />

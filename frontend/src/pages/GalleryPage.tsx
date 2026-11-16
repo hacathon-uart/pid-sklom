@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import { GENRE_LABELS, type Genre } from "../api/types";
 import { useApi } from "../api/useApi";
 import { ArtworkCard, AuthorCard } from "../components/cards";
-import { Input } from "../components/Input";
+import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { Tag } from "../components/Tag";
 
@@ -23,7 +23,7 @@ export function GalleryPage() {
       subtitle={artists.data && allCount.data ? `${artists.data.length} художників · ${allCount.data.total} картин із суспільного надбання` : " "}
       actions={
         <div className="w-[400px]">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Пошук: автор, картина або настрій" />
+          <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Автор, картина або настрій" />
         </div>
       }
     >

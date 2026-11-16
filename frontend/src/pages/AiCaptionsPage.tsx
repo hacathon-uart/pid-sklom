@@ -4,7 +4,6 @@ import { Link, useParams } from "react-router";
 import { api } from "../api/client";
 import { CAPTION_KIND_LABELS, type CaptionOption } from "../api/types";
 import { useApi } from "../api/useApi";
-import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
@@ -21,7 +20,7 @@ export function AiCaptionsPage() {
   const [captionsError, setCaptionsError] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState(false);
   const draft = useMemeDraft("");
-  const { stageRef, save, saving, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
 
   const loadCaptions = async (exclude: string[]) => {
     setLoadingCaptions(true);
@@ -59,7 +58,6 @@ export function AiCaptionsPage() {
       title="Підпис для картини"
       subtitle="ШІ запропонував три підписи. Оберіть, відредагуйте або напишіть свій."
       back={back}
-      actions={<Button onClick={() => save(draft.style)} disabled={saving || !text}>Зберегти в «Мої меми»</Button>}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => toggle(draft.style)}

@@ -42,8 +42,7 @@ export function HomePage() {
           )}
         </div>
 
-        <div className="t-label">Українське мистецтво · гумор</div>
-        <h1 className="t-logo mt-6">Під склом</h1>
+        <h1 className="t-logo">Під склом</h1>
         <p className="t-quote mt-6 text-text-secondary">Мистецтво крізь жарти</p>
 
         <form onSubmit={onSubmit} className="mt-14 flex w-full max-w-[720px] gap-3">
