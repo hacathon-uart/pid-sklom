@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { Input, Label, Textarea } from "../components/Input";
 import { Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
+import { VelvetRope } from "../components/Museum";
 
 export function CreatePhrasePage() {
   const navigate = useNavigate();
@@ -44,6 +45,9 @@ export function CreatePhrasePage() {
             Після генерації ви зможете змінити шрифт, розмір, колір і розташування підпису, а також прочитати історію картини.
           </div>
         </form>
+      </div>
+      <div className="mt-20 flex justify-center">
+        <VelvetRope />
       </div>
     </Page>
   );

@@ -10,6 +10,7 @@ import { ArtworkCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
+import { VelvetRope } from "../components/Museum";
 import { Tag } from "../components/Tag";
 
 export function ChoosePaintingPage() {
@@ -47,12 +48,17 @@ export function ChoosePaintingPage() {
       ) : data!.items.length === 0 ? (
         <p className="t-body text-text-secondary">Нічого не знайшли. Спробуйте інше слово.</p>
       ) : (
-        <div className="grid grid-cols-5 gap-6 pb-40">
+        <div className="grid grid-cols-5 gap-6">
           {data!.items.map((a) => (
             <ArtworkCard key={a.id} artwork={a} selected={selected?.id === a.id} onClick={() => setSelected(a)} />
           ))}
         </div>
       )}
+
+      {/* pb-40 keeps the rope clear of the «Обрано» bar that floats at the bottom */}
+      <div className="mt-16 flex justify-center pb-40">
+        <VelvetRope />
+      </div>
 
       {selected && (
         <div className="fixed inset-x-0 bottom-6 pl-[var(--sidebar-width)]">

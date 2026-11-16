@@ -73,7 +73,6 @@ export function GalleryPage() {
         )}
         <div className="mt-12 flex flex-col items-center gap-2">
           <VelvetRope />
-          <p className="t-small" style={{ color: "var(--wall-text-2)" }}>Натисніть на картину, щоб прочитати її історію або зробити з неї мем.</p>
         </div>
       </Wall>
     </Page>
