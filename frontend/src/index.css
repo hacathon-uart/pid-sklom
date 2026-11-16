@@ -113,7 +113,14 @@ body {
 .ticket > div { padding: 10px 20px; }
 .ticket > div + div { border-left: 2px dashed rgba(59,42,14,.35); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
 
+/* ---- Author carousel: short slide-in after pressing an arrow ---- */
+.slide-next { animation: slide-next .28s ease-out; }
+.slide-prev { animation: slide-prev .28s ease-out; }
+@keyframes slide-next { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@keyframes slide-prev { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .slide-next, .slide-prev { animation: none; }
   .glass::after { transition: none; }
   .crack-animate, .crack-fleeting { animation: none; }
   .wall { transition: none; }

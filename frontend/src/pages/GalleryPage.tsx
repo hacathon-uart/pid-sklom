@@ -6,6 +6,7 @@ import { GENRE_LABELS, type Genre } from "../api/types";
 import { useApi } from "../api/useApi";
 import { ArtworkCard, AuthorCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
+import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { HallTitle, RopedOff, VelvetRope, Wall } from "../components/Museum";
 import { Tag } from "../components/Tag";
@@ -17,6 +18,21 @@ export function GalleryPage() {
   const artists = useApi(() => api.artists(), []);
   const artworks = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
   const allCount = useApi(() => api.artworks({ limit: 1 }), []);
+
+  // Author carousel: shows 6 at a time and wraps around, so scrolling never hits an end.
+  const [authorStart, setAuthorStart] = useState(0);
+  const [slide, setSlide] = useState<"next" | "prev">("next");
+  const authorList = artists.data ?? [];
+  const PER_VIEW = 6;
+  const STEP = 3;
+  const canScroll = authorList.length > PER_VIEW;
+  const scrollAuthors = (dir: 1 | -1) => {
+    setSlide(dir === 1 ? "next" : "prev");
+    setAuthorStart((s) => (s + dir * STEP + authorList.length) % authorList.length);
+  };
+  const visibleAuthors = canScroll
+    ? Array.from({ length: PER_VIEW }, (_, i) => authorList[(authorStart + i) % authorList.length])
+    : authorList;
 
   return (
     <Page
@@ -38,10 +54,19 @@ export function GalleryPage() {
         ) : artists.error ? (
           <ErrorMessage error={artists.error} onRetry={artists.reload} />
         ) : (
-          <div className="grid grid-cols-6 gap-6">
-            {artists.data!.slice(0, 6).map((a) => (
-              <AuthorCard key={a.id} artist={a} />
-            ))}
+          <div className="relative">
+            {/* Plain arrows in the page margins, level with the portraits */}
+            {canScroll && (
+              <>
+                <CarouselArrow dir="prev" onClick={() => scrollAuthors(-1)} />
+                <CarouselArrow dir="next" onClick={() => scrollAuthors(1)} />
+              </>
+            )}
+            <div key={authorStart} className={`grid grid-cols-6 gap-6 ${canScroll ? (slide === "next" ? "slide-next" : "slide-prev") : ""}`}>
+              {visibleAuthors.map((a) => (
+                <AuthorCard key={a.id} artist={a} />
+              ))}
+            </div>
           </div>
         )}
       </section>
@@ -76,5 +101,19 @@ export function GalleryPage() {
         </div>
       </Wall>
     </Page>
+  );
+}
+
+/** Bare arrow: light brown at rest, darker on hover. Sits in the left/right margin (the page has 64 px side padding). */
+function CarouselArrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={dir === "prev" ? "Попередні автори" : "Наступні автори"}
+      className={`absolute top-[62px] z-10 -translate-y-1/2 p-2 text-accent-soft transition-colors hover:text-accent focus-visible:text-accent ${dir === "prev" ? "-left-12" : "-right-12"}`}
+    >
+      <Icon name={dir === "prev" ? "arrowLeft" : "arrowRight"} size={30} />
+    </button>
   );
 }
