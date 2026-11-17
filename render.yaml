@@ -5,6 +5,7 @@ services:
     name: pidsklom-api
     runtime: docker
     plan: 0.5c-512mb
+    region: frankfurt
     branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .

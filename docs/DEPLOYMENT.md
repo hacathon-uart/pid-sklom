@@ -71,7 +71,14 @@ live provider/content verification remains required.
   rows, 1 fact and 108 configured-model vectors. The production-style startup check
   loads **13 visible artworks and 108 compatible vectors** successfully. No SQL,
   imports, Gemini calls or data mutations were performed. Image delivery, live
-  Gemini matching and deployed browser behavior still require verification.
+  matching and deployed browser behavior were not established by that check.
+- With the key privately configured, a subsequent live query returned
+  `source=embeddings`, five alternatives and HTTP `201` in approximately **0.6 s**.
+  The matched Supabase artwork decoded successfully and allowed anonymous browser
+  CORS; account access returned `403`. This exercised one Gemini query, not a load
+  test or an end-to-end browser PNG-export check. No saved-data mutations occurred.
+- The planned API region is **Frankfurt** for European deployment. The PR remains
+  unmerged and provisioning is paused by owner decision.
 
 ### Local container check
 
@@ -103,9 +110,9 @@ also accepts `PORT`. The frontend container deliberately builds with accounts of
 
 1. Owner: approve publishing the intended application/deployment docs and code,
    connect this GitHub repository to Render, add billing, and approve the selected
-   paid instance/region. The Blueprint selects the 0.5 CPU / 512 MB compute plan
-   (`0.5c-512mb`); confirm its price before applying. Set a region near Supabase
-   before creation; omission currently uses Render's default region.
+   paid instance/region. The Blueprint selects Frankfurt and the 0.5 CPU / 512 MB compute plan
+   (`0.5c-512mb`); confirm its price and check the existing Supabase project's
+   region before applying. Static assets use Render's CDN.
 2. Verify the existing Supabase project, schema and public image buckets. Back up
    before applying SQL: `data/schema.sql` includes destructive legacy-vector changes.
    Review importer dry runs, upload approved content and generate/upload compatible
@@ -206,8 +213,8 @@ The new embedding-script dry run passed: **108 texts for 13 artworks**, all
 requiring embedding in this clean validation environment. It checks counts only;
 no live embeddings were generated.
 The original assessment did not exercise external services. Container builds and
-offline smoke checks now pass. Supabase content/vector startup is verified read-only;
-live Gemini, image delivery, Telegram and browser flows remain unverified.
+offline smoke checks now pass. Supabase content/vector startup, one live Gemini
+match and its image/CORS are verified; Telegram and browser flows remain unverified.
 Render CLI workspace access is verified.
 
 ## Prioritized deployment backlog
