@@ -15,6 +15,18 @@ statement that those features all shipped.
 [ADR 0003](0003-portable-render-first-release.md) supersedes the free-Render hosting
 assumption and defers rate limiting/circuit breakers for the initial release.
 
+For the first release, startup now rejects missing/incompatible vectors or visible
+artworks without situation vectors instead of merely logging and serving them via
+fallback. Runtime provider errors still use the explicitly marked stub fallback.
+The importer reuses its local embedding cache but replaces the selected model/dimension
+rows in Supabase with a non-atomic delete/insert; it is not an atomic publication
+workflow. The obsolete `match_artworks()` SQL function is dropped, not retained unused.
+Batching/throttling behavior comes from the current embedding helper, not the
+100-text request estimate below. Mode overrides, demo-query warming, the proposed
+evaluation suite and user-facing provider notices are not established by this ADR.
+The original design below remains a proposal wherever it exceeds that implementation;
+its "never shows an error" wording is an intention, not an availability guarantee.
+
 ## Context
 
 Flow A ("Фраза → картина", `POST /api/matches`) takes a short Ukrainian phrase such as

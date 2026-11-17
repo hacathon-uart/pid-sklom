@@ -1,12 +1,12 @@
 # Review paid compute and region before applying. This file does not create resources by itself.
 # Enter sync: false values in Render; never commit credentials.
+# Services inherit the Blueprint branch; select the reviewed release branch when creating it.
 services:
   - type: web
     name: pidsklom-api
     runtime: docker
     plan: 0.5c-512mb
     region: frankfurt
-    branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /api/ready
@@ -52,7 +52,6 @@ services:
   - type: web
     name: pidsklom-web
     runtime: static
-    branch: main
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist

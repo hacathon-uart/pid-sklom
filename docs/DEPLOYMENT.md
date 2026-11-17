@@ -4,7 +4,8 @@ Updated on 2026-11-17 against upstream `main` revision `c1f7e57`.
 The agreed direction is recorded in [ADR 0003](adr/0003-portable-render-first-release.md);
 this document tracks the work still required, not a deployed or production-ready system.
 Dockerfiles, release safeguards and the Render Blueprint are prepared locally.
-No hosting resources have been created; deployment still requires owner approval.
+No hosting resources have been created at this checkpoint. The owner has authorized
+proceeding with deployment; the selected revision and cloud release still need verification.
 Existing task numbers refer to [the hackathon plan](Hachaton_plan.md).
 Provider pricing and platform constraints are recorded separately in
 [Render research](RENDER_RESEARCH.md), with official sources.
@@ -77,8 +78,9 @@ live provider/content verification remains required.
   The matched Supabase artwork decoded successfully and allowed anonymous browser
   CORS; account access returned `403`. This exercised one Gemini query, not a load
   test or an end-to-end browser PNG-export check. No saved-data mutations occurred.
-- The planned API region is **Frankfurt** for European deployment. The PR remains
-  unmerged and provisioning is paused by owner decision.
+- The planned API region is **Frankfurt** for European deployment. The owner has
+  authorized deploying `herman/deployment` while keeping PR #5 open and unmerged.
+  Services inherit the Blueprint branch so this does not deploy older `main` code.
 
 ### Local container check
 
@@ -122,7 +124,10 @@ also accepts `PORT`. The frontend container deliberately builds with accounts of
    `EMBEDDING_DIM=768`. Leave `TELEGRAM_BOT_TOKEN` unset. Do not send secrets in chat
    or place service-role credentials in frontend variables.
 4. Validate with `render blueprints validate render.yaml --output json`, then apply
-   the Blueprint from the approved `main` revision. Confirm actual service URLs:
+   the Blueprint from the approved release branch/revision (`herman/deployment`
+   for this first deployment; keep PR #5 unmerged). Both services inherit that
+   branch. After a later merge, explicitly move the Blueprint and services to
+   `main` and verify their selected revisions. Confirm actual service URLs:
    set API `PUBLIC_BASE_URL` and exact `FRONTEND_ORIGINS` accordingly. The Static Site
    reads its build-time `VITE_API_URL` from the API's `PUBLIC_BASE_URL`; rebuild it
    after URL changes. Both services wait for passing CI on future auto-deploys;

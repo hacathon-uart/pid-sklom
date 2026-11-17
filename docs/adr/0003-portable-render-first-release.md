@@ -40,7 +40,7 @@ larger instance. Provider limits, free-project pausing and usage overages still 
   add an unprotected admin endpoint while deferring the login UI.
 - Do not release personal saving under fake/stub authentication as a real account
   feature. Keep it unavailable in the public release until real user authentication
-  is ready. This is a release acceptance requirement, not a gate implemented here.
+  is ready. This gate is implemented in the backend and frontend.
 - Rate limiting and circuit breakers are deferred to later releases. Keep existing
   timeouts and explicit fallback behavior; these are not circuit breakers.
 - No privacy redesign is included. This does not claim that public-by-link memes
@@ -64,5 +64,7 @@ administrator authorization and Render resources are **not implemented by it**.
 
 Implementation checkpoint: both Dockerfiles and the Render Blueprint are now
 prepared, with disabled public accounts, exact CORS and startup/readiness checks.
-No administrator endpoint was introduced. Cloud resources and live integrations
-remain unprovisioned/unverified; see the [deployment map](../DEPLOYMENT.md).
+No administrator endpoint was introduced. Read-only Supabase startup, one live
+Gemini embedding match and matched-image delivery/CORS have passed preflight.
+These are not deployed-browser or load tests. Cloud provisioning and release
+verification are tracked in the [deployment map](../DEPLOYMENT.md).

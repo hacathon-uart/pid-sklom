@@ -17,6 +17,14 @@ to database authority only when the future admin workflow ships. The current
 [ADR 0003](0003-portable-render-first-release.md) records the current hosting,
 budget and release-scope decisions; no privacy redesign is part of that release.
 
+The sections below preserve the original design, not an implementation checklist.
+The profile importer preserves IDs by matching Wikidata identities in the seeds;
+the Supabase uploader upserts those numeric IDs, not Wikidata IDs. It must not be
+treated as reconciliation with independently edited database content.
+Saved memes are public by link under the current API/Storage model, not private
+per-user files. The first public release disables account saving altogether;
+neither this ADR nor disabling saving changes existing object access rules.
+
 ## Context
 
 The content pipeline now produces real data: `data/all_artworks.py` collects paintings from
