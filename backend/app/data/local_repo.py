@@ -237,10 +237,12 @@ class LocalRepository:
             return None
         return self._meme(row), row["user_id"]
 
-    def create_meme(self, user_id: str, data: MemeCreate) -> Meme:
+    def create_meme(self, user_id: str, data: MemeCreate, meme_id: str | None = None) -> Meme:
         if data.artwork_id not in self.artworks:
             raise KeyError(data.artwork_id)
-        meme_id = str(uuid.uuid4())
+        meme_id = meme_id or str(uuid.uuid4())
+        if meme_id in self.memes:
+            return self._meme(self.memes[meme_id])
         row = {
             "id": meme_id,
             "user_id": user_id,
