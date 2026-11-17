@@ -163,3 +163,72 @@ def test_embedding_index_scoring_rules():
     assert [r.artwork_id for r in ranked] == [1, 2]  # 3 dropped by its avoid rule; 2 penalised
     assert ranked[0].reason == "коли дедлайн"
     assert EmbeddingIndex(rows).rank(query, cat[:2], **kw)[0].artwork_id == 1  # only catalogue items count
+
+
+def _llm_provider(monkeypatch):
+    from app.ai import llm
+    from app.config import Settings
+
+    provider = llm.LLMProvider(Settings(ai_provider="llm", ai_api_key="k"))
+    monkeypatch.setattr("app.services.create.get_ai", lambda: provider)
+    return provider
+
+
+def test_captions_gemini(client, monkeypatch):
+    from app.ai import gemini
+
+    _llm_provider(monkeypatch)
+    seen = {}
+
+    async def fake(prompt, **kw):
+        seen["prompt"] = prompt
+        return {"captions": [{"text": "Один", "kind": "work"}, {"text": "Два", "kind": "bogus"},
+                             {"text": "Скіп", "kind": "story"}, {"text": "Три", "kind": "story"}]}
+
+    monkeypatch.setattr(gemini, "generate_json", fake)
+    body = client.post("/api/artworks/1/captions", json={"exclude": ["скіп"]}).json()
+    assert body["source"] == "ai"
+    assert [c["text"] for c in body["captions"]] == ["Один", "Два", "Три"]
+    assert [c["kind"] for c in body["captions"]] == ["work", "work", "story"]  # bad kind replaced by its position (1 -> work)
+    assert "скіп" in seen["prompt"]  # exclude list reaches the prompt
+
+
+def test_captions_gemini_unreachable_uses_meme_situations(client, monkeypatch):
+    import httpx
+
+    from app.ai import gemini
+    from app.data import get_repo
+
+    _llm_provider(monkeypatch)
+
+    async def down(*a, **kw):
+        raise httpx.ConnectError("no network")
+
+    monkeypatch.setattr(gemini, "generate_json", down)
+    situations = get_repo().situations(1)
+    assert situations
+    body = client.post("/api/artworks/1/captions", json={}).json()
+    assert body["source"] == "fallback"
+    assert body["captions"][0]["text"] == situations[0][:1].upper() + situations[0][1:]
+
+
+def test_captions_prompt_sensitive_and_no_copy(client, monkeypatch):
+    from app.ai import gemini
+    from app.data import get_repo
+
+    _llm_provider(monkeypatch)
+    repo = get_repo()
+    item = next(c for c in repo.catalogue() if c.id == 1)
+    monkeypatch.setattr(item, "is_sensitive", True)
+    monkeypatch.setattr(item, "do_not_use_for", ["втрата"])
+    monkeypatch.setattr(type(repo), "catalogue", lambda self: [item])
+    seen = {}
+
+    async def fake(prompt, **kw):
+        seen["prompt"] = prompt
+        return {"captions": [{"text": "Тихий вечір", "kind": "everyday"}]}
+
+    monkeypatch.setattr(gemini, "generate_json", fake)
+    client.post("/api/artworks/1/captions", json={})
+    assert "чутлива" in seen["prompt"] and "втрата" in seen["prompt"]
+    assert "Не копіюй" in seen["prompt"]

@@ -194,6 +194,11 @@ class LocalRepository:
     def fallback_captions(self, artwork_id: int) -> list[str]:
         return self.artworks.get(artwork_id, {}).get("fallback_captions", [])
 
+    def situations(self, artwork_id: int) -> list[str]:
+        """meme_profile.meme_situations, curated per artwork — used even for sensitive ones."""
+        w = self.artworks.get(artwork_id, {})
+        return (w.get("meme_profile") or {}).get("meme_situations") or []
+
     # ---------- memes ----------
 
     def _persist(self) -> None:
