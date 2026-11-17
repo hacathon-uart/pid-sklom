@@ -32,6 +32,18 @@ does not become a verified fact without review.
 A visitor's caption and visual treatment applied to an artwork, distinct from the
 original artwork and its meme profile.
 
+**Generation**:
+One successful phrase match or batch of suggested captions. Alternatives within
+one result are not additional generations. Manual editing is not a generation.
+
+**Guest allowance**:
+The initial three generations available without an account, shared across
+matching and caption suggestions. It does not renew daily.
+
+**Save intent**:
+A visitor's request to add a particular meme to their collection. Continuing or
+retrying that request must not create additional saved memes.
+
 **Enrichment run**:
 A staged effort to collect and prepare an artist's artworks, images, descriptions
 and matching material for review. Completing a run does not itself approve publication.

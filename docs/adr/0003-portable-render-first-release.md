@@ -26,6 +26,13 @@ larger instance. Provider limits, free-project pausing and usage overages still 
 
 ## Release scope and deliberate deferrals
 
+The list below preserves the first-release scope. PR #6 subsequently added caption
+generation. [ADR 0006](0006-google-identity-and-guest-allowance.md) supersedes the
+Google-login deferral and unrestricted guest-generation policy for the next
+account release, not for the currently deployed release. Accounts and the guest
+limit remain off until its migration, provider setup and approved rollout.
+General rate limiting, circuit breakers, Telegram and admin access remain deferred.
+
 - Keep the first public release simple: existing website flows and embedding-based
   matching, with own/prewritten captions. Hybrid reranking, generated captions,
   admin UI and enrichment automation are not first-release prerequisites.
