@@ -45,21 +45,25 @@ def mood_text(profile: dict) -> str:
 class LocalRepository:
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.artists = {a["id"]: a for a in _load(settings.seed_dir / "artists.json")}
-        shown = visible_statuses(settings)
-        self.artworks = {
-            a["id"]: a
-            for a in _load(settings.seed_dir / "artworks.json")
-            if a.get("review_status", "approved") in shown
-        }
-        self.facts = [
-            f
-            for f in _load(settings.seed_dir / "facts.json")
-            if f.get("verified") and (f.get("artwork_id") is None or f["artwork_id"] in self.artworks)
-        ]
+        self._set_content(
+            _load(settings.seed_dir / "artists.json"),
+            _load(settings.seed_dir / "artworks.json"),
+            _load(settings.seed_dir / "facts.json"),
+        )
         self.memes_dir = settings.media_dir / "memes"
         self.memes_file = settings.media_dir / "memes.json"
         self.memes: dict[str, dict] = _load(self.memes_file) if self.memes_file.exists() else {}
+
+    def _set_content(self, artists: list[dict], artworks: list[dict], facts: list[dict]) -> None:
+        """Index raw rows (seed JSON or database rows alike); hide unreviewed artworks."""
+        self.artists = {a["id"]: a for a in artists}
+        shown = visible_statuses(self.settings)
+        self.artworks = {a["id"]: a for a in artworks if a.get("review_status", "approved") in shown}
+        self.facts = [
+            f
+            for f in facts
+            if f.get("verified") and (f.get("artwork_id") is None or f["artwork_id"] in self.artworks)
+        ]
 
     # ---------- helpers ----------
 
