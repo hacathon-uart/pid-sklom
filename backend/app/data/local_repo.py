@@ -32,12 +32,31 @@ def _load(path: Path) -> list[dict]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def visible_statuses(settings: Settings) -> set[str]:
+    """Which artworks.review_status values users (and the AI) may see. «rejected» never."""
+    return {"approved", "pending"} if settings.include_unreviewed else {"approved"}
+
+
+def mood_text(profile: dict) -> str:
+    mood = profile.get("mood") or []
+    return ", ".join(mood) if isinstance(mood, list) else str(mood)
+
+
 class LocalRepository:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.artists = {a["id"]: a for a in _load(settings.seed_dir / "artists.json")}
-        self.artworks = {a["id"]: a for a in _load(settings.seed_dir / "artworks.json")}
-        self.facts = [f for f in _load(settings.seed_dir / "facts.json") if f.get("verified")]
+        shown = visible_statuses(settings)
+        self.artworks = {
+            a["id"]: a
+            for a in _load(settings.seed_dir / "artworks.json")
+            if a.get("review_status", "approved") in shown
+        }
+        self.facts = [
+            f
+            for f in _load(settings.seed_dir / "facts.json")
+            if f.get("verified") and (f.get("artwork_id") is None or f["artwork_id"] in self.artworks)
+        ]
         self.memes_dir = settings.media_dir / "memes"
         self.memes_file = settings.media_dir / "memes.json"
         self.memes: dict[str, dict] = _load(self.memes_file) if self.memes_file.exists() else {}
@@ -111,7 +130,7 @@ class LocalRepository:
             def haystack(w: dict) -> str:
                 profile = w.get("meme_profile") or {}
                 return " ".join(
-                    [w["title_uk"], self.artists[w["artist_id"]]["name_uk"], profile.get("mood", "")]
+                    [w["title_uk"], self.artists[w["artist_id"]]["name_uk"], mood_text(profile)]
                     + w.get("tags", [])
                 ).lower()
 
@@ -158,8 +177,12 @@ class LocalRepository:
                     id=w["id"],
                     title=w["title_uk"],
                     tags=w.get("tags", []),
-                    situations=profile.get("situations", []),
-                    mood=profile.get("mood", ""),
+                    situations=profile.get("meme_situations", []),
+                    mood=mood_text(profile),
+                    is_sensitive=w.get("is_sensitive", False),
+                    do_not_use_for=profile.get("do_not_use_for") or [],
+                    meme_potential=w.get("meme_potential"),
+                    caption_position=profile.get("caption_position"),
                 )
             )
         return out
@@ -192,7 +215,8 @@ class LocalRepository:
         )
 
     def list_memes(self, user_id: str, favorite: bool | None = None) -> list[Meme]:
-        rows = [m for m in self.memes.values() if m["user_id"] == user_id]
+        # Skip memes whose artwork is hidden now (e.g. its profile was rejected after review).
+        rows = [m for m in self.memes.values() if m["user_id"] == user_id and m["artwork_id"] in self.artworks]
         if favorite is not None:
             rows = [m for m in rows if m.get("is_favorite", False) == favorite]
         rows.sort(key=lambda m: m["created_at"], reverse=True)
@@ -200,7 +224,9 @@ class LocalRepository:
 
     def get_meme(self, meme_id: str):
         row = self.memes.get(meme_id)
-        return (self._meme(row), row["user_id"]) if row else None
+        if not row or row["artwork_id"] not in self.artworks:
+            return None
+        return self._meme(row), row["user_id"]
 
     def create_meme(self, user_id: str, data: MemeCreate) -> Meme:
         if data.artwork_id not in self.artworks:

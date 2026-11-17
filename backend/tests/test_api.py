@@ -95,3 +95,25 @@ def test_renderer():
     Image.new("RGB", (600, 400), "gray").save(buf, "PNG")
     png = render_meme(buf.getvalue(), [TextBlock(text="Коли ґава їсть"), TextBlock(text="верх", position="top")])
     assert Image.open(io.BytesIO(png)).size == (600, 400)
+
+
+def test_review_status_hides_unreviewed_artworks():
+    """Only approved artworks are shown, unless INCLUDE_UNREVIEWED is on (ADR 0001)."""
+    from app.config import Settings
+    from app.data.local_repo import LocalRepository
+
+    live = LocalRepository(Settings(include_unreviewed=False))
+    dev = LocalRepository(Settings(include_unreviewed=True))
+    assert all(w["review_status"] == "approved" for w in live.artworks.values())
+    assert any(w["review_status"] == "pending" for w in dev.artworks.values())
+    assert len(dev.catalogue()) > len(live.catalogue())
+
+
+def test_catalogue_reads_full_meme_profile():
+    from app.config import Settings
+    from app.data.local_repo import LocalRepository
+
+    items = LocalRepository(Settings(include_unreviewed=True)).catalogue()
+    assert all(item.situations for item in items)
+    assert all(isinstance(item.mood, str) and item.mood for item in items)
+    assert any(item.is_sensitive for item in items)  # imported profiles carry the sensitivity flag

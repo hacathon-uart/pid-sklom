@@ -19,6 +19,8 @@ services:
         value: stub           # switch to llm once LLMProvider is implemented
       - key: AUTH_MODE
         value: stub           # switch to supabase with T22
+      - key: INCLUDE_UNREVIEWED
+        value: "false"        # live site shows only artworks with review_status «approved»
       - key: PUBLIC_BASE_URL
         sync: false           # https://pidsklom-api.onrender.com
       - key: FRONTEND_ORIGINS
