@@ -1,4 +1,5 @@
 /** Screen 5 · Галерея (US-09, US-14). */
+import { plural } from "../plural";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../api/client";
@@ -37,7 +38,7 @@ export function GalleryPage() {
   return (
     <Page
       title="Галерея"
-      subtitle={artists.data && allCount.data ? `${artists.data.length} художників · ${allCount.data.total} картин із суспільного надбання` : " "}
+      subtitle={artists.data && allCount.data ? `${artists.data.length} ${plural(artists.data.length, "художник", "художники", "художників")} · ${allCount.data.total} ${plural(allCount.data.total, "картина", "картини", "картин")} із суспільного надбання` : " "}
       actions={
         <div className="w-[400px]">
           <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Автор, картина або настрій" />
