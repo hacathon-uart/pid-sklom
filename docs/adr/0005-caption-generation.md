@@ -1,4 +1,4 @@
-# ADR 0003: How captions are generated for a chosen painting
+# ADR 0005: How captions are generated for a chosen painting
 
 - **Status:** Proposed
 - **Date:** 2026-11-17
