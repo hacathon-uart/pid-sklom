@@ -19,7 +19,9 @@ export function ArtworkCard({
   onClick?: () => void;
 }) {
   return (
-    <button onClick={onClick} className="block w-full text-left">
+    // self-start: a button centres its content vertically, so in a grid row the cards with a short
+    // label were pushed down relative to the ones with a two-line title.
+    <button onClick={onClick} className="block w-full self-start text-left">
       <Artwork src={artwork.thumb_url} alt={artwork.title} selected={selected} aspect="4/5" size="sm" />
       <WallLabel
         className={`mt-4 ${selected ? "ring-2 ring-accent" : ""}`}

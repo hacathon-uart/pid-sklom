@@ -96,9 +96,12 @@ export function GalleryPage() {
             ))}
           </div>
         )}
-        <div className="mt-12 flex flex-col items-center gap-2">
-          <VelvetRope />
-        </div>
+        {/* The empty state already shows a rope, so the closing one only follows real results. */}
+        {artworks.data && artworks.data.items.length > 0 && (
+          <div className="mt-12 flex flex-col items-center gap-2">
+            <VelvetRope />
+          </div>
+        )}
       </Wall>
     </Page>
   );
