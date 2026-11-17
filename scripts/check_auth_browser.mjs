@@ -269,5 +269,5 @@ try {
     await exited;
   }
   await new Promise((done) => server.close(done));
-  rmSync(profile, { recursive: true, force: true });
+  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
