@@ -41,11 +41,10 @@ async def match_phrase(phrase: str, description: str | None = None) -> MatchResu
         )
         if not ai_match.ranked:
             raise ValueError("empty ranking")
+        source = ai_match.source
     except Exception:
         log.exception("AI match failed, using fallback")
         ai_match = await _fallback.match(phrase, description, catalogue)
-        source = "fallback"
-    if isinstance(get_ai(), StubProvider):
         source = "fallback"
 
     candidates = []
@@ -99,6 +98,9 @@ async def suggest_captions(artwork_id: int, exclude: list[str] | None = None) ->
         )
         if len(captions) < 1:
             raise ValueError("no captions")
+    except NotImplementedError:  # Flow B with Gemini is not built yet (ADR 0002 is Flow A only)
+        captions = await _fallback.captions(artwork, fallback, exclude)
+        source = "fallback"
     except Exception:
         log.exception("AI captions failed, using fallback")
         captions = await _fallback.captions(artwork, fallback, exclude)

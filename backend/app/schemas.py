@@ -13,7 +13,7 @@ Position = Literal["top", "middle", "bottom"]
 Genre = Literal["portrait", "landscape", "everyday", "avantgarde"]
 # Labels on screen 3c: Щодня / Робота / З історії картини
 CaptionKind = Literal["everyday", "work", "story"]
-Source = Literal["ai", "fallback"]
+Source = Literal["ai", "embeddings", "fallback"]  # ai = hybrid LLM, embeddings = vector search, fallback = word matching
 
 
 # ---------- Content ----------

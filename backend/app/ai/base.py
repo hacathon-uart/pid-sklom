@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from app.data.repository import CatalogueItem
-from app.schemas import ArtworkDetail, CaptionOption, Position
+from app.schemas import ArtworkDetail, CaptionOption, Position, Source
 
 
 @dataclass
@@ -13,6 +13,7 @@ class AIMatch:
     artwork_fact_id: int | None = None  # None -> backend uses the default fact
     artist_fact_id: int | None = None
     usage: dict = field(default_factory=dict)  # token counts, for the cost log
+    source: Source = "ai"  # which path answered: ai (hybrid LLM), embeddings, fallback (stub)
 
 
 class AIProvider(Protocol):

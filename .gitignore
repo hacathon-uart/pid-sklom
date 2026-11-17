@@ -90,3 +90,6 @@ $RECYCLE.BIN/
 # Project
 backend/media/
 frontend/dist/
+
+# Embedding vectors (data/scripts/embed_artworks.py); the shared copy lives in Supabase
+data/embeddings/

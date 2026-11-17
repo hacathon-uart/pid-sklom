@@ -19,7 +19,7 @@ from app.config import Settings
 from app.data.local_repo import LocalRepository
 from app.schemas import Meme, MemeCreate, MemeUpdate
 
-# Everything except the `embedding` vector (large, only needed for search inside Postgres).
+# Explicit list, so new heavy columns are never pulled by accident. Vectors: artwork_embeddings.
 ARTWORK_COLUMNS = (
     "id,wikidata_id,slug,artist_id,title_uk,year,museum,medium,genre,about_uk,image_url,thumb_url,"
     "license,source_url,is_featured,tags,meme_profile,review_status,is_sensitive,meme_potential,"
