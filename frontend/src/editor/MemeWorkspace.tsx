@@ -19,6 +19,7 @@ import { Link } from "react-router";
 import { api, ApiError } from "../api/client";
 import type { ArtworkSummary, MemeStyle, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { authEnabled } from "../auth/supabase";
 import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
 import { ErrorMessage } from "../components/Layout";
@@ -113,7 +114,7 @@ export function MemeWorkspace({
         </Artwork>
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={onSave} />
+          {authEnabled && <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={onSave} />}
           <IconButton
             icon="download"
             label="Завантажити PNG"
@@ -154,7 +155,11 @@ export function useSaveMeme(
   const [savedId, setSavedId] = useState<string | null>(initialId);
   const [justSaved, setJustSaved] = useState(false); // shows the «Збережено» notice
 
-  const run = (fn: () => Promise<void>) =>
+  const run = (fn: () => Promise<void>) => {
+    if (!authEnabled) {
+      setError("Збереження в акаунт поки недоступне. Завантажте мем як PNG");
+      return;
+    }
     requireLogin(async () => {
       setSaving(true);
       setError(null);
@@ -166,6 +171,7 @@ export function useSaveMeme(
         setSaving(false);
       }
     });
+  };
 
   const save = (style: MemeStyle) =>
     run(async () => {

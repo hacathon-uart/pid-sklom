@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
+import { authEnabled } from "../auth/supabase";
 import { Button } from "../components/Button";
 import { MemeCard } from "../components/cards";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
@@ -11,6 +12,13 @@ import { Tag } from "../components/Tag";
 
 export function MyMemesPage() {
   const { user, login, logout } = useAuth();
+  if (!authEnabled) {
+    return (
+      <Page title="Мої меми" subtitle="Збереження в акаунт поки недоступне. Створюйте меми та завантажуйте PNG.">
+        <Button onClick={() => window.location.assign("/create")}>Створити мем</Button>
+      </Page>
+    );
+  }
   if (!user) {
     return (
       <Page title="Мої меми" subtitle="Увійдіть, щоб зберігати меми і повертатися до них.">

@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,7 +15,8 @@ class Settings(BaseSettings):
     # Switches (see .env.example)
     data_backend: Literal["local", "supabase"] = "local"
     ai_provider: Literal["stub", "llm"] = "stub"
-    auth_mode: Literal["stub", "supabase"] = "stub"
+    auth_mode: Literal["stub", "supabase", "disabled"] = "stub"
+    environment: Literal["development", "production"] = "development"
 
     public_base_url: str = "http://localhost:8000"
     frontend_origins: str = "http://localhost:5173"
@@ -51,6 +53,31 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.frontend_origins.split(",") if o.strip()]
+
+    def validate_runtime(self) -> None:
+        if self.data_backend == "supabase" and not (self.supabase_url and self.supabase_service_key):
+            raise RuntimeError("DATA_BACKEND=supabase needs SUPABASE_URL and SUPABASE_SERVICE_KEY")
+        if self.ai_provider == "llm" and not self.ai_api_key:
+            raise RuntimeError("AI_PROVIDER=llm needs AI_API_KEY")
+        if self.auth_mode == "supabase" and not self.supabase_jwt_secret:
+            raise RuntimeError("AUTH_MODE=supabase needs SUPABASE_JWT_SECRET")
+        if self.telegram_bot_token and self.telegram_webhook_secret in ("", "change-me"):
+            raise RuntimeError("Telegram needs a non-default TELEGRAM_WEBHOOK_SECRET")
+        if self.environment == "production":
+            if self.auth_mode == "stub" or self.include_unreviewed or self.data_backend != "supabase":
+                raise RuntimeError("Production requires Supabase data, reviewed content and non-stub authentication")
+            base = urlsplit(self.public_base_url)
+            if base.scheme != "https" or not base.netloc:
+                raise RuntimeError("Production needs an HTTPS PUBLIC_BASE_URL")
+            if not self.cors_origins or any(
+                (origin := urlsplit(value)).scheme != "https"
+                or not origin.netloc
+                or origin.path
+                or origin.query
+                or origin.fragment
+                for value in self.cors_origins
+            ):
+                raise RuntimeError("Production needs explicit HTTPS FRONTEND_ORIGINS without trailing slashes")
 
 
 @lru_cache

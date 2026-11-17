@@ -8,6 +8,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { authEnabled } from "../auth/supabase";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
@@ -51,7 +52,7 @@ export function HomePage() {
   return (
     <>
       <section className="relative flex flex-col items-center px-8 pb-10 pt-24 text-center">
-        <div className="absolute right-10 top-8 flex gap-3">
+        {authEnabled && <div className="absolute right-10 top-8 flex gap-3">
           {user ? (
             <Link to="/me" className="t-strong">
               {user.name}
@@ -63,7 +64,7 @@ export function HomePage() {
               <Button variant="secondary" onClick={login}>Зареєструватися</Button>
             </>
           )}
-        </div>
+        </div>}
 
         <LogoMark size={88} className="mb-6 text-accent" />
         <h1 className="t-logo">Під склом</h1>

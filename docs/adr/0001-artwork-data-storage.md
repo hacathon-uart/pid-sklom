@@ -4,6 +4,27 @@
 - **Date:** 2026-11-17
 - **Related:** `data/schema.sql`, `docs/ARCHITECTURE.md`, plan tasks T04, T11, T12
 
+## Evolution
+
+This records the original decision. The merged implementation described in
+[ADR 0002](0002-painting-matching-engine.md) now stores multiple 768-dimensional
+vectors per artwork in `artwork_embeddings`, replacing the single
+`artworks.embedding vector(1536)` representation below. ADR 0002 as a whole remains
+proposed; not all of its runtime/evaluation design is implemented.
+[ADR 0004](0004-reviewed-enrichment-and-catalogue-authority.md) changes seed authority
+to database authority only when the future admin workflow ships. The current
+[data map](../DATA_MODEL.md) distinguishes those stages.
+[ADR 0003](0003-portable-render-first-release.md) records the current hosting,
+budget and release-scope decisions; no privacy redesign is part of that release.
+
+The sections below preserve the original design, not an implementation checklist.
+The profile importer preserves IDs by matching Wikidata identities in the seeds;
+the Supabase uploader upserts those numeric IDs, not Wikidata IDs. It must not be
+treated as reconciliation with independently edited database content.
+Saved memes are public by link under the current API/Storage model, not private
+per-user files. The first public release disables account saving altogether;
+neither this ADR nor disabling saving changes existing object access rules.
+
 ## Context
 
 The content pipeline now produces real data: `data/all_artworks.py` collects paintings from

@@ -6,6 +6,10 @@
 - Design: [docs/design/README.md](docs/design/README.md)
 - **Code map, stubs, who starts where, open questions:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **API contract:** [docs/API.md](docs/API.md) (live docs at http://localhost:8000/docs)
+- **Render deployment gaps and release checklist:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Data stores and future admin enrichment:** [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
+- **Decisions:** [portable first release](docs/adr/0003-portable-render-first-release.md),
+  [reviewed enrichment](docs/adr/0004-reviewed-enrichment-and-catalogue-authority.md)
 
 ## Run locally
 
@@ -22,7 +26,7 @@ uvicorn app.main:app --reload          # http://localhost:8000/docs
 pytest                                 # smoke tests
 ```
 
-**Frontend** (Node 20+):
+**Frontend** (Node 22.22+):
 
 ```bash
 cd frontend
@@ -48,7 +52,7 @@ Both are safe to re-run. Only artworks with `review_status: "approved"` are show
 
 ```
 backend/    FastAPI: api/, services/, data/, ai/, render/, bot/   (Render)
-frontend/   React + Vite + Tailwind + react-konva                 (Vercel)
+frontend/   React + Vite + Tailwind + react-konva                 (Render Static Site target)
 data/       seed JSON, placeholder images, schema.sql, import scripts
 docs/       plan, design, API contract, architecture
 ```
@@ -56,3 +60,9 @@ docs/       plan, design, API contract, architecture
 ## Working rules
 
 Short-lived feature branches, PR into `main` at least once a day. CI runs backend tests and the frontend build. Every merge to `main` auto-deploys.
+
+The deployment target is a Dockerized API plus static frontend on Render.
+Both [Dockerfiles](docs/DEPLOYMENT.md#local-container-check) and the Blueprint are
+prepared; no cloud resources have been created. Render auto-deploys are configured
+to wait for passing CI. Public builds disable accounts/saving; PNG download stays
+available. Telegram stays off until verified. See the [launch steps](docs/DEPLOYMENT.md#first-cloud-deployment).

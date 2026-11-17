@@ -2,6 +2,7 @@
 
 AUTH_MODE=stub      -> header "Authorization: Bearer <anything>" makes <anything> the user id.
 AUTH_MODE=supabase  -> the frontend sends the Supabase access token; we verify it here.
+AUTH_MODE=disabled  -> account operations are unavailable; public reads remain available.
 """
 
 from dataclasses import dataclass
@@ -40,6 +41,8 @@ def _token(authorization: str | None) -> str | None:
 
 
 def current_user(authorization: str | None = Header(default=None)) -> User:
+    if get_settings().auth_mode == "disabled":
+        raise HTTPException(403, "Збереження в акаунт поки недоступне. Завантажте мем як PNG")
     token = _token(authorization)
     if token is None:
         raise HTTPException(401, "Увійдіть, щоб зберегти мем")
@@ -47,5 +50,7 @@ def current_user(authorization: str | None = Header(default=None)) -> User:
 
 
 def optional_user(authorization: str | None = Header(default=None)) -> User | None:
+    if get_settings().auth_mode == "disabled":
+        return None
     token = _token(authorization)
     return _user_from_token(token) if token else None
