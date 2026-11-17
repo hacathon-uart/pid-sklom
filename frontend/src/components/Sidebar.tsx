@@ -1,4 +1,5 @@
 import { NavLink } from "react-router";
+import { authEnabled } from "../auth/supabase";
 import { Icon, type IconName } from "./Icon";
 import { LogoMark } from "./Museum";
 
@@ -27,9 +28,9 @@ export function Sidebar() {
       <NavItem to="/" icon="home" label="Головна" end />
       <NavItem to="/create" icon="pencil" label="Створити" />
       <NavItem to="/gallery" icon="image" label="Галерея" />
-      <div className="mt-auto">
+      {authEnabled && <div className="mt-auto">
         <NavItem to="/me" icon="user" label="Профіль" />
-      </div>
+      </div>}
     </nav>
   );
 }

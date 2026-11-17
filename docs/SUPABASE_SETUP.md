@@ -1,12 +1,20 @@
 # Supabase setup (free tier)
 
-One project holds the tables, the image files and (later) login. Schema: `data/schema.sql`. Why: `docs/adr/0001-artwork-data-storage.md`.
+One project holds Postgres tables/vectors, Storage image files and (later) login.
+There is no separate biography or vector database.
+Schema: `data/schema.sql`. Current/future ownership: [data map](DATA_MODEL.md).
+Decisions: [ADR 0001](adr/0001-artwork-data-storage.md) and
+[ADR 0004](adr/0004-reviewed-enrichment-and-catalogue-authority.md).
 
 ## 1. Create the project (once, one person)
 
 1. supabase.com → New project. Name `pidsklom`, region closest to Render (e.g. Frankfurt), free plan.
 2. Save the **database password** in the team password manager. Nothing in this repo needs it.
-3. SQL editor → paste all of `data/schema.sql` → Run. It is re-runnable. It creates the tables, security rules, the `artworks` and `memes` buckets, and `match_artworks()`.
+3. For a new project, run `data/schema.sql` in the SQL editor. It creates tables,
+   security rules, `artworks`/`memes` buckets and `artwork_embeddings vector(768)`.
+   **For an existing project, review and back up first:** this version drops the
+   old `artworks.embedding`, `embedding_model` and `match_artworks()` function.
+   Re-running SQL is not a substitute for a reviewed migration/restore plan.
 4. Project Settings → **API Keys**. You need three values:
 
 | Value | Where it goes | Secret? |
@@ -19,7 +27,7 @@ One project holds the tables, the image files and (later) login. Schema: `data/s
 
 - Send the secret key through the password manager (1Password / Bitwarden shared vault), never Slack, Telegram, email or git.
 - Each person puts it in their own `backend/.env` (gitignored).
-- On deploy it goes into the Render dashboard (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY` are already declared in `render.yaml` with `sync: false`). The two public values go into Vercel.
+- On deploy it goes into the Render dashboard (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY` are already declared in `render.yaml` with `sync: false`). The two public values go into the Render Static Site build when user login is enabled; never put the service key in a browser build.
 - If it leaks: Project Settings → API Keys → rotate it, then update `.env` files and Render.
 
 ## 3. Load the data
@@ -27,12 +35,30 @@ One project holds the tables, the image files and (later) login. Schema: `data/s
 ```
 backend/.venv/bin/python data/scripts/upload_to_supabase.py --dry-run
 backend/.venv/bin/python data/scripts/upload_to_supabase.py
+backend/.venv/bin/python data/scripts/embed_artworks.py --dry-run
+backend/.venv/bin/python data/scripts/embed_artworks.py
 ```
 
-It uploads the images to the bucket and upserts artists, artworks and facts. Re-run it after every change to `data/seed/*.json`.
+The uploader stores images and upserts artists/artworks/facts. The embedding script
+needs `AI_API_KEY` for uncached Gemini calls and writes vectors locally plus to
+Supabase when configured. Defaults are `EMBEDDING_MODEL=gemini-embedding-2`,
+`EMBEDDING_DIM=768`; the runtime must use the same model/dimension. Configure
+`DATA_BACKEND=supabase`, `AI_PROVIDER=llm`, `MATCH_MODE=embeddings` for live matching.
+Do not run imports or embedding batches on every container boot.
+
+Today seeds are authoritative: re-run the relevant import/upload/embed steps after
+content changes, then refresh/restart backend snapshots. The vector uploader
+replaces model/dimension rows in multiple requests, so verify completeness after
+failure before restarting live matching. The future admin workflow will replace
+this with reviewed database-authoritative content, not blindly replay old seeds.
 
 ## Free-tier limits that matter
 
-- **A project with no activity for 7 days is paused.** Open it or ping it before the demo, and check it the day you present.
-- 500 MB database, 1 GB file storage, 5 GB traffic per month, 50 MB max file size. Our content is well under this.
-- No automatic backups. The seed JSON files are the backup.
+- Free projects may pause after a week of inactivity even below 500 MB. Check/resume
+  the project before the demo; an always-on API does not prevent database pausing.
+- 500 MB database and 1 GB file storage are separate quotas. Egress includes
+  5 GB uncached plus 5 GB cached traffic. Track actual usage; the schema caps each
+  application's Storage bucket file at 5 MiB even if the platform permits more.
+- No automatic backups on Free. Seeds only reconstruct seed content; export live
+  database data and copy Storage objects separately before they become valuable.
+  Published provider sources: [research](RENDER_RESEARCH.md).

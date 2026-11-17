@@ -1,5 +1,6 @@
 import { createBrowserRouter, Link, RouterProvider } from "react-router";
 import { AuthProvider } from "./auth/AuthContext";
+import { authEnabled } from "./auth/supabase";
 import { Layout, Page } from "./components/Layout";
 import { AiCaptionsPage } from "./pages/AiCaptionsPage";
 import { ArtistPage } from "./pages/ArtistPage";
@@ -25,9 +26,13 @@ const router = createBrowserRouter([
       { path: "/create/painting", element: <ChoosePaintingPage /> }, // 2b
       { path: "/create/painting/:artworkId/ai", element: <AiCaptionsPage /> }, // 3c
       { path: "/create/painting/:artworkId/own", element: <OwnCaptionPage /> }, // 3d
-      { path: "/me", element: <MyMemesPage /> }, // 4
-      { path: "/me/memes/:memeId", element: <MemeViewPage /> }, // 4b
-      { path: "/me/memes/:memeId/edit", element: <EditMemePage /> }, // 3b for a saved meme
+      ...(authEnabled
+        ? [
+            { path: "/me", element: <MyMemesPage /> }, // 4
+            { path: "/me/memes/:memeId", element: <MemeViewPage /> }, // 4b
+            { path: "/me/memes/:memeId/edit", element: <EditMemePage /> },
+          ]
+        : [{ path: "/me/*", element: <MyMemesPage /> }]),
       { path: "/m/:memeId", element: <MemeViewPage isPublic /> }, // share link (US-16)
       { path: "/gallery", element: <GalleryPage /> }, // 5
       { path: "/artists", element: <ArtistsPage /> }, // not designed

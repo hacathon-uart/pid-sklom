@@ -7,12 +7,15 @@ The source of truth is [`backend/app/schemas.py`](../backend/app/schemas.py), mi
 Errors are always `{"detail": "<message in Ukrainian, safe to show the user>"}`. A `422` on `POST /matches` or `POST /artworks/{id}/captions` with a string `detail` is a moderation refusal (US-13); show it as is.
 
 Auth: `Authorization: Bearer <token>`. With `AUTH_MODE=stub` any token works and becomes the user id (the frontend's fake login sends `dev`). With `AUTH_MODE=supabase` it is the Supabase access token.
+The initial public deployment uses `AUTH_MODE=disabled`: account listing, saving,
+editing and deletion return `403`, even with a bearer token. Public reads remain available.
 
 ## Endpoints
 
 | Method | Path | Auth | Screen | Purpose |
 |---|---|---|---|---|
 | GET | `/api/health` | – | – | Status + which stubs are active |
+| GET | `/api/ready` | – | – | `200` after startup validates configuration, nonempty catalogue and configured embedding coverage; otherwise `503` |
 | GET | `/api/artists` | – | 5, artists list | `ArtistSummary[]` |
 | GET | `/api/artists/{slug}` | – | 5b | `ArtistDetail`: long bio, facts, featured artwork, all works |
 | GET | `/api/artworks?q=&genre=&artist=&random=&limit=&offset=` | – | 5, 2b | `{items: ArtworkSummary[], total}`. `genre` ∈ `portrait, landscape, everyday, avantgarde`. `random=true` returns one random item («Випадкова картина», bot `/random`) |
