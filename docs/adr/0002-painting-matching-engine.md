@@ -4,6 +4,17 @@
 - **Date:** 2026-11-17
 - **Related:** ADR 0001 (data storage), `backend/app/ai/`, `backend/app/services/create.py`, plan §4, plan tasks T05, T13
 
+## Implementation checkpoint (2026-11-17)
+
+Merged revision `c1f7e57` implements Gemini query/document embeddings, the
+`artwork_embeddings` table, an in-memory NumPy index and the embedding import script.
+`LLMProvider` is no longer empty. Hybrid reranking and Flow B caption generation
+remain unimplemented; the code uses embedding ranking and prewritten captions
+respectively. This ADR's broader evaluation, cache and startup design is not a
+statement that those features all shipped.
+[ADR 0003](0003-portable-render-first-release.md) supersedes the free-Render hosting
+assumption and defers rate limiting/circuit breakers for the initial release.
+
 ## Context
 
 Flow A ("Фраза → картина", `POST /api/matches`) takes a short Ukrainian phrase such as

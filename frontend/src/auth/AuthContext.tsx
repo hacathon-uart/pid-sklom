@@ -1,14 +1,14 @@
 /**
  * Login state (US-06, US-07). Owner: B + A — T22.
  *
- * Without VITE_SUPABASE_URL this is a FAKE login: «Увійти» instantly logs you in as «dev»,
+ * In development without VITE_SUPABASE_URL this is a FAKE login: «Увійти» logs in as «dev»,
  * and the backend (AUTH_MODE=stub) accepts the token "dev" as user id. Swap in Supabase:
  *   - login(): supabase.auth.signInWithOAuth({ provider: "google" }) or signInWithOtp({ email })
  *   - subscribe to supabase.auth.onAuthStateChange and call setAuthToken(session.access_token)
  */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { setAuthToken } from "../api/client";
-import { supabase } from "./supabase";
+import { authEnabled, supabase } from "./supabase";
 
 export interface AuthUser {
   id: string;
@@ -30,7 +30,10 @@ const FAKE_KEY = "pidsklom.fakeUser";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
-    if (supabase) return null;
+    if (supabase || !authEnabled) {
+      setAuthToken(null);
+      return null;
+    }
     let restored: AuthUser | null = null;
     try {
       restored = localStorage.getItem(FAKE_KEY) ? { id: "dev", name: "Dev" } : null;
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async () => {
+    if (!authEnabled) throw new Error("Вхід поки недоступний");
     if (supabase) {
       // TODO(B, T22): show a login dialog with Google + email magic link (not designed yet)
       await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } });

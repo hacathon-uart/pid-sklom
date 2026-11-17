@@ -1,39 +1,84 @@
-# Render blueprint (T02). Render dashboard → New → Blueprint → pick this repo.
-# Secrets marked sync: false are entered in the dashboard, never committed.
+# Review paid compute and region before applying. This file does not create resources by itself.
+# Enter sync: false values in Render; never commit credentials.
 services:
   - type: web
     name: pidsklom-api
-    runtime: python
-    plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
-    autoDeploy: true
+    runtime: docker
+    plan: 0.5c-512mb
+    branch: main
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/ready
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - backend/**
+        - data/seed/**
+        - data/images/**
+        - .dockerignore
+        - render.yaml
+        - .github/workflows/ci.yml
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.9"
+      - key: ENVIRONMENT
+        value: production
       - key: DATA_BACKEND
-        value: local          # switch to supabase once SupabaseRepository is implemented
+        value: supabase
       - key: AI_PROVIDER
-        value: stub           # switch to llm once LLMProvider is implemented
+        value: llm
       - key: AUTH_MODE
-        value: stub           # switch to supabase with T22
+        value: disabled
       - key: INCLUDE_UNREVIEWED
-        value: "false"        # live site shows only artworks with review_status «approved»
+        value: "false"
+      - key: MATCH_MODE
+        value: embeddings
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-2
+      - key: EMBEDDING_DIM
+        value: "768"
       - key: PUBLIC_BASE_URL
-        sync: false           # https://pidsklom-api.onrender.com
+        sync: false
       - key: FRONTEND_ORIGINS
-        sync: false           # https://<project>.vercel.app
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
       - key: AI_API_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
         generateValue: true
+
+  - type: web
+    name: pidsklom-web
+    runtime: static
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - frontend/**
+        - render.yaml
+        - .github/workflows/ci.yml
+    envVars:
+      - key: NODE_VERSION
+        value: "22.22.0"
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: pidsklom-api
+          envVarKey: PUBLIC_BASE_URL
+      - key: VITE_AUTH_MODE
+        value: disabled
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache

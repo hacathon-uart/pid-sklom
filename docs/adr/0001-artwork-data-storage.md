@@ -4,6 +4,19 @@
 - **Date:** 2026-11-17
 - **Related:** `data/schema.sql`, `docs/ARCHITECTURE.md`, plan tasks T04, T11, T12
 
+## Evolution
+
+This records the original decision. The merged implementation described in
+[ADR 0002](0002-painting-matching-engine.md) now stores multiple 768-dimensional
+vectors per artwork in `artwork_embeddings`, replacing the single
+`artworks.embedding vector(1536)` representation below. ADR 0002 as a whole remains
+proposed; not all of its runtime/evaluation design is implemented.
+[ADR 0004](0004-reviewed-enrichment-and-catalogue-authority.md) changes seed authority
+to database authority only when the future admin workflow ships. The current
+[data map](../DATA_MODEL.md) distinguishes those stages.
+[ADR 0003](0003-portable-render-first-release.md) records the current hosting,
+budget and release-scope decisions; no privacy redesign is part of that release.
+
 ## Context
 
 The content pipeline now produces real data: `data/all_artworks.py` collects paintings from

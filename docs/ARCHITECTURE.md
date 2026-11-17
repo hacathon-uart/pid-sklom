@@ -1,10 +1,16 @@
 # Architecture and code map
 
+Deployment direction: [ADR 0003](adr/0003-portable-render-first-release.md).
+Current/future stores: [data map](DATA_MODEL.md).
+The diagram shows the deployment target; the Blueprint now configures Docker plus
+a Render Static Site, but has not been applied. User login is deferred and the bot
+is optional pending readiness; internal endpoints must be admin-authorized.
+
 ```
- Browser (React, Vercel) ──HTTP──► FastAPI (Render) ──► Repository ──► seed JSON  |  Supabase Postgres + Storage
-        │                            │  ├─ services/create.py ──► AIProvider ──► stub (tag matching)  |  LLM
-        └── Supabase Auth (login)    │  └─ render/meme.py (Pillow)
- Telegram ──webhook──────────────────┘     bot/handlers.py uses the SAME services as the API
+ Browser (React, Render Static) ──HTTP──► FastAPI (Render container) ──► Repository ──► local JSON | Supabase
+        │                                  │  ├─ AIProvider ──► Gemini query embedding + NumPy ranking | stub
+        └── Supabase Auth (later login)     │  └─ render/meme.py (Pillow)
+ Telegram (if ready) ──webhook───────────────┘     bot/handlers.py uses the SAME creation services
 ```
 
 ## Stubs: everyone can work from day one
@@ -14,31 +20,39 @@ Every external dependency sits behind a switch in `backend/.env`. Each defaults 
 | Switch | Stub (default) | Real | Owner |
 |---|---|---|---|
 | `DATA_BACKEND` | `local`: reads `data/seed/*.json`, serves `data/images/`, memes in `backend/media/` | `supabase`: `data/supabase_repo.py` | A |
-| `AI_PROVIDER` | `stub`: word matching + `fallback_captions` | `llm`: `ai/llm.py` + `ai/prompts.py` | A |
+| `AI_PROVIDER` | `stub`: word matching + `fallback_captions` | `llm`: Gemini embedding matching via `ai/llm.py`, `gemini.py`, `matching.py`; captions still fallback | A |
 | `AUTH_MODE` | `stub`: any bearer token = user id; frontend has a fake «Увійти» | `supabase`: JWT check in `auth.py`, Supabase SDK in `frontend/src/auth/` | A + B |
 | `TELEGRAM_BOT_TOKEN` | empty = bot off | set = webhook on Render, `python -m app.bot.polling` locally | D |
 
 The AI stub **is the production fallback** (plan §4). When the LLM errors or takes longer than 8 s, `services/create.py` uses it automatically, and the response says `"source": "fallback"`.
+Embedding matching now returns `"source": "embeddings"`. `MATCH_MODE=hybrid`
+currently uses the same embedding ranking with a warning; generated captions are
+not implemented. First-release rate limiting/circuit breakers and Google login are
+deferred by ADR 0003; stub login must not expose usable public saving.
+The Blueprint uses `AUTH_MODE=disabled` and `VITE_AUTH_MODE=disabled`: account
+mutations return `403`, login/profile/bookmark controls are hidden, and personal
+routes explain that accounts are unavailable. Fake browser login is dev-server-only.
+`ENVIRONMENT=production` rejects stub backend auth, local data and unreviewed content.
 
 ## Where things live
 
 ```
 backend/app/
-  main.py            FastAPI app, CORS, routers, static files (local mode)
+  main.py            FastAPI app, startup/readiness, exact CORS, routers, local static files
   config.py          all env vars
   schemas.py         ★ API contract (JSON shapes)
   auth.py            current_user / optional_user
   api/               thin HTTP routes: content.py, create.py, memes.py
   services/create.py ★ Flow A (match_phrase) + Flow B (suggest_captions), timeouts, fallback, cache
   data/              Repository interface + local / supabase implementations
-  ai/                provider interface, stub, llm (TODO), prompts, moderation
+  ai/                provider interface, stub, Gemini HTTP calls, NumPy index/scoring, prompts, moderation
   render/meme.py     Pillow renderer + fonts/ (same TTFs as the browser)
   bot/               aiogram handlers, webhook route, local polling runner
 backend/tests/       pytest smoke tests for every endpoint
 
 frontend/src/
   api/               client.ts (fetch + auth header), types.ts (★ mirror of schemas.py), useApi hook
-  auth/              AuthContext (fake login until Supabase is wired), supabase client
+  auth/              AuthContext (dev-only fake login; production account gate), Supabase client
   components/        design-system pieces named as in Figma: Button, IconButton, Input, Tag, Sidebar,
                      Artwork, ArtworkCard, AuthorCard, MemeCard, Portrait, StoryCard, ModeSwitch, Layout
   editor/            MemeCanvas (react-konva), CaptionControls (3b panel), MemeWorkspace (shared
@@ -49,8 +63,9 @@ frontend/src/
 data/
   seed/*.json        content in the same columns as the DB (placeholder rows marked «ЗАГЛУШКА»)
   images/            placeholder PNGs (scripts/make_placeholders.py)
-  schema.sql         Supabase tables
-  scripts/           make_placeholders (works), import_sheet / process_images / profile_artworks (TODO)
+  schema.sql         Supabase tables, including artwork_embeddings vector(768)
+  embeddings/        generated local vector cache (gitignored)
+  scripts/           import/profile/image utilities, upload_to_supabase.py, embed_artworks.py
 ```
 
 ## Routes (frontend)
@@ -73,14 +88,14 @@ data/
 - **A (Backend + AI):** `ai/llm.py` + `ai/prompts.py` (T05, T13, T17), `data/supabase_repo.py` + `data/schema.sql` (T04), moderation + rate limit (T21), `data/scripts/process_images.py` and `profile_artworks.py` (T11, T12).
 - **B (Frontend):** pages are wired to the stub API and look roughly like Figma. Polish them, then the editor TODOs in `editor/MemeCanvas.tsx` (resize handles, touch), mobile (US-11), Supabase login (T22).
 - **C (Content):** fill `data/seed/*.json` (or the Google Sheet + `import_sheet.py`). Restart the backend and the site shows new content without code changes. Replace every «ЗАГЛУШКА».
-- **D (Bot + DevOps):** deploy with `render.yaml` + Vercel (T02, T03), BotFather token, `bot/handlers.py` (T19, T26), extra fonts in `render/fonts/` (T16).
+- **D (Bot + DevOps):** apply and verify the prepared Docker API + Render Static Site configuration (T02, T03); enable the optional bot only if ready. See [deployment checklist](DEPLOYMENT.md). Bot feature work and extra fonts remain separate tasks.
 
 ## Gotchas already hit
 
 - **CORS and canvas export.** Every artwork `<img>` must have `crossOrigin="anonymous"` (done in `Artwork.tsx`). Otherwise the browser caches a non-CORS copy of the image, and the Konva editor then fails to load the same URL; it shows an empty canvas. Supabase Storage public buckets send CORS headers, so this keeps working after the switch.
 - **Fonts in Konva.** The canvas measures text once, so `MemeCanvas` re-renders after `document.fonts.load()`. Each meme font must also be in the Google Fonts link in `index.html` **and** in `backend/app/render/fonts/` + `FONT_FILES`.
 - **Render free tier** sleeps after about 15 minutes, and its disk is wiped on every deploy. In `DATA_BACKEND=local` mode, saved memes on Render disappear after a redeploy. That's fine for testing; switch to Supabase before the demo.
-- **Python 3.11** (Render default in `render.yaml`), so no 3.12-only syntax.
+- **Python 3.11** (backend Docker image), so no 3.12-only syntax.
 
 ## Open questions from the design review
 
@@ -92,5 +107,5 @@ Gaps between the plan, the Figma screens and the DB schema. The code takes the n
 4. **There is no artwork detail screen.** The gallery says «Натисніть на картину, щоб прочитати її історію…». Currently a click opens 2b with the painting preselected.
 5. **The «Усі автори» page (US-09, Must) is not designed.** `/artists` is a simple placeholder grid.
 6. **Not designed yet:** the login dialog, mobile layouts (US-11 is Must), and loading/empty/error states (simple placeholders exist in `Layout.tsx`).
-7. **Meme privacy.** `GET /api/memes/{id}` is readable by anyone with the link, to make share links simple. Is that OK, or do we add an `is_public` flag?
+7. **Meme privacy (deferred).** `GET /api/memes/{id}` and meme files are public-by-link. ADR 0003 excludes a privacy redesign from the initial release; do not describe them as private.
 8. **«Інша картина» in Flow A** cycles through the Top-5 without a new AI call. Is that enough for US-01?
