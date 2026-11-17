@@ -97,15 +97,30 @@ def test_renderer():
     assert Image.open(io.BytesIO(png)).size == (600, 400)
 
 
-def test_review_status_hides_unreviewed_artworks():
-    """Only approved artworks are shown, unless INCLUDE_UNREVIEWED is on (ADR 0001)."""
+def test_review_status_hides_unreviewed_artworks(tmp_path):
+    """Only approved artworks are shown; INCLUDE_UNREVIEWED adds pending ones, never rejected (ADR 0001).
+
+    Uses its own seed files, so it keeps working when every real artwork has been reviewed.
+    """
+    import json
+
     from app.config import Settings
     from app.data.local_repo import LocalRepository
 
-    live = LocalRepository(Settings(include_unreviewed=False))
-    dev = LocalRepository(Settings(include_unreviewed=True))
-    assert all(w["review_status"] == "approved" for w in live.artworks.values())
-    assert any(w["review_status"] == "pending" for w in dev.artworks.values())
+    artist = {"id": 1, "slug": "a", "name_uk": "Автор"}
+    work = {"artist_id": 1, "image_url": "images/x.jpg", "tags": [], "meme_profile": {}}
+    artworks = [
+        {**work, "id": 1, "slug": "w1", "title_uk": "Схвалена", "review_status": "approved"},
+        {**work, "id": 2, "slug": "w2", "title_uk": "Очікує", "review_status": "pending"},
+        {**work, "id": 3, "slug": "w3", "title_uk": "Відхилена", "review_status": "rejected"},
+    ]
+    for name, rows in (("artists", [artist]), ("artworks", artworks), ("facts", [])):
+        (tmp_path / f"{name}.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    live = LocalRepository(Settings(include_unreviewed=False, seed_dir=tmp_path))
+    dev = LocalRepository(Settings(include_unreviewed=True, seed_dir=tmp_path))
+    assert set(live.artworks) == {1}
+    assert set(dev.artworks) == {1, 2}  # rejected stays hidden
     assert len(dev.catalogue()) > len(live.catalogue())
 
 
