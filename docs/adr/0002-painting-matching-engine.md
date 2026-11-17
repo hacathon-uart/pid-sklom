@@ -234,7 +234,7 @@ The same phrase gives the same result in the same mode. Results are cached in me
 - Every profile edit needs a re-run of the embed script after the import and upload scripts.
 - Free tier: user phrases may be used by Google, and the limits can change without notice.
   Both are accepted for the hackathon and revisited before a real launch.
-- Flow B (painting → captions) is out of scope here and follows in a separate ADR.
+- Flow B (painting → captions) is out of scope here; see ADR 0005.
 
 ## Evaluation log
 

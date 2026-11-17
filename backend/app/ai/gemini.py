@@ -5,6 +5,7 @@ Used by the backend (one query embedding per new phrase) and by data/scripts/emb
 non-normalised vectors when output_dimensionality is below the model's full size.
 """
 
+import json
 import time
 
 import httpx
@@ -91,3 +92,25 @@ def embed_documents(
             if i < len(texts):
                 time.sleep(pause_s)
     return np.vstack(out) if out else np.zeros((0, dim), dtype=np.float32)
+
+
+async def generate_json(
+    prompt: str, *, system: str, api_key: str, model: str, timeout: float, temperature: float = 1.0
+) -> dict:
+    """One text prompt -> parsed JSON object (generateContent in JSON mode). Raises on any failure."""
+    body = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": temperature},
+    }
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        r = await client.post(f"{BASE}/{model}:generateContent", headers={"x-goog-api-key": api_key}, json=body)
+    if r.status_code == 429:
+        raise RateLimited(r.text[:200])
+    r.raise_for_status()
+    data = r.json()
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as e:
+        raise ValueError(f"Gemini returned no text: {str(data)[:200]}") from e
+    return json.loads(text)

@@ -89,7 +89,10 @@ async def suggest_captions(artwork_id: int, exclude: list[str] | None = None) ->
     artwork = repo.get_artwork(artwork_id)
     if artwork is None:
         raise NotFoundError("Картину не знайдено")
-    fallback = repo.fallback_captions(artwork_id)
+    # Offline captions (Gemini unreachable / failed): the artwork's meme_situations first, then its curated ones.
+    fallback = list(dict.fromkeys(
+        [x[:1].upper() + x[1:] for x in repo.situations(artwork_id)] + repo.fallback_captions(artwork_id)
+    ))
     exclude = exclude or []
     source: Source = "ai"
     try:
@@ -98,9 +101,6 @@ async def suggest_captions(artwork_id: int, exclude: list[str] | None = None) ->
         )
         if len(captions) < 1:
             raise ValueError("no captions")
-    except NotImplementedError:  # Flow B with Gemini is not built yet (ADR 0002 is Flow A only)
-        captions = await _fallback.captions(artwork, fallback, exclude)
-        source = "fallback"
     except Exception:
         log.exception("AI captions failed, using fallback")
         captions = await _fallback.captions(artwork, fallback, exclude)

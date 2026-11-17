@@ -24,15 +24,27 @@ MATCH = """Фраза користувача: «{phrase}»
 """
 
 # Flow B: painting -> 3 captions.
+# {profile}: about text, mood, meme situations, tags. {sensitivity}: see CAPTIONS_SENSITIVE / CAPTIONS_NO_GO.
 CAPTIONS = """Картина: «{title}», {artist}.
 Профіль картини: {profile}
-Не повторюй ці підписи: {exclude}
+{sensitivity}Не повторюй ці підписи: {exclude}
 
 Придумай 3 короткі різні підписи-меми (до 12 слів кожен):
 1) про щоденне життя, 2) про роботу або навчання, 3) грайливий, з історії самої картини.
+«Ситуації» в профілі — лише натхнення для теми. Не копіюй їх дослівно і не переказуй майже слово в слово:
+придумай власне формулювання. Підписи мають відрізнятися за настроєм і будовою речення.
 Поверни JSON: {{"captions": [{{"text": "...", "kind": "everyday"}}, {{"text": "...", "kind": "work"}},
   {{"text": "...", "kind": "story"}}]}}
 """
+
+# Added to {sensitivity} when artworks.is_sensitive (tragic / religious / war works).
+CAPTIONS_SENSITIVE = """УВАГА: картина чутлива (трагічна, релігійна або пов'язана з війною чи втратою).
+Тон — теплий, лагідний, співчутливий, максимум легка самоіронія про власні буденні почуття.
+Заборонено: висміювати страждання, смерть, війну, віру, зображених людей; чорний гумор; сарказм щодо сюжету картини.
+"""
+
+# Added to {sensitivity} when meme_profile.do_not_use_for is not empty.
+CAPTIONS_NO_GO = "Не використовуй цю картину для тем: {topics}. Уникай їх у підписах.\n"
 
 # Step 0 (data/scripts/profile_artworks.py): image -> meme profile.
 PROFILE = """Опиши цю картину для підбору мемів. Поверни JSON:
