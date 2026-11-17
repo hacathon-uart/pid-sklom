@@ -7,16 +7,16 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 
 export function OwnCaptionPage() {
   const artworkId = Number(useParams().artworkId);
   const navigate = useNavigate();
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const draft = useMemeDraft("Ваш підпис тут", "top");
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png, intent) => api.createMeme(artworkId, style, png, intent));
+  const { draft, stageRef, error: saveError, savedId, justSaved, save } =
+    useMemeEditor(artworkId, { initialText: "Ваш підпис тут", position: "top" });
 
   const back = (
     <Link to={`/create/painting?artwork=${artworkId}`} className="t-strong flex items-center gap-2 text-accent">
@@ -42,7 +42,7 @@ export function OwnCaptionPage() {
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
-        onSave={() => toggle(draft.style)}
+        onSave={save}
         savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}

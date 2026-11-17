@@ -40,6 +40,12 @@ a reload in the same browser tab. Restoring that draft does not publish changes:
 updating the saved meme, including its frame, requires explicit Save. Browser
 storage failures are shown rather than silently claiming the draft is durable.
 
+Within one creation flow, each artwork has its own draft and saved-meme identity.
+Selecting an alternative for the first time inherits the current caption/style
+but starts unsaved. Returning to an artwork restores its own draft and updates
+only its saved meme. Late save responses cannot change the active artwork's
+identity. Switching artwork never replaces an existing meme's underlying artwork.
+
 ## Three-generation guest allowance
 
 Guests can complete **three successful phrase-match or caption-generation
@@ -257,6 +263,9 @@ Do not log bearer tokens, OAuth codes or guest credentials.
 - Edit/save/reload restores the latest caption and style, not the pre-login
   snapshot. Unsaved changes also survive reload without changing the public meme;
   the next explicit Save updates the existing saved ID.
+- Save artwork A, select and save alternative B, then return to A: both drafts,
+  frames and saved IDs remain independent, including across reload and delayed
+  save responses.
 - Two real users see separate collections and cannot edit/delete each other's
   memes. Invalid/expired tokens cannot perform account operations.
 - Shared pages/PNGs remain readable without login, with the public-by-link notice

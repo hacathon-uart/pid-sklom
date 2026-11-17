@@ -6,8 +6,8 @@ import { useApi } from "../api/useApi";
 import { Button } from "../components/Button";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 
 export function EditMemePage() {
   const { memeId = "" } = useParams();
@@ -16,11 +16,7 @@ export function EditMemePage() {
   const artworkId = meme.data?.artwork.id;
   const artwork = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const draft = useMemeDraft();
-  const { stageRef, save, saving, error, savedId, justSaved, toggle } = useSaveMeme(
-    (style, png, intent) => api.createMeme(artworkId!, style, png, intent),
-    memeId,
-  );
+  const { draft, stageRef, save, saving, error, savedId, justSaved } = useMemeEditor(artworkId, { memeId });
 
   useEffect(() => {
     if (meme.data && !draft.restored) {
@@ -40,12 +36,12 @@ export function EditMemePage() {
       subtitle="Перетягніть підпис на картині або змініть його стиль під нею"
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => toggle(draft.style)}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
         savedId={savedId} stageRef={stageRef}
         toolbarEnd={
           <>
             <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
-            <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти зміни</Button>
+            <Button onClick={save} disabled={saving}>Зберегти зміни</Button>
           </>
         }>
         {editing ? (

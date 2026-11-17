@@ -100,10 +100,13 @@ export function useTabState<T>(key: string, initial: T): [T, Dispatch<SetStateAc
   }, [fullKey, value]);
   useEffect(() => () => { snapshots.delete(fullKey); }, [fullKey]);
   const setValue: Dispatch<SetStateAction<T>> = useCallback((next) => {
-    setState((previous) => ({
-      key: fullKey,
-      value: typeof next === "function" ? (next as (value: T) => T)(previous.value) : next,
-    }));
-  }, [fullKey]);
+    setState((previous) => {
+      const current = previous.key === fullKey ? previous.value : read<T>(fullKey) ?? initial;
+      return {
+        key: fullKey,
+        value: typeof next === "function" ? (next as (value: T) => T)(current) : next,
+      };
+    });
+  }, [fullKey, initial]);
   return [value, setValue];
 }

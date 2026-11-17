@@ -21,6 +21,7 @@ let closeBrowser;
 let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
 const state = { used: 0, calls: 0, exchanges: 0, saves: 0, updates: 0, cancelNext: false,
+  holdNextSave: false, releaseSave: null, holdNextArtwork: false, releaseArtwork: null,
   lastExclude: [], results: new Map(), memes: new Map() };
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=", "base64");
 const artist = { id: 1, slug: "artist", name: "Artist", birth_year: 1800, death_year: 1900, portrait_url: null };
@@ -61,6 +62,10 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/auth/v1/logout") { res.writeHead(204).end(); return; }
   if (url.pathname === "/api/guest") return json({ enabled: true, token: "browser-guest", remaining: 3 - state.used });
   if (/^\/api\/artworks\/[12]$/.test(url.pathname)) {
+    if (state.holdNextArtwork) {
+      state.holdNextArtwork = false;
+      await new Promise((done) => { state.releaseArtwork = done; });
+    }
     return json({ ...art(Number(url.pathname.split("/").at(-1))), about: "Description", tags: [], facts: [], artist_facts: [], story });
   }
   if (url.pathname === "/api/artists/artist") return json({ ...artist, short_bio: "", long_bio: "", artworks: [art()], facts: [], sources: [] });
@@ -92,6 +97,10 @@ const server = createServer(async (req, res) => {
         image_url: `${origin}/painting.png`, is_favorite: false, created_at: new Date().toISOString(), can_edit: true };
       state.memes.set(meme.id, meme);
       state.results.set(key, meme);
+    }
+    if (state.holdNextSave) {
+      state.holdNextSave = false;
+      await new Promise((done) => { state.releaseSave = done; });
     }
     return json(state.results.get(key), 201);
   }
@@ -286,6 +295,66 @@ try {
   await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'still-limited'");
 
   {
+    const before = state.saves;
+    await editCaption("Artwork A draft");
+    await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').click()");
+    await saveEditor();
+    const first = [...state.memes.values()].find((meme) => meme.caption === "Artwork A draft");
+    assert(first);
+    await click("Test painting 2");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork A draft'");
+    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').getAttribute('aria-checked')"), "true",
+      "A newly selected artwork inherits the current caption and style");
+    await editCaption("Artwork B draft");
+    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    state.holdNextSave = true;
+    await saveEditor();
+    assert.equal(state.saves, before + 2, "Switching artwork must create a separate meme, not PATCH the prior artwork");
+    const second = [...state.memes.values()].find((meme) => meme.caption === "Artwork B draft");
+    assert.equal(first.artwork.id, 1);
+    assert.equal(first.caption, "Artwork A draft", "Saving B must leave A unchanged");
+    assert.equal(second?.artwork.id, 2);
+    assert(state.releaseSave, "B's save response must still be pending");
+    await click("Test painting 1");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork A draft'");
+    state.releaseSave();
+    state.releaseSave = null;
+    await delay(100);
+    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').getAttribute('aria-checked')"), "true");
+    await editCaption("Artwork A revised");
+    await saveEditor();
+    assert.equal(state.saves, before + 2, "Returning to A must reuse its saved identity");
+    assert.equal(first.caption, "Artwork A revised", "A late response for B must not replace A's save identity");
+    assert.equal(second.caption, "Artwork B draft");
+    await click("Test painting 2");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork B draft'");
+    await command("Page.reload");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork B draft'");
+    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').getAttribute('aria-checked')"), "true");
+    await editCaption("Artwork B revised");
+    await saveEditor();
+    assert.equal(state.saves, before + 2, "Reload must retain B's save identity");
+    assert.equal(second.caption, "Artwork B revised");
+    assert.equal(first.caption, "Artwork A revised");
+    await click("Test painting 1");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork A revised'");
+    state.holdNextArtwork = true;
+    await click("Test painting 2");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork B revised'");
+    const deadline = Date.now() + 10000;
+    while (!state.releaseArtwork && Date.now() < deadline) await delay(50);
+    assert(state.releaseArtwork);
+    await click("Test painting 1");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork A revised'");
+    state.releaseArtwork();
+    state.releaseArtwork = null;
+    await delay(100);
+    assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Artwork A revised",
+      "A late artwork-details response must not revert the active selection");
+    console.log("PASS: artwork switching preserves separate drafts and saved identities, including delayed saves and reload");
+  }
+
+  {
     await navigate("/create/painting/2/own");
     await editCaption("Saved after login");
     await saveEditor();
@@ -318,11 +387,22 @@ try {
     await evaluate("Storage.prototype.setItem = window.originalSetItem; delete window.originalSetItem");
     await editCaption("Recovered local draft");
     assert.equal(saved.caption, "Unsaved revision", "A local storage failure must not trigger a server save");
+    const creates = state.saves;
+    await navigate(`/me/memes/${saved.id}/edit`);
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved revision'");
+    await editCaption("Unsaved existing-meme edit");
+    await command("Page.reload");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved existing-meme edit'");
+    await saveEditor();
+    assert.equal(state.saves, creates, "Editing a saved meme must never create a new meme");
+    assert.equal(saved.caption, "Unsaved existing-meme edit");
     console.log("PASS: reload restores latest saved and unsaved draft fields without autosaving");
   }
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");
 } finally {
+  state.releaseSave?.();
+  state.releaseArtwork?.();
   if (chrome && chrome.exitCode === null) {
     const exited = new Promise((done) => chrome.once("exit", done));
     if (closeBrowser) await closeBrowser();

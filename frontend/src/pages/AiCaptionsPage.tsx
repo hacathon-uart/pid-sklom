@@ -8,8 +8,8 @@ import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
 import { describeStyle } from "../editor/model";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 import { pending, RESUME, useTabState } from "../auth/workflow";
 
 export function AiCaptionsPage() {
@@ -20,8 +20,7 @@ export function AiCaptionsPage() {
   const [loadingCaptions, setLoadingCaptions] = useState(false);
   const [captionsError, setCaptionsError] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState(false);
-  const draft = useMemeDraft("");
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png, intent) => api.createMeme(artworkId, style, png, intent));
+  const { draft, stageRef, error: saveError, savedId, justSaved, save } = useMemeEditor(artworkId);
 
   const loadCaptions = async (exclude: string[]) => {
     setLoadingCaptions(true);
@@ -61,7 +60,7 @@ export function AiCaptionsPage() {
       back={back}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => toggle(draft.style)}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={save}
         savedId={savedId} stageRef={stageRef}>
         <div className="mb-3 flex items-center justify-between">
           <div className="t-label">Підписи від ШІ</div>

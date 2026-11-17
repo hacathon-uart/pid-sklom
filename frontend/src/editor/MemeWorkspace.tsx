@@ -11,16 +11,15 @@
  * (MemeViewPage), where favourites keep the crack.
  * The frame (draft.frame) is part of the draft; account changes require explicit Save.
  *
- * The page owns `stageRef` (from useSaveMeme) so its header «Зберегти» button can export the canvas.
+ * The page owns `stageRef` (from useMemeEditor) so its header «Зберегти» button can export the canvas.
  */
 import type Konva from "konva";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router";
-import { api } from "../api/client";
-import type { ArtworkSummary, MemeStyle, Story } from "../api/types";
+import type { ArtworkSummary, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
-import { pending, read, RESUME, remove, route, write } from "../auth/workflow";
+import { pending, RESUME, remove, route } from "../auth/workflow";
 import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
 import { ErrorMessage } from "../components/Layout";
@@ -159,72 +158,6 @@ export function MemeWorkspace({
       {story ? <StoryCard artwork={artwork} story={story} /> : <div className="h-96 animate-pulse rounded-story bg-muted" />}
     </div>
   );
-}
-
-/**
- * Shared save logic, including a durable intent across Google redirects/retries.
- * Repeated saves update the same meme. Deletion is a separate confirmed action.
- * `initialId`: the meme is already saved (edit screen).
- */
-export function useSaveMeme(
-  persist: (style: MemeStyle, png: string, intent: string) => Promise<{ id: string }>,
-  initialId: string | null = null,
-) {
-  const stageRef = useRef<Konva.Stage | null>(null);
-  const { requireLogin, user } = useAuth();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedId, setSavedId] = useState<string | null>(() =>
-    initialId ?? read<string>(`saved:${user?.id}:${route()}`),
-  );
-  const [justSaved, setJustSaved] = useState(false); // shows the «Збережено» notice
-  const busy = useRef(false);
-  const intentKey = `save:${route()}`;
-
-  const save = (style: MemeStyle) => {
-    if (busy.current) return;
-    if (!authEnabled) {
-      setError("Збереження в акаунт поки недоступне. Завантажте мем як PNG");
-      return;
-    }
-    let intent: { id: string; style: MemeStyle };
-    try {
-      const previous = read<{ id: string; style: MemeStyle }>(intentKey);
-      if (previous && JSON.stringify(previous.style) === JSON.stringify(style)) intent = previous;
-      else {
-        if (!savedId && !window.confirm("Збережений мем і PNG будуть доступні всім, хто має посилання. Зберегти?")) return;
-        intent = { id: crypto.randomUUID(), style };
-        write(intentKey, intent);
-      }
-    } catch (failure) {
-      setError((failure as Error).message);
-      return;
-    }
-    requireLogin(async () => {
-      busy.current = true;
-      setSaving(true);
-      setError(null);
-      try {
-        const stage = stageRef.current;
-        if (!stage?.getAttr("exportReady")) throw new Error("Зображення та шрифти ще завантажуються. Спробуйте ще раз");
-        const png = exportPng(stage);
-        const meme = savedId ? await api.updateMeme(savedId, { style, image_data_url: png }) : await persist(style, png, intent.id);
-        setSavedId(meme.id);
-        write(`saved:${user?.id}:${route()}`, meme.id);
-        remove(intentKey);
-        setJustSaved(true);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Не вдалося виконати дію");
-      } finally {
-        busy.current = false;
-        setSaving(false);
-      }
-    }, { kind: "save", route: route(), id: intent.id });
-  };
-
-  const toggle = save;
-
-  return { stageRef, save, toggle, saving, error, savedId, justSaved };
 }
 
 /** Error or «Збережено» message under the page header. */

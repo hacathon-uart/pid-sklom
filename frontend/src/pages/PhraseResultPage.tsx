@@ -13,8 +13,8 @@ import { Input } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 import { useTabState } from "../auth/workflow";
 
 export function PhraseResultPage() {
@@ -25,11 +25,10 @@ export function PhraseResultPage() {
   const { data: match, error, loading, reload } = useApi(() => api.match(phrase, description), [phrase, description]);
   const [selected, setSelected] = useTabState<{ artwork: ArtworkSummary; story: Story | null } | null>("selected", null);
   const [editing, setEditing] = useState(false);
-  const current = selected;
-  const draft = useMemeDraft(phrase);
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png, intent) =>
-    api.createMeme(current!.artwork.id, style, png, intent),
-  );
+  const [selectionError, setSelectionError] = useState<{ artworkId: number; message: string } | null>(null);
+  const current = selected ?? (match ? { artwork: match.artwork, story: match.story } : null);
+  const { draft, stageRef, error: saveError, savedId, justSaved, save } =
+    useMemeEditor(current?.artwork.id, { initialText: phrase });
 
   useEffect(() => {
     if (match) {
@@ -41,8 +40,13 @@ export function PhraseResultPage() {
 
   const pick = async (artwork: ArtworkSummary) => {
     setSelected({ artwork, story: null });
-    const detail = await api.artwork(artwork.id); // default story for this painting
-    setSelected({ artwork, story: detail.story });
+    setSelectionError(null);
+    try {
+      const detail = await api.artwork(artwork.id);
+      setSelected((previous) => previous?.artwork.id === artwork.id ? { artwork, story: detail.story } : previous);
+    } catch (failure) {
+      setSelectionError({ artworkId: artwork.id, message: (failure as Error).message });
+    }
   };
 
   const nextAlternative = () => {
@@ -65,13 +69,14 @@ export function PhraseResultPage() {
       }
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
+      {selectionError?.artworkId === current.artwork.id && <ErrorMessage error={selectionError.message} />}
       <MemeWorkspace
         artwork={current.artwork}
         story={current.story}
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
-        onSave={() => toggle(draft.style)}
+        onSave={save}
         savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={editing ? nextAlternative : undefined}
