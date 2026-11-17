@@ -67,6 +67,11 @@ live provider/content verification remains required.
 - Render CLI access and paid Blueprint validation pass after the owner added
   billing. Validation reports the intended two services; it does not provision them.
   No paid resources were created.
+- Read-only checks against the existing Supabase project find 1 artist, 15 artwork
+  rows, 1 fact and 108 configured-model vectors. The production-style startup check
+  loads **13 visible artworks and 108 compatible vectors** successfully. No SQL,
+  imports, Gemini calls or data mutations were performed. Image delivery, live
+  Gemini matching and deployed browser behavior still require verification.
 
 ### Local container check
 
@@ -201,8 +206,9 @@ The new embedding-script dry run passed: **108 texts for 13 artworks**, all
 requiring embedding in this clean validation environment. It checks counts only;
 no live embeddings were generated.
 The original assessment did not exercise external services. Container builds and
-offline smoke checks now pass; live Supabase, Gemini, Telegram and browser flows
-remain unverified. Render CLI workspace access is verified.
+offline smoke checks now pass. Supabase content/vector startup is verified read-only;
+live Gemini, image delivery, Telegram and browser flows remain unverified.
+Render CLI workspace access is verified.
 
 ## Prioritized deployment backlog
 
