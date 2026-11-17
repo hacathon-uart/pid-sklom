@@ -2,10 +2,9 @@
 
 Updated on 2026-11-17 against upstream `main` revision `c1f7e57`.
 The agreed direction is recorded in [ADR 0003](adr/0003-portable-render-first-release.md);
-this document tracks the work still required, not a deployed or production-ready system.
-Dockerfiles, release safeguards and the Render Blueprint are prepared locally.
-No hosting resources have been created at this checkpoint. The owner has authorized
-proceeding with deployment; the selected revision and cloud release still need verification.
+this document records the first deployment and the work still required.
+The website and Docker API are deployed on Render; the verified release checkpoint
+below is not a claim of production hardening, load testing or released accounts.
 Existing task numbers refer to [the hackathon plan](Hachaton_plan.md).
 Provider pricing and platform constraints are recorded separately in
 [Render research](RENDER_RESEARCH.md), with official sources.
@@ -47,7 +46,42 @@ Any internal endpoint must nevertheless have server-side admin authorization bef
 exposure. Do not expose fake-auth personal saving as a real account feature;
 keep it unavailable until proper user auth is ready. These are implementation
 requirements. Account disabling and startup/readiness checks are now implemented;
-live provider/content verification remains required.
+live provider/content checks have passed for the initial catalogue.
+
+## Hosted release checkpoint (2026-11-17)
+
+- Website: **https://pidsklom-web-bhw6.onrender.com**
+- API readiness: **https://pidsklom-api-bhw6.onrender.com/api/ready**
+- Both services deploy `herman/deployment` at revision
+  `1cbdb86c7be85a7858041ae8961ec27e5749af8c`. PR #5 remains open and unmerged
+  by owner decision. Later documentation-only commits do not change this runtime.
+- The API runs one `0.5c-512mb` instance in Frankfurt; the frontend is a free
+  Static Site. Supabase/Gemini credentials were supplied privately, not committed.
+  Accounts and Telegram remain disabled. No SQL, imports or saved-data writes ran.
+- Hosted checks pass for readiness, 13 visible artworks, one artist, exact-origin
+  CORS/preflight, fabricated-token rejection and immutable hashed-asset caching.
+- Headless Chrome passes home/deep-link loads, caption editing that changes the
+  rendered canvas, and framed PNG export (1440 x 1190, approximately 2.67 MB).
+  A browser-origin live match returns `source=embeddings`; no browser exceptions
+  or failed HTTP responses occur in the passing acceptance run.
+- A pinned API redeploy preserves the catalogue and browser flows. A real Render
+  rollback to the first verified deploy also succeeds; both deploys use the same
+  safe application revision. This rehearses restoring an artifact, not reverting
+  SQL/data or proving compatibility with a different code/schema version.
+- A controlled provider exception in the local API container returns HTTP `201`
+  with `source=fallback` and alternatives. No production provider outage was induced.
+- Early probes immediately after initial provisioning intermittently failed at the
+  public edge. Subsequent repeated HTTP and full-browser checks pass without a
+  code/configuration change; app logs show no intervening restart. Treat initial
+  Render `live` status as insufficient without public-URL acceptance checks.
+- Service auto-deploy remains `checksPass` on the unmerged branch. Blueprint
+  auto-sync is disabled deliberately; configuration changes require plan/approval.
+  Post-provisioning planning reports no changes. Move the Blueprint and verify both
+  service branches explicitly when the owner later authorizes merging to `main`.
+
+Sustained/concurrent AI load, actual Supabase region, budget alerts/limits and
+modern account authentication remain unverified or follow-up work. Free Supabase
+pause/backup limits and uncapped anonymous matching costs still apply.
 
 ## Preparation checkpoint
 
@@ -67,7 +101,7 @@ live provider/content verification remains required.
   These checks do not call Gemini, verify image URLs or continuously probe Supabase.
 - Render CLI access and paid Blueprint validation pass after the owner added
   billing. Validation reports the intended two services; it does not provision them.
-  No paid resources were created.
+  No paid resources were created during that preflight validation.
 - Read-only checks against the existing Supabase project find 1 artist, 15 artwork
   rows, 1 fact and 108 configured-model vectors. The production-style startup check
   loads **13 visible artworks and 108 compatible vectors** successfully. No SQL,
@@ -184,7 +218,7 @@ Important budget constraints:
 
 | Area | Observed implementation | Deployment implication |
 | --- | --- | --- |
-| Hosting | [`render.yaml`](../render.yaml) declares a paid Docker API and free Static Site; both applications have Dockerfiles | Builds and paid Blueprint validation pass; no resources exist |
+| Hosting | [`render.yaml`](../render.yaml) declares the deployed paid Docker API and free Static Site; both applications have Dockerfiles | Frankfurt release, browser acceptance, API redeploy and same-revision artifact rollback pass; see hosted checkpoint |
 | Data | [`SupabaseRepository`](../backend/app/data/supabase_repo.py) is implemented, despite stale TODO comments elsewhere | Wire it up and verify it; do not schedule a rewrite |
 | Content delivery | Startup loads the cached catalogue and configured live vectors before readiness | Content updates need an explicit restart; readiness is not continuous dependency monitoring |
 | Persistence | Local mode writes memes under `backend/media`; Supabase mode uploads PNGs and writes database rows | Use Supabase for any deployment promising saved data |
@@ -219,7 +253,8 @@ requiring embedding in this clean validation environment. It checks counts only;
 no live embeddings were generated.
 The original assessment did not exercise external services. Container builds and
 offline smoke checks now pass. Supabase content/vector startup, one live Gemini
-match and its image/CORS are verified; Telegram and browser flows remain unverified.
+match and its image/CORS were verified before provisioning; hosted browser checks
+now also pass. Telegram remains disabled and unverified.
 Render CLI workspace access is verified.
 
 ## Prioritized deployment backlog
@@ -364,5 +399,5 @@ a deploy must not overwrite live admin edits. The [data map](DATA_MODEL.md) cove
 the current tables, images, vectors and that future cutover.
 
 The exact admin identity mechanism and future workflow schema/runner remain
-unselected. Containers, account gates and the Blueprint are now prepared locally;
-cloud provisioning and live deployment have not been performed.
+unselected. Containers, account gates and the Blueprint are implemented and the
+initial website is deployed; enrichment/admin work is not part of that release.
