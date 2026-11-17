@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     images_dir: Path = REPO_ROOT / "data" / "images"
     media_dir: Path = BACKEND_DIR / "media"  # saved memes in local mode (gitignored)
+    # Only review_status «approved» artworks are shown. true also shows «pending» ones, so the
+    # team can work with fresh AI profiles before review. Never true on the live site.
+    include_unreviewed: bool = False
 
     supabase_url: str = ""
     supabase_service_key: str = ""

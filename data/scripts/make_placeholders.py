@@ -22,6 +22,8 @@ def main() -> None:
     out_dir = ROOT / "data/images"
     out_dir.mkdir(exist_ok=True)
     for w in artworks:
+        if not w["slug"].startswith("stub-"):
+            continue  # real paintings come from process_images.py; never overwrite them
         rnd = random.Random(w["id"])
         size = SIZES.get(w.get("genre"), (1200, 900))
         img = Image.new("RGB", size, rnd.choice(PALETTE))

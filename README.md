@@ -33,7 +33,16 @@ npm run dev                            # http://localhost:5173
 
 **Telegram bot** (optional): put a test bot token from BotFather in `backend/.env`, keep uvicorn running, then `python -m app.bot.polling`.
 
-**Placeholder images:** `python data/scripts/make_placeholders.py` regenerates `data/images/` from `data/seed/artworks.json`.
+**Placeholder images:** `python data/scripts/make_placeholders.py` regenerates the `stub-*` images in `data/images/` from `data/seed/artworks.json`.
+
+**Real artwork data** (how it is stored and why: [docs/adr/0001-artwork-data-storage.md](docs/adr/0001-artwork-data-storage.md)):
+
+```bash
+python3 data/scripts/import_profiles.py                     # AI profiles -> data/seed/artworks.json
+backend/.venv/bin/python data/scripts/process_images.py     # download + resize images -> data/images/
+```
+
+Both are safe to re-run. Only artworks with `review_status: "approved"` are shown; put `INCLUDE_UNREVIEWED=true` in `backend/.env` to also see `pending` ones while developing. To approve a painting, set `review.status` to `"approved"` in `data/artworks_meme_descriptions.json` and run the import again.
 
 ## Repo layout
 

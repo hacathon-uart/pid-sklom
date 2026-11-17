@@ -5,7 +5,7 @@ Two implementations:
   supabase_repo.SupabaseRepository — Supabase Postgres + Storage (owner: A, T04/T11)
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from app.schemas import (
@@ -22,13 +22,20 @@ from app.schemas import (
 
 @dataclass
 class CatalogueItem:
-    """Compact per-artwork info sent to the AI for matching (~25 tokens each)."""
+    """Compact per-artwork info sent to the AI for matching (~25 tokens each).
+
+    Built from artworks.meme_profile (format: docs/adr/0001-artwork-data-storage.md).
+    """
 
     id: int
     title: str
     tags: list[str]
-    situations: list[str]
-    mood: str = ""
+    situations: list[str]  # meme_profile.meme_situations — the main matching signal
+    mood: str = ""  # meme_profile.mood joined with ", "
+    is_sensitive: bool = False  # tragic / religious work: no jokes
+    do_not_use_for: list[str] = field(default_factory=list)
+    meme_potential: int | None = None  # 1–5
+    caption_position: str | None = None  # "top" | "bottom", suggested by the profile
 
 
 class Repository(Protocol):
