@@ -3,7 +3,7 @@
 export type Position = "top" | "middle" | "bottom";
 export type Genre = "portrait" | "landscape" | "everyday" | "avantgarde";
 export type CaptionKind = "everyday" | "work" | "story";
-export type Source = "ai" | "fallback";
+export type Source = "ai" | "embeddings" | "fallback"; // ai = hybrid LLM, embeddings = vector search, fallback = word matching
 
 export const GENRE_LABELS: Record<Genre, string> = {
   portrait: "Портрет",

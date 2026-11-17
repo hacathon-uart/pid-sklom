@@ -45,9 +45,7 @@ create table if not exists artworks (
   is_sensitive      boolean not null default false, -- tragic / religious: no jokes
   meme_potential    smallint check (meme_potential between 1 and 5),
   fallback_captions text[] not null default '{}',
-  embedding_text    text,                       -- exactly the text that was embedded
-  embedding         vector(1536),               -- dimension depends on the model; fixed once the provider is chosen
-  embedding_model   text,                       -- which model produced `embedding`
+  embedding_text    text,                       -- profile text embedded as the «whole» vector (ADR 0002)
   updated_at        timestamptz not null default now()
 );
 create index if not exists artworks_artist on artworks (artist_id);
@@ -116,19 +114,31 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 on conflict (id) do update set public = excluded.public,
   file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
--- Vector search over approved artworks (used from Day 3-4; harmless before). 150 rows: exact scan, no index needed.
-create or replace function match_artworks(query_embedding vector(1536), match_count int default 5)
-returns table (id bigint, similarity float) language sql stable as $$
-  select a.id, 1 - (a.embedding <=> query_embedding) as similarity
-  from artworks a
-  where a.review_status = 'approved' and a.embedding is not null
-  order by a.embedding <=> query_embedding
-  limit match_count;
-$$;
+-- Embeddings (ADR 0002): one row per vector. Per artwork: 1 «whole» (embedding_text),
+-- one «situation» per meme situation, one «avoid» per do_not_use_for rule.
+-- Written by data/scripts/embed_artworks.py; the backend loads them all and searches in memory.
+create table if not exists artwork_embeddings (
+  id          bigserial primary key,
+  artwork_id  bigint not null references artworks(id) on delete cascade,
+  kind        text not null check (kind in ('whole','situation','avoid')),
+  text        text not null,
+  text_hash   text not null,                    -- skip re-embedding unchanged texts
+  model       text not null,                    -- e.g. gemini-embedding-2
+  dim         int not null,
+  embedding   vector(768) not null,             -- L2-normalised
+  unique (artwork_id, kind, text_hash, model, dim)
+);
+create index if not exists artwork_embeddings_artwork on artwork_embeddings (artwork_id);
+alter table artwork_embeddings enable row level security;  -- no policies: backend (service key) only
+
+-- Migration from the first schema: the single per-artwork vector is replaced by artwork_embeddings.
+drop function if exists match_artworks(vector, int);
+alter table artworks drop column if exists embedding;
+alter table artworks drop column if exists embedding_model;
 
 -- Table privileges. The project is created with «Automatically expose new tables» OFF, so nothing
 -- is reachable through the Data API until granted here. RLS policies above then narrow it down.
 grant usage on schema public to anon, authenticated, service_role;
 grant select on artists, artworks, facts to anon, authenticated;       -- RLS: approved / verified rows only
 grant all on all tables in schema public to service_role;               -- backend + upload script
-grant execute on function match_artworks(vector, int) to service_role;
+grant usage, select on all sequences in schema public to service_role;  -- bigserial ids

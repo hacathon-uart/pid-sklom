@@ -47,7 +47,7 @@ PROFILE_KEYS = [
 ]
 
 # Every artwork row has exactly these keys, in this order (= columns of `artworks` in
-# data/schema.sql, except the `embedding` vector, which is never stored in JSON).
+# data/schema.sql, vectors live in artwork_embeddings, see ADR 0002).
 ROW_DEFAULTS = {
     "id": None,
     "wikidata_id": None,

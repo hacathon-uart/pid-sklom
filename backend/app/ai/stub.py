@@ -49,6 +49,7 @@ class StubProvider:
             ranked=ranked,
             reason="Збіг за тегами" if best_overlap else "Випадковий вибір (немає збігів за тегами)",
             position="bottom",
+            source="fallback",
         )
 
     async def captions(self, artwork: ArtworkDetail, fallback: list[str], exclude: list[str]) -> list[CaptionOption]:

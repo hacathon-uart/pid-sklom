@@ -31,9 +31,19 @@ class Settings(BaseSettings):
     supabase_service_key: str = ""
     supabase_jwt_secret: str = ""
 
-    ai_api_key: str = ""
-    ai_model: str = ""
+    # AI (ADR 0002). AI_PROVIDER=llm uses Gemini: embeddings for matching, LLM only in hybrid mode.
+    ai_api_key: str = ""  # Gemini API key (Google AI Studio)
+    ai_model: str = "gemini-3.1-flash-lite"  # LLM for MATCH_MODE=hybrid
     ai_timeout_s: float = 8.0
+    embedding_model: str = "gemini-embedding-2"
+    embedding_dim: int = 768
+    embedding_timeout_s: float = 3.0
+    match_mode: Literal["embeddings", "hybrid"] = "embeddings"
+    match_weight_situation: float = 0.7  # score = w·best situation + (1-w)·whole profile
+    match_avoid_threshold: float = 0.80  # drop an artwork when the phrase is this close to a do_not_use_for rule
+    match_sensitive_penalty: float = 0.9  # is_sensitive artworks: score × this
+    # Local copy of the vectors (written by data/scripts/embed_artworks.py, gitignored).
+    embeddings_file: Path = REPO_ROOT / "data" / "embeddings" / "vectors.json"
 
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = "change-me"

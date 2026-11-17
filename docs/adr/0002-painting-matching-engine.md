@@ -35,8 +35,14 @@ hackathon, Ukrainian only.
 
 ### 1. Provider: Gemini API, free tier, models set by config
 
-- Embeddings: `gemini-embedding-001` (multilingual, supports Ukrainian).
-- LLM for the hybrid mode: a Gemini Flash or Flash-Lite model.
+- Embeddings: `gemini-embedding-2` (stable, multilingual, 8,192-token input).
+  `gemini-embedding-001` scored the same on the first check (see the evaluation log) and
+  stays as the fallback choice.
+- LLM for the hybrid mode: `gemini-3.1-flash-lite` (stable, about 5 s on the free tier).
+  Pinned versions, not `-latest` aliases, so results stay reproducible. Checked on our key
+  on 2026-11-17: the Flash models (`gemini-3.5-flash`, `gemini-3.8-flash`) returned
+  503 "high demand", `gemini-3.5-flash-lite` varied from 1.5 s to 12 s, and the 2.5 models
+  are closed to new users.
 - Model names come from env (`EMBEDDING_MODEL`, `AI_MODEL`), never from code, because
   Gemini model names and free-tier availability change often.
 - Vector size: **768** (`output_dimensionality=768`). That is enough for about 1,500 short
@@ -44,7 +50,15 @@ hackathon, Ukrainian only.
   **L2-normalised** before cosine similarity.
 - Task types: `RETRIEVAL_DOCUMENT` for painting texts, `RETRIEVAL_QUERY` for user phrases.
   `SEMANTIC_SIMILARITY` on both sides is the alternative, and the evaluation (section 7)
-  picks the winner.
+  picks the winner. On the first check `gemini-embedding-2` gave identical results with
+  both, so it may ignore the task type.
+- Free-tier rate limit counts **each text in a batch**: batches of 100 texts got HTTP 429
+  at once, and batches of 20 every 3 s were throttled about 1 time in 4. The embed script sends small
+  batches, waits on 429 and resumes. A full run for about 150 artworks (about 1,500 texts)
+  takes roughly 15–20 minutes, once. At runtime a phrase costs one embedding call.
+- The hybrid LLM call often takes longer than 5 s on the free tier. So **`embeddings` is
+  the default mode** and `hybrid` is for experiments until the evaluation shows it is worth
+  the latency.
 
 ### 2. What is embedded: one vector per situation, plus one for the whole profile
 
@@ -203,4 +217,7 @@ The same phrase gives the same result in the same mode. Results are cached in me
 
 | Date | Mode | Model / task type | Weights | hit@1 | hit@5 | MRR | p95 latency | Notes |
 |---|---|---|---|---|---|---|---|---|
-| | | | | | | | | first run pending |
+| 2026-11-17 | embeddings | embedding-001, RETRIEVAL | sit .7 / whole .3 | 13/13 | 13/13 | 1.00 | – | Smoke test: 13 approved works, 13 easy paraphrases; top-1 margin 0.087 |
+| 2026-11-17 | embeddings | embedding-001, RETRIEVAL | whole only | 12/13 | 12/13 | 0.93 | – | «баланс на картці» ranked 7th |
+| 2026-11-17 | embeddings | embedding-2, RETRIEVAL or SEMANTIC | sit .7 / whole .3 | 13/13 | 13/13 | 1.00 | – | Top-1 margin 0.091 |
+| 2026-11-17 | embeddings | embedding-2, RETRIEVAL or SEMANTIC | whole only | 11/13 | 11/13 | 0.87 | – | 2 phrases ranked 7th; confirms per-situation vectors |
