@@ -1,14 +1,7 @@
-/**
- * Login state (US-06, US-07). Owner: B + A — T22.
- *
- * In development without VITE_SUPABASE_URL this is a FAKE login: «Увійти» logs in as «dev»,
- * and the backend (AUTH_MODE=stub) accepts the token "dev" as user id. Swap in Supabase:
- *   - login(): supabase.auth.signInWithOAuth({ provider: "google" }) or signInWithOtp({ email })
- *   - subscribe to supabase.auth.onAuthStateChange and call setAuthToken(session.access_token)
- */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { setAuthToken } from "../api/client";
-import { authEnabled, supabase } from "./supabase";
+import { authConfigurationError, authEnabled, supabase } from "./supabase";
+import { clearAccountState, flushDrafts, pending, PENDING, read, RESUME, remove, route, safeRoute, write, type PendingAction } from "./workflow";
 
 export interface AuthUser {
   id: string;
@@ -18,92 +11,168 @@ export interface AuthUser {
 
 interface AuthState {
   user: AuthUser | null;
-  /** Opens the login flow. Resolves once logged in (fake mode) or after redirect (Supabase). */
+  ready: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
-  /** Run `action` if logged in, otherwise log in first. Use for «Зберегти». */
-  requireLogin: (action: () => void) => void;
+  requireLogin: (action: () => void, continuation?: PendingAction) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 const FAKE_KEY = "pidsklom.fakeUser";
+let callbackExchange: { code: string; promise: ReturnType<NonNullable<typeof supabase>["auth"]["exchangeCodeForSession"]> } | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (supabase || !authEnabled) {
-      setAuthToken(null);
-      return null;
-    }
-    let restored: AuthUser | null = null;
-    try {
-      restored = localStorage.getItem(FAKE_KEY) ? { id: "dev", name: "Dev" } : null;
-    } catch {
-      /* storage blocked */
-    }
-    // Set synchronously: children's effects (first API calls) run before this provider's effects.
-    setAuthToken(restored?.id ?? null);
-    return restored;
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(authConfigurationError);
+  const [offered, setOffered] = useState<PendingAction | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
-    // TODO(B, T22): real Supabase session handling. Pages that need login should wait until the
-    // initial session is restored (supabase.auth.getSession()) before calling the API.
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthToken(session?.access_token ?? null);
-      setUser(
-        session
-          ? {
-              id: session.user.id,
-              name: session.user.user_metadata?.full_name ?? session.user.email ?? "Користувач",
-              avatarUrl: session.user.user_metadata?.avatar_url,
-            }
-          : null,
-      );
-    });
-    return () => data.subscription.unsubscribe();
+    const needed = (event: Event) => setOffered((event as CustomEvent<PendingAction>).detail);
+    window.addEventListener("pidsklom:login-needed", needed);
+    return () => window.removeEventListener("pidsklom:login-needed", needed);
   }, []);
 
-  const login = useCallback(async () => {
-    if (!authEnabled) throw new Error("Вхід поки недоступний");
-    if (supabase) {
-      // TODO(B, T22): show a login dialog with Google + email magic link (not designed yet)
-      await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } });
+  useEffect(() => {
+    let active = true;
+    if (!supabase) {
+      if (authEnabled && localStorage.getItem(FAKE_KEY)) {
+        setAuthToken("dev");
+        setUser({ id: "dev", name: "Dev" });
+      } else setAuthToken(null);
+      setReady(true);
       return;
     }
-    try {
-      localStorage.setItem(FAKE_KEY, "1");
-    } catch {
-      /* private mode: fake login lasts until reload */
-    }
-    setAuthToken("dev");
-    setUser({ id: "dev", name: "Dev" });
+    const client = supabase;
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === "SIGNED_OUT") {
+        try { flushDrafts(); clearAccountState(); }
+        catch (failure) { setError((failure as Error).message); }
+      }
+      setAuthToken(session?.access_token ?? null);
+      setUser(session ? {
+        id: session.user.id,
+        name: session.user.user_metadata?.full_name ?? session.user.email ?? "Користувач",
+        avatarUrl: session.user.user_metadata?.avatar_url,
+      } : null);
+    });
+    const restore = async () => {
+      try {
+        if (window.location.pathname === "/auth/callback") {
+          const query = new URLSearchParams(window.location.search);
+          if (query.get("error")) throw new Error("Вхід скасовано або Google відхилив запит");
+          const code = query.get("code");
+          if (!code) throw new Error("Відповідь входу не містить коду");
+          if (!callbackExchange || callbackExchange.code !== code) {
+            callbackExchange = { code, promise: client.auth.exchangeCodeForSession(code) };
+          }
+          const result = await callbackExchange.promise;
+          if (!active) return;
+          if (result.error) throw result.error;
+          const action = pending();
+          if (action) write(RESUME, action);
+          remove(PENDING);
+          const destination = action?.route ?? read<string>("return") ?? "/";
+          window.location.replace(safeRoute(destination));
+          return;
+        }
+        const result = await client.auth.getSession();
+        if (result.error) throw result.error;
+        if (active) {
+          const session = result.data.session;
+          setAuthToken(session?.access_token ?? null);
+          setUser(session ? {
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name ?? session.user.email ?? "Користувач",
+            avatarUrl: session.user.user_metadata?.avatar_url,
+          } : null);
+          setReady(true);
+        }
+      } catch (failure) {
+        if (!active) return;
+        setError(failure instanceof Error ? failure.message : "Не вдалося відновити сесію");
+        remove(PENDING);
+        remove(RESUME);
+        setReady(true);
+      }
+    };
+    void restore();
+    return () => { active = false; data.subscription.unsubscribe(); };
   }, []);
 
+  const startLogin = useCallback(async (action?: PendingAction) => {
+    setError(null);
+    try {
+      if (!authEnabled) throw new Error("Вхід поки недоступний");
+      flushDrafts();
+      write("return", route());
+      if (action) write(PENDING, action);
+      else remove(PENDING);
+      remove(RESUME);
+      if (supabase) {
+        const result = await supabase.auth.signInWithOAuth({
+          provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (result.error) throw result.error;
+      } else {
+        localStorage.setItem(FAKE_KEY, "1");
+        setAuthToken("dev");
+        setUser({ id: "dev", name: "Dev" });
+        if (action) write(RESUME, action);
+        remove(PENDING);
+      }
+      setOffered(null);
+    } catch (failure) {
+      remove(PENDING);
+      setError(failure instanceof Error ? failure.message : "Не вдалося увійти");
+    }
+  }, []);
+
+  const login = useCallback(() => startLogin(), [startLogin]);
   const logout = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut();
     try {
+      if (supabase) {
+        const result = await supabase.auth.signOut();
+        if (result.error) throw result.error;
+      }
       localStorage.removeItem(FAKE_KEY);
-    } catch {
-      /* ignore */
+      clearAccountState();
+      setOffered(null);
+      setAuthToken(null);
+      setUser(null);
+      // Discard mounted account data and editor ownership after a session change.
+      window.location.assign("/");
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Не вдалося вийти");
     }
-    setAuthToken(null);
-    setUser(null);
   }, []);
 
-  const requireLogin = useCallback(
-    (action: () => void) => {
-      if (user) action();
-      else login().then(() => !supabase && action());
-    },
-    [user, login],
-  );
+  const requireLogin = useCallback((action: () => void, continuation?: PendingAction) => {
+    if (!ready) return;
+    if (user) action();
+    else if (continuation) void startLogin(continuation);
+    else void login();
+  }, [ready, user, startLogin, login]);
 
-  return <AuthContext.Provider value={{ user, login, logout, requireLogin }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, ready, login, logout, requireLogin }}>
+      {(error || offered) && <div role="alert" className="relative z-50 ml-[var(--sidebar-width)] border-b border-line bg-surface p-5">
+        <p>{error ?? "Три гостьові генерації використано. Увійдіть через Google, щоб продовжити."}</p>
+        {offered && <button className="t-strong mr-5 text-accent" onClick={() => void startLogin(offered)}>Увійти через Google і продовжити</button>}
+        <button className="t-strong mr-5" onClick={() => { setOffered(null); setError(null); }}>Закрити</button>
+        {window.location.pathname === "/auth/callback" && <button className="t-strong" onClick={() => {
+          const destination = read<string>("return");
+          window.location.assign(safeRoute(destination ?? "/"));
+        }}>Повернутися до чернетки</button>}
+      </div>}
+      {ready ? <div key={user?.id ?? "guest"}>{children}</div> : <p role="status" className="p-12">Відновлюємо сесію…</p>}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used inside <AuthProvider>");
+  return context;
 }

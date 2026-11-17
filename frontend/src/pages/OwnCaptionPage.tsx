@@ -16,7 +16,7 @@ export function OwnCaptionPage() {
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
   const draft = useMemeDraft("Ваш підпис тут", "top");
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png, intent) => api.createMeme(artworkId, style, png, intent));
 
   const back = (
     <Link to={`/create/painting?artwork=${artworkId}`} className="t-strong flex items-center gap-2 text-accent">

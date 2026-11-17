@@ -18,12 +18,12 @@ export function EditMemePage() {
   const [editing, setEditing] = useState(true);
   const draft = useMemeDraft();
   const { stageRef, save, saving, error, savedId, justSaved, toggle } = useSaveMeme(
-    (style, png) => api.createMeme(artworkId!, style, png),
+    (style, png, intent) => api.createMeme(artworkId!, style, png, intent),
     memeId,
   );
 
   useEffect(() => {
-    if (meme.data) {
+    if (meme.data && !draft.restored) {
       draft.setBlocks(meme.data.style.blocks);
       draft.setFrame(meme.data.style.frame ?? "gold");
     }
@@ -32,6 +32,7 @@ export function EditMemePage() {
 
   if (meme.loading || artwork.loading) return <Page title="Редагування"><Loading /></Page>;
   if (meme.error || !meme.data || !artwork.data) return <Page title="Редагування"><ErrorMessage error={meme.error ?? "Помилка"} /></Page>;
+  if (!meme.data.can_edit) return <Page title="Редагування"><ErrorMessage error="Мем не знайдено у вашій колекції" /></Page>;
 
   return (
     <Page

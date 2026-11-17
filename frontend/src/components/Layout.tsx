@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { Outlet } from "react-router";
 import { Sidebar } from "./Sidebar";
+import { GuestAllowance } from "../auth/GuestAllowance";
 
 export function Layout() {
   return (
     <div className="min-h-screen pl-[var(--sidebar-width)]">
       <Sidebar />
+      <GuestAllowance />
       <Outlet />
     </div>
   );

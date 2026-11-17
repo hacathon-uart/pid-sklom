@@ -15,6 +15,7 @@ import { ModeSwitch } from "../components/ModeSwitch";
 import { CaptionControls } from "../editor/CaptionControls";
 import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
 import { useMemeDraft } from "../editor/useMemeDraft";
+import { useTabState } from "../auth/workflow";
 
 export function PhraseResultPage() {
   const [params] = useSearchParams();
@@ -22,18 +23,18 @@ export function PhraseResultPage() {
   const description = params.get("d") ?? undefined;
 
   const { data: match, error, loading, reload } = useApi(() => api.match(phrase, description), [phrase, description]);
-  const [selected, setSelected] = useState<{ artwork: ArtworkSummary; story: Story | null } | null>(null);
+  const [selected, setSelected] = useTabState<{ artwork: ArtworkSummary; story: Story | null } | null>("selected", null);
   const [editing, setEditing] = useState(false);
   const current = selected;
   const draft = useMemeDraft(phrase);
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) =>
-    api.createMeme(current!.artwork.id, style, png),
+  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png, intent) =>
+    api.createMeme(current!.artwork.id, style, png, intent),
   );
 
   useEffect(() => {
     if (match) {
-      setSelected({ artwork: match.artwork, story: match.story });
-      draft.update(0, { text: match.caption, position: match.position });
+      if (!selected) setSelected({ artwork: match.artwork, story: match.story });
+      if (!draft.restored) draft.update(0, { text: match.caption, position: match.position });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match]);
