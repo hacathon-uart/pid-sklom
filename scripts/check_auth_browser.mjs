@@ -20,13 +20,13 @@ let socket;
 let closeBrowser;
 let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
-const state = { used: 0, calls: 0, exchanges: 0, saves: 0, cancelNext: false,
+const state = { used: 0, calls: 0, exchanges: 0, saves: 0, updates: 0, cancelNext: false,
   lastExclude: [], results: new Map(), memes: new Map() };
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=", "base64");
 const artist = { id: 1, slug: "artist", name: "Artist", birth_year: 1800, death_year: 1900, portrait_url: null };
-const art = () => ({
-  id: 1, slug: "artwork", title: "Test painting", year: 1850, genre: "everyday",
-  image_url: `${origin}/painting.png`, thumb_url: `${origin}/painting.png`, artist,
+const art = (id = 1) => ({
+  id, slug: `artwork-${id}`, title: `Test painting ${id}`, year: 1850, genre: "everyday",
+  image_url: `${origin}/painting-${id}.png`, thumb_url: `${origin}/painting-${id}.png`, artist,
 });
 const story = { about_artwork: "Reviewed painting description", museum: null, artwork_fact: null, artist_fact: null };
 const user = { id: userId, aud: "authenticated", role: "authenticated", email: "browser@example.test",
@@ -60,7 +60,9 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/auth/v1/user") return json(user);
   if (url.pathname === "/auth/v1/logout") { res.writeHead(204).end(); return; }
   if (url.pathname === "/api/guest") return json({ enabled: true, token: "browser-guest", remaining: 3 - state.used });
-  if (url.pathname === "/api/artworks/1") return json({ ...art(), about: "Description", tags: [], facts: [], artist_facts: [], story });
+  if (/^\/api\/artworks\/[12]$/.test(url.pathname)) {
+    return json({ ...art(Number(url.pathname.split("/").at(-1))), about: "Description", tags: [], facts: [], artist_facts: [], story });
+  }
   if (url.pathname === "/api/artists/artist") return json({ ...artist, short_bio: "", long_bio: "", artworks: [art()], facts: [], sources: [] });
   if (url.pathname === "/api/matches" || /\/api\/artworks\/1\/captions/.test(url.pathname)) {
     const key = `${signedIn ? "user" : "guest"}:${req.headers["idempotency-key"]}`;
@@ -73,7 +75,7 @@ const server = createServer(async (req, res) => {
       if (!signedIn) state.used++;
       state.results.set(key, url.pathname === "/api/matches"
         ? { artwork: art(), story, caption: body.phrase, position: "bottom", reason: "match",
-          alternatives: [{ artwork: art(), score: 1 }], source: "fallback" }
+          alternatives: [{ artwork: art(), score: 1 }, { artwork: art(2), score: 0.9 }], source: "fallback" }
         : { artwork_id: 1, source: "fallback", captions: [
           { text: `Caption ${state.calls}`, kind: "everyday" }, { text: "Work", kind: "work" }, { text: "Story", kind: "story" },
         ] });
@@ -86,7 +88,7 @@ const server = createServer(async (req, res) => {
     if (!state.results.has(key)) {
       state.saves++;
       assert(body.image_data_url.startsWith("data:image/png;base64,"));
-      const meme = { id: randomUUID(), artwork: art(), caption: body.style.blocks[0].text, style: body.style,
+      const meme = { id: randomUUID(), artwork: art(body.artwork_id), caption: body.style.blocks[0].text, style: body.style,
         image_url: `${origin}/painting.png`, is_favorite: false, created_at: new Date().toISOString(), can_edit: true };
       state.memes.set(meme.id, meme);
       state.results.set(key, meme);
@@ -99,10 +101,14 @@ const server = createServer(async (req, res) => {
     const meme = state.memes.get(id);
     if (!meme) return json({ detail: "Not found" }, 404);
     if (req.method === "DELETE") { state.memes.delete(id); res.writeHead(204).end(); return; }
-    if (req.method === "PATCH") Object.assign(meme, body);
+    if (req.method === "PATCH") {
+      state.updates++;
+      Object.assign(meme, body);
+      if (body.style) meme.caption = body.style.blocks[0].text;
+    }
     return json({ ...meme, can_edit: signedIn });
   }
-  if (url.pathname === "/painting.png") { res.writeHead(200, { "Content-Type": "image/png" }).end(png); return; }
+  if (/^\/painting(?:-[12])?\.png$/.test(url.pathname)) { res.writeHead(200, { "Content-Type": "image/png" }).end(png); return; }
   const dist = join(root, "frontend/dist");
   const requested = join(dist, decodeURIComponent(url.pathname));
   if (!requested.startsWith(dist + "/") && requested !== dist) {
@@ -196,12 +202,21 @@ try {
     await until("location.pathname === '/' && document.body.innerText.includes('Зареєструватися')");
   };
   const editCaption = async (text) => {
-    await until("document.querySelector('input[placeholder=\"Напишіть свій підпис…\"]') !== null");
+    await until("document.querySelector('input[maxlength=\"200\"]') !== null");
     await evaluate(`(() => {
-      const input = document.querySelector('input[placeholder="Напишіть свій підпис…"]');
+      const input = document.querySelector('input[maxlength="200"]');
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(text)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
+    await delay(100);
+  };
+  const saveEditor = async () => {
+    await evaluate("document.fonts.ready");
+    const before = state.saves + state.updates;
+    await evaluate("document.querySelector('[aria-label=\"Зберегти зміни\"], [aria-label=\"Зберегти в «Мої меми»\"]').click()");
+    const deadline = Date.now() + 10000;
+    while (state.saves + state.updates === before && Date.now() < deadline) await delay(50);
+    assert.equal(state.saves + state.updates, before + 1, "Save must make exactly one mutation");
     await delay(100);
   };
   for (let n = 1; n <= 3; n++) {
@@ -238,6 +253,12 @@ try {
   await command("Page.reload");
   await until("document.querySelector('[aria-label=\"Зберегти зміни\"]') !== null");
   assert.equal(state.saves, 1, "Reload must not create another saved meme");
+  await editCaption("Updated after OAuth");
+  await saveEditor();
+  await command("Page.reload");
+  await until("document.querySelector('input[maxlength=\"200\"]') !== null");
+  assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Updated after OAuth",
+    "Reload must not restore the older pre-login caption after a later save");
   const savedId = [...state.memes.keys()][0];
   await navigate(`/me/memes/${savedId}`);
   await until("document.body.innerText.includes('Видалити мем')");
@@ -261,6 +282,44 @@ try {
   await navigate("/create/result?q=still-limited");
   await until("document.body.innerText.includes('Увійти через Google і продовжити')");
   assert.equal(state.calls, 6, "Logout must not reset guest allowance");
+  await click("Увійти через Google і продовжити");
+  await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'still-limited'");
+
+  {
+    await navigate("/create/painting/2/own");
+    await editCaption("Saved after login");
+    await saveEditor();
+    const saved = [...state.memes.values()].find((meme) => meme.caption === "Saved after login");
+    assert(saved);
+    await editCaption("Saved revision");
+    await saveEditor();
+    await command("Page.reload");
+    await until("document.querySelector('input[maxlength=\"200\"]') !== null");
+    assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Saved revision",
+      "Reload must restore the latest saved caption, not an earlier/default draft");
+    const mutations = state.saves + state.updates;
+    await editCaption("Unsaved revision");
+    await evaluate("document.querySelector('select').value = 'Rubik'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
+    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    await delay(100);
+    await command("Page.reload");
+    await until("document.querySelector('input[maxlength=\"200\"]') !== null");
+    assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Unsaved revision");
+    assert.equal(await evaluate("document.querySelector('select').value"), "Rubik");
+    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').getAttribute('aria-checked')"), "true");
+    assert.equal(state.saves + state.updates, mutations, "Draft edits and reload must not autosave the public meme");
+    assert.equal(saved.caption, "Saved revision");
+    await saveEditor();
+    assert.equal(saved.caption, "Unsaved revision", "Explicit save must update the original saved identity");
+    await evaluate(`window.originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function () { throw new DOMException('Storage blocked', 'QuotaExceededError'); };`);
+    await editCaption("Storage error stays visible");
+    await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Браузер не може зберегти чернетку')");
+    await evaluate("Storage.prototype.setItem = window.originalSetItem; delete window.originalSetItem");
+    await editCaption("Recovered local draft");
+    assert.equal(saved.caption, "Unsaved revision", "A local storage failure must not trigger a server save");
+    console.log("PASS: reload restores latest saved and unsaved draft fields without autosaving");
+  }
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");
 } finally {

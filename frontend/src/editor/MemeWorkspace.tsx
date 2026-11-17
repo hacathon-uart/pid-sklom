@@ -9,7 +9,7 @@
  * The bookmark (ticket) icon = «save to my account» (asks to log in first). Saving cracks the glass for a
  * moment (G3). There is no heart here: ♥ (is_favorite) exists only on saved memes, in the account
  * (MemeViewPage), where favourites keep the crack.
- * The frame (draft.frame) is part of the style; picking one on a saved meme saves it right away.
+ * The frame (draft.frame) is part of the draft; account changes require explicit Save.
  *
  * The page owns `stageRef` (from useSaveMeme) so its header «Зберегти» button can export the canvas.
  */
@@ -50,7 +50,7 @@ export function MemeWorkspace({
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   onSave: () => void;
-  savedId?: string | null; // fills the bookmark; frame changes are saved to it
+  savedId?: string | null; // fills the bookmark
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
   toolbarEnd?: ReactNode; // right end of the icon row under the meme (e.g. «Скасувати» / «Зберегти зміни»)
@@ -72,8 +72,6 @@ export function MemeWorkspace({
 
   const changeFrame = (frame: Frame) => {
     draft.setFrame(frame);
-    if (savedId) void api.updateMeme(savedId, { style: { ...draft.style, frame } })
-      .catch((failure: Error) => setWorkspaceError(`Рамку не збережено: ${failure.message}`));
   };
   const png = async () => {
     const plain = exportPng(stageRef.current!);

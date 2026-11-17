@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { authEnabled } from "./supabase";
 
 const PREFIX = "pidsklom.auth.";
@@ -88,6 +88,16 @@ export function useTabState<T>(key: string, initial: T): [T, Dispatch<SetStateAc
   const value = state.key === fullKey ? state.value : read<T>(fullKey) ?? initial;
   if (state.key !== fullKey) setState({ key: fullKey, value });
   snapshots.set(fullKey, value);
+  useLayoutEffect(() => {
+    snapshots.set(fullKey, value);
+    try {
+      write(fullKey, value);
+    } catch (failure) {
+      window.dispatchEvent(new CustomEvent<string>("pidsklom:draft-error", {
+        detail: (failure as Error).message,
+      }));
+    }
+  }, [fullKey, value]);
   useEffect(() => () => { snapshots.delete(fullKey); }, [fullKey]);
   const setValue: Dispatch<SetStateAction<T>> = useCallback((next) => {
     setState((previous) => ({

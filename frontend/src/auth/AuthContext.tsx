@@ -29,8 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const needed = (event: Event) => setOffered((event as CustomEvent<PendingAction>).detail);
+    const draftError = (event: Event) => setError((event as CustomEvent<string>).detail);
     window.addEventListener("pidsklom:login-needed", needed);
-    return () => window.removeEventListener("pidsklom:login-needed", needed);
+    window.addEventListener("pidsklom:draft-error", draftError);
+    return () => {
+      window.removeEventListener("pidsklom:login-needed", needed);
+      window.removeEventListener("pidsklom:draft-error", draftError);
+    };
   }, []);
 
   useEffect(() => {

@@ -35,6 +35,11 @@ shared page becomes unavailable. Confirmation should explain that existing links
 will stop working. Already downloaded or cached copies cannot be recalled.
 Cancelling deletion leaves the meme unchanged.
 
+The latest editor draft, including unsaved caption/style/frame changes, survives
+a reload in the same browser tab. Restoring that draft does not publish changes:
+updating the saved meme, including its frame, requires explicit Save. Browser
+storage failures are shown rather than silently claiming the draft is durable.
+
 ## Three-generation guest allowance
 
 Guests can complete **three successful phrase-match or caption-generation
@@ -249,6 +254,9 @@ Do not log bearer tokens, OAuth codes or guest credentials.
   show errors and can be retried without duplication.
 - Reload restores a valid session before account requests; refresh and logout
   update UI/token state without exposing the previous user's collection.
+- Edit/save/reload restores the latest caption and style, not the pre-login
+  snapshot. Unsaved changes also survive reload without changing the public meme;
+  the next explicit Save updates the existing saved ID.
 - Two real users see separate collections and cannot edit/delete each other's
   memes. Invalid/expired tokens cannot perform account operations.
 - Shared pages/PNGs remain readable without login, with the public-by-link notice
