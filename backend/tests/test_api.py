@@ -345,3 +345,35 @@ def test_captions_prompt_sensitive_and_no_copy(client, monkeypatch):
     client.post("/api/artworks/1/captions", json={})
     assert "чутлива" in seen["prompt"] and "втрата" in seen["prompt"]
     assert "Не копіюй" in seen["prompt"]
+
+
+def test_story_artist_fact_about_this_artwork_first_then_rotates(tmp_path):
+    """«Про автора»: a fact naming this painting (in any grammatical case) comes first;
+    otherwise paintings of one artist show different facts, each painting always the same one."""
+    import json
+
+    from app.config import Settings
+    from app.data.local_repo import LocalRepository
+
+    artist = {"id": 1, "slug": "a", "name_uk": "Автор"}
+    work = {"artist_id": 1, "image_url": "images/x.jpg", "tags": [], "meme_profile": {}, "review_status": "approved"}
+    artworks = [
+        {**work, "id": 1, "slug": "w1", "title_uk": "Жнива"},
+        {**work, "id": 2, "slug": "w2", "title_uk": "Ідилія"},
+        {**work, "id": 3, "slug": "w3", "title_uk": "Брід"},
+    ]
+    fact = {"artwork_id": None, "artist_id": 1, "verified": True}
+    facts = [
+        {**fact, "id": 1, "text_uk": "Автор продав «Гопак» Лувру."},
+        {**fact, "id": 2, "text_uk": "Автор щоліта працював у власній майстерні."},
+        {**fact, "id": 3, "text_uk": "За «Ідилію» автора хвалили критики."},
+    ]
+    for name, rows in (("artists", [artist]), ("artworks", artworks), ("facts", facts)):
+        (tmp_path / f"{name}.json").write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    repo = LocalRepository(Settings(seed_dir=tmp_path))
+
+    assert repo.get_artwork(2).story.artist_fact.id == 3  # names «Ідилію» -> first
+    shown = {repo.get_artwork(i).story.artist_fact.id for i in (1, 3)}
+    assert len(shown) == 2  # two other paintings, two different facts
+    assert repo.get_artwork(1).story.artist_fact.id == repo.get_artwork(1).story.artist_fact.id  # stable
+    assert sorted(f.id for f in repo.get_artwork(1).artist_facts) == [1, 2, 3]  # nothing dropped
