@@ -17,6 +17,7 @@ assert(chromePath, "Chrome is required; set CHROME_PATH");
 const profile = mkdtempSync(join(tmpdir(), "pidsklom-auth-browser-"));
 let chrome;
 let socket;
+let closeBrowser;
 let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
 const state = { used: 0, calls: 0, exchanges: 0, saves: 0, cancelNext: false,
@@ -151,6 +152,7 @@ try {
     });
     socket.send(JSON.stringify({ id, method, params }));
   });
+  closeBrowser = () => command("Browser.close");
   socket.addEventListener("message", ({ data }) => {
     const message = JSON.parse(data);
     if (message.id) {
@@ -262,12 +264,13 @@ try {
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");
 } finally {
-  socket?.close();
   if (chrome && chrome.exitCode === null) {
     const exited = new Promise((done) => chrome.once("exit", done));
-    chrome.kill("SIGTERM");
+    if (closeBrowser) await closeBrowser();
+    else chrome.kill("SIGTERM");
     await exited;
   }
+  socket?.close();
   await new Promise((done) => server.close(done));
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
