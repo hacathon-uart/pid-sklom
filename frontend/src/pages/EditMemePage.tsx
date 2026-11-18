@@ -33,14 +33,14 @@ export function EditMemePage() {
   return (
     <Page
       title="Редагування"
-      subtitle="Перетягніть підпис на картині або змініть його стиль під нею"
+      subtitle="Перетягніть підпис на картині або змініть його стиль під нею. Незбережені зміни залишаться в цій вкладці; опублікований мем не зміниться без збереження."
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
         savedId={savedId} stageRef={stageRef}
         toolbarEnd={
           <>
-            <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
+            <Button variant="soft" onClick={() => navigate(`/me/memes/${memeId}`)}>До мему</Button>
             <Button onClick={save} disabled={saving}>Зберегти зміни</Button>
           </>
         }>

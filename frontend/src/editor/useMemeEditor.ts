@@ -56,7 +56,6 @@ export function useMemeEditor(
       const previous = read<{ id: string; style: MemeStyle }>(intentKey);
       if (previous && JSON.stringify(previous.style) === JSON.stringify(style)) intent = previous;
       else {
-        if (user && !state.savedId && !window.confirm("Збережений мем і PNG будуть доступні всім, хто має посилання. Зберегти?")) return;
         intent = { id: crypto.randomUUID(), style };
         write(intentKey, intent);
       }

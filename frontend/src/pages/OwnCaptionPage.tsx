@@ -31,9 +31,9 @@ export function OwnCaptionPage() {
   return (
     <Page
       title="Свій підпис"
-      subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею."
+      subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею. Чернетка залишиться в цій вкладці, якщо повернетеся до вибору картини."
       back={back}
-      actions={<Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>}
+      actions={<Button variant="soft" onClick={() => navigate(`/create/painting?artwork=${artworkId}`)}>До вибору картини</Button>}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
