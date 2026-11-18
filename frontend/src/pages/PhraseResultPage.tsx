@@ -63,7 +63,7 @@ export function PhraseResultPage() {
   return (
     <Page
       title={editing ? "Редагування" : "Ваш мем"}
-      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Натисніть на підпис, щоб його змінити."}
+      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Підпис можна змінити кнопкою під картиною."}
       actions={
         editing ? null : <ModeSwitch />
       }
@@ -87,7 +87,7 @@ export function PhraseResultPage() {
           <>
             <div className="t-label mb-3">Підпис</div>
             <div className="flex gap-3">
-              <Input value={draft.blocks[0].text} onChange={(e) => draft.setText(e.target.value)} maxLength={200} />
+              <Input aria-label="Підпис мему" value={draft.blocks[0].text} onChange={(e) => draft.setText(e.target.value)} maxLength={200} />
               {/* TODO(team): design shows a refresh icon here — regenerate caption? another painting? */}
               <IconButton icon="refresh" label="Інша картина" onClick={nextAlternative} />
             </div>
@@ -101,7 +101,7 @@ export function PhraseResultPage() {
       {!editing && (
         <section className="mt-16">
           <h3 className="t-h3 mb-6">Топ-5 збігів</h3>
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 gap-5 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 xl:gap-6">
             {match.alternatives.map(({ artwork, score }, i) => (
               <ArtworkCard
                 key={artwork.id}

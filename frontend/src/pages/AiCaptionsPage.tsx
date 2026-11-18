@@ -62,7 +62,7 @@ export function AiCaptionsPage() {
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={save}
         savedId={savedId} stageRef={stageRef}>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="t-label">Підписи від ШІ</div>
           <button className="t-strong flex items-center gap-2 text-accent" onClick={() => loadCaptions(seen)} disabled={loadingCaptions}>
             <Icon name="refresh" size={18} /> Ще варіанти
@@ -73,10 +73,10 @@ export function AiCaptionsPage() {
           {captions.map((c) => (
             <label
               key={c.text}
-              className={`flex cursor-pointer items-center gap-4 rounded-card border px-5 py-4 ${text === c.text ? "border-accent bg-muted" : "border-line bg-surface"}`}
+              className={`flex min-h-11 cursor-pointer flex-wrap items-start gap-3 rounded-card border px-4 py-4 sm:items-center sm:gap-4 sm:px-5 ${text === c.text ? "border-accent bg-muted" : "border-line bg-surface"}`}
             >
               <input type="radio" name="caption" checked={text === c.text} onChange={() => draft.setText(c.text)} className="accent-accent" />
-              <span className="t-body flex-1">{c.text}</span>
+              <span className="t-body min-w-0 flex-1 basis-[70%] break-words">{c.text}</span>
               <span className="t-small text-text-secondary">{CAPTION_KIND_LABELS[c.kind]}</span>
             </label>
           ))}

@@ -21,7 +21,7 @@ import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
 import { pending, RESUME, remove, route, useTabState } from "../auth/workflow";
 import { Artwork } from "../components/Artwork";
-import { IconButton } from "../components/Button";
+import { Icon, type IconName } from "../components/Icon";
 import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
 import type { Frame } from "../api/types";
@@ -123,8 +123,8 @@ export function MemeWorkspace({
   }, [editing, onEditingChange]);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
-      <div>
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 xl:gap-14">
+      <div className="min-w-0">
         <div ref={canvasZone}>
         <Artwork frame={draft.frame} size="lg" crack={crackRun ? "fleeting" : null} crackKey={crackRun}>
           <MemeCanvas
@@ -142,23 +142,26 @@ export function MemeWorkspace({
           />
         </Artwork>
         </div>
+        {story && <a href="#artwork-story" className="t-small mt-3 inline-flex min-h-11 items-center text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent">Читати історію картини ↓</a>}
         {authEnabled && <p className="t-small mt-4 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
-        <div className="mt-4 flex items-center gap-2">
-          {authEnabled && <IconButton icon="bookmark" label={saved ? "Зберегти зміни" : "Зберегти в «Мої меми»"} active={saved} onClick={onSave} />}
-          <IconButton
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {!editing && <button type="button" className="t-strong min-h-11 rounded-control border border-accent px-4 text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" onClick={() => onEditingChange(true)}>Редагувати підпис</button>}
+          {authEnabled && <WorkspaceAction icon="bookmark" label={saved ? "Зберегти зміни" : "Зберегти в «Мої меми»"} visibleLabel="Зберегти" active={saved} onClick={onSave} />}
+          <WorkspaceAction
             icon="download"
             label="Завантажити PNG"
+            visibleLabel="Завантажити"
             disabled={exporting.busy}
             onClick={() => void exporting.run("download")}
           />
-          <IconButton
+          <WorkspaceAction
             icon="share"
             label="Поділитися"
             disabled={exporting.busy}
             onClick={() => void exporting.run("share")}
           />
-          {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
-          {toolbarEnd && <div className="ml-auto flex items-center gap-3">{toolbarEnd}</div>}
+          {onAnotherPainting && <WorkspaceAction icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
+          {toolbarEnd && <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto">{toolbarEnd}</div>}
         </div>
         {workspaceError && <ErrorMessage error={workspaceError} />}
         {exporting.error && <ErrorMessage error={exporting.error} />}
@@ -168,9 +171,26 @@ export function MemeWorkspace({
         </div>
         <div ref={controlsZone} className="mt-6">{children}</div>
       </div>
-      {story ? <StoryCard artwork={artwork} story={story} /> : <div className="h-96 animate-pulse rounded-story bg-muted" />}
+      <div id="artwork-story" className="min-w-0 scroll-mt-6">
+        {story ? <StoryCard artwork={artwork} story={story} /> : <div role="status" className="t-body rounded-story border border-line bg-surface p-6 text-text-secondary">Історія цієї картини зараз недоступна.</div>}
+      </div>
     </div>
   );
+}
+
+function WorkspaceAction({ icon, label, visibleLabel = label, active = false, disabled, onClick }: {
+  icon: IconName;
+  label: string;
+  visibleLabel?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
+    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-line bg-surface px-3 text-[13px] font-semibold transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 lg:w-11 lg:px-0 ${active ? "text-accent" : "text-text"}`}>
+    <Icon name={icon} filled={active} size={19} />
+    <span className="lg:sr-only">{visibleLabel}</span>
+  </button>;
 }
 
 /** Error or «Збережено» message under the page header. */
