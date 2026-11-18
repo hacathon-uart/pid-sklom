@@ -139,6 +139,7 @@ export function MemeWorkspace({
           />
         </Artwork>
         </div>
+        {authEnabled && <p className="t-small mt-4 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
         <div className="mt-4 flex items-center gap-2">
           {authEnabled && <IconButton icon="bookmark" label={saved ? "Зберегти зміни" : "Зберегти в «Мої меми»"} active={saved} onClick={onSave} />}
           <IconButton
@@ -156,7 +157,6 @@ export function MemeWorkspace({
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
           {toolbarEnd && <div className="ml-auto flex items-center gap-3">{toolbarEnd}</div>}
         </div>
-        {authEnabled && <p className="t-small mt-3 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
         {workspaceError && <ErrorMessage error={workspaceError} />}
         {exporting.error && <ErrorMessage error={exporting.error} />}
         {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
