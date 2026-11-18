@@ -31,7 +31,7 @@ services:
       - key: GUEST_LIMIT_ENABLED
         value: "true"
       - key: GUEST_EXPORT_LIMIT_ENABLED
-        value: "false"
+        value: "true"
       - key: GUEST_TOKEN_SECRET
         generateValue: true
       - key: SUPABASE_JWT_ALGORITHM

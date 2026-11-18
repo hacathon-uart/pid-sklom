@@ -35,7 +35,10 @@ public Storage image directly or reset browser storage. Do not claim that public
 saved PNGs have become private. Exporting a public saved meme through the app
 uses the guest allowance; copying its public link does not.
 
-Ship the new endpoint and UI with `GUEST_EXPORT_LIMIT_ENABLED=false`. Apply
-migration 0002 once, verify the new RPC, and enable enforcement only after a
-compatible frontend is live. Rolling back disables this flag without dropping
-the additive migration or rotating the guest secret.
+Keep the **runtime** `GUEST_EXPORT_LIMIT_ENABLED=false` while deploying the new
+endpoint and UI; manual Blueprint auto-sync stays off even though its final
+desired flag is true. Apply migration 0002 once and verify the new RPC before
+enabling enforcement, which must happen only after a compatible frontend is
+live. The migration may be applied before the code deploy. Rolling back disables
+only this flag without dropping the additive migration or rotating the guest
+secret.

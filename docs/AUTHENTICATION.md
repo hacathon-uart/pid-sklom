@@ -129,8 +129,10 @@ a second line to the old ribbon.
 allowed kind/function and adds a service-role-only `export_remaining` RPC.
 It preserves all existing 0001 records and counts. Apply it **once** through a
 trusted SQL connection only after confirming 0001 exists; do not rerun
-`data/schema.sql` or 0001. First deploy the compatible backend and frontend with
-`GUEST_EXPORT_LIMIT_ENABLED=false`. Then apply 0002, verify that
+`data/schema.sql` or 0001. Deploy the compatible backend and frontend with
+the **runtime** `GUEST_EXPORT_LIMIT_ENABLED=false` even when the final Blueprint
+declares true; Blueprint auto-sync is disabled. Apply 0002 before enabling the
+flag (it may be applied before the code deploy), then verify that
 `export_remaining('startup')` is callable by service role but neither `anon`
 nor `authenticated`, and enable the flag on the backend. A real-auth startup
 probe checks the RPC only when that flag is enabled. Keep the previous guest
