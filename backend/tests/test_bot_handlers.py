@@ -109,7 +109,7 @@ class Harness:
 
     def choice(self, index=0):
         options = next(call for call in reversed(self.transport.of(SendMessage)) if call.reply_markup)
-        return options.reply_markup.inline_keyboard[index][0].callback_data
+        return options.reply_markup.inline_keyboard[0][index].callback_data
 
 
 @pytest.fixture
@@ -297,7 +297,7 @@ async def test_random_success_and_duplicate_callback(bot):
     preview, = bot.transport.of(SendPhoto)
     assert preview.photo.data == bot.png
     options = bot.transport.of(SendMessage)[-1]
-    assert len(options.reply_markup.inline_keyboard) == 3
+    assert [button.text for button in options.reply_markup.inline_keyboard[0]] == ["1", "2", "3"]
     data = bot.choice(2)
     assert len(data.encode()) <= 64
     await bot.callback(data)
@@ -320,7 +320,7 @@ async def test_random_shows_complete_caption_options_with_short_buttons(bot):
     visible = preview.caption + "\n" + "\n".join(message.text for message in messages)
     assert all(text in visible for text in texts)
     options = messages[-1]
-    assert all(len(row[0].text) <= 24 for row in options.reply_markup.inline_keyboard)
+    assert [button.text for button in options.reply_markup.inline_keyboard[0]] == ["1", "2", "3"]
 
 
 @pytest.mark.parametrize("stage, error, expected", [

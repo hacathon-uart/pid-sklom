@@ -242,10 +242,10 @@ async def on_random(message: Message):
         _pending[token] = PendingChoice(
             artwork.id, texts, message.from_user.id, message.chat.id, time.monotonic() + PENDING_TTL_S
         )
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"{i + 1} · Зробити мем", callback_data=f"cap:{token}:{i}")]
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=str(i + 1), callback_data=f"cap:{token}:{i}")
             for i in range(len(texts))
-        ])
+        ]])
         preview, preview_entities = Text(Bold(f"«{artwork.title}»"), "\n", artwork.artist.name).render()
         await message.answer_photo(photo, caption=preview, caption_entities=preview_entities, parse_mode=None)
         choices = Text(Bold("Обери підпис до картини:"), "\n\n", *[
