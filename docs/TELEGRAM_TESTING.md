@@ -39,21 +39,27 @@ Telegram or Gemini traffic.
 1. Create a **separate bot** with BotFather. Keep its token private. In BotFather,
    turn off group additions and leave inline mode disabled for this private-chat
    release. Do not use the public bot's token for polling.
-2. Use Python 3.11 and install `backend/requirements.txt` in a local virtual
-   environment. Keep secrets in ignored `backend/.env` or in exported environment
-   variables. The test settings are `DATA_BACKEND=local`, `AI_PROVIDER=stub`,
-   `AUTH_MODE=stub`, `ENVIRONMENT=development`,
-   `PUBLIC_BASE_URL=http://localhost:8000`, `TELEGRAM_BOT_TOKEN` set to the test
-   token, and a non-default `TELEGRAM_WEBHOOK_SECRET` of letters, digits, `_`, or
-   `-`. Set `TELEGRAM_ALLOWED_USER_IDS` to comma-separated numeric tester IDs.
-   With a token configured, that list cannot be empty. To learn your own ID
-   without a third-party bot, start with a temporary unused positive ID, message
-   `/start`, read the ID in the restricted-access response, then replace the
-   temporary ID and restart both processes.
-3. In one terminal run `uvicorn app.main:app --host 127.0.0.1 --port 8000` from
-   `backend`; in another run `python -m app.bot.polling` with the same settings.
-   Local HTTP skips webhook registration. Polling removes a webhook from this
-   **test bot only** and preserves pending updates.
+2. On this machine, Docker provides the required Python 3.11 runtime. From the
+   repository root, copy the example and fill in the **test** token in the ignored
+   local file:
+
+   ```sh
+   cp backend/telegram-test.env.example backend/.env.telegram.local
+   # Edit backend/.env.telegram.local: set TELEGRAM_BOT_TOKEN to the test token.
+   docker compose -f compose.telegram-test.yaml up --build
+   ```
+
+   The Compose setup forces local catalogue, stub AI, development mode, and an
+   internal URL between its API and polling containers. It does not use the
+   existing `backend/.env` or the public bot. Local HTTP skips webhook
+   registration. Polling removes a webhook from this **test bot only** and
+   preserves pending updates. Keep Compose running while testing.
+3. The example allowlist starts with a temporary unused positive ID so the bot
+   can start. Message `/start` to the test bot; its restricted-access response
+   gives your numeric Telegram ID. Replace the temporary ID in
+   `TELEGRAM_ALLOWED_USER_IDS` with your ID and restart Compose with
+   `docker compose -f compose.telegram-test.yaml up --build --force-recreate`.
+   The allowlist must contain at least one ID while a token is configured.
 4. Check `/start`, `/help`, a phrase, `/random` and each caption choice. Check
    that each finished meme arrives as a photo plus an original PNG document,
    with artwork/artist context and source links. Try an uninvited account,
@@ -68,6 +74,17 @@ Telegram or Gemini traffic.
 The local test bot was **not** exercised during the code pass because no test
 token or tester IDs were configured. Do not mark live acceptance complete from
 the offline suite.
+
+### Inviting another tester
+
+Share `https://t.me/<test_bot_username>` with the person. The link opens the
+bot, but it does not grant access: Telegram usernames are searchable. Ask them
+to press **Start**. The restricted-access reply shows their numeric Telegram ID;
+ask them to send you that ID. Add it to the comma-separated
+`TELEGRAM_ALLOWED_USER_IDS` in `backend/.env.telegram.local` (for example,
+`123456789,987654321`), then recreate the local Compose services. They can now
+send a phrase or `/random` while your computer and the Compose services are
+running. Do not send the BotFather token to testers.
 
 ## Behavior and later release gate
 

@@ -37,7 +37,7 @@ cp .env.example .env.local
 npm run dev                            # http://localhost:5173
 ```
 
-**Telegram bot** (test only): configure a separate BotFather test token, a non-default webhook secret, and `TELEGRAM_ALLOWED_USER_IDS`. Keep uvicorn running, then run `python -m app.bot.polling`. See the [test procedure](docs/TELEGRAM_TESTING.md); the public bot remains disabled until a separate release.
+**Telegram bot** (test only): create a separate BotFather test bot and follow the [local Docker Compose and invite procedure](docs/TELEGRAM_TESTING.md). The public bot remains disabled until a separate release.
 
 **Placeholder images:** `python data/scripts/make_placeholders.py` regenerates the `stub-*` images in `data/images/` from `data/seed/artworks.json`.
 
