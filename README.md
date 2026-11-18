@@ -8,6 +8,8 @@
 - **API contract:** [docs/API.md](docs/API.md) (live docs at http://localhost:8000/docs)
 - **Render deployment gaps and release checklist:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - **Data stores and future admin enrichment:** [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
+- **Telegram bot implementation handoff:** [docs/TELEGRAM_HANDOFF.md](docs/TELEGRAM_HANDOFF.md)
+- **Telegram test and release procedure:** [docs/TELEGRAM_TESTING.md](docs/TELEGRAM_TESTING.md)
 - **Decisions:** [portable first release](docs/adr/0003-portable-render-first-release.md),
   [reviewed enrichment](docs/adr/0004-reviewed-enrichment-and-catalogue-authority.md)
 
@@ -35,7 +37,7 @@ cp .env.example .env.local
 npm run dev                            # http://localhost:5173
 ```
 
-**Telegram bot** (optional): put a test bot token from BotFather in `backend/.env`, keep uvicorn running, then `python -m app.bot.polling`.
+**Telegram bot** (test only): configure a separate BotFather test token, a non-default webhook secret, and `TELEGRAM_ALLOWED_USER_IDS`. Keep uvicorn running, then run `python -m app.bot.polling`. See the [test procedure](docs/TELEGRAM_TESTING.md); the public bot remains disabled until a separate release.
 
 **Placeholder images:** `python data/scripts/make_placeholders.py` regenerates the `stub-*` images in `data/images/` from `data/seed/artworks.json`.
 
