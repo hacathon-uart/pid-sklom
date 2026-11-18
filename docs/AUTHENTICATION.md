@@ -25,7 +25,9 @@ it on subsequent visits. Explain automatic account creation beside that action.
 | --- | --- | --- |
 | Browse | Available | Unchanged |
 | Phrase matching, generated captions | Three successful requests combined per browser guest; then require Google sign-in | Available without the guest allowance |
-| Edit an unsaved meme, download PNG, share an image file | Available | Unchanged |
+| Edit an unsaved meme | Unlimited | Unchanged |
+| Download or share a PNG file | Three distinct compositions under a separate guest allowance once migration 0002 and its release flag are enabled; repeating an unchanged export is free | Unlimited |
+| Share an existing public meme link | Available without using a slot | Unchanged |
 | Save to My Memes | Start Google sign-in, preserving the draft; complete the requested save after successful return | Save to their own collection |
 | Open My Memes | Offer sign-in, preserving the destination | List only their saved memes, newest first; allow favourites filtering |
 | Favourite a saved meme | Unavailable | Owner can toggle; this does not delete anything |
@@ -70,8 +72,9 @@ needed; there is no separate registration form.
   Requesting more variants uses another slot.
 - A successful usable fallback response also counts. Failed requests do not.
 - Browsing, manual caption/frame editing, downloading PNGs and sharing an image
-  file do not consume slots. These remain possible after the allowance runs out.
-- Show the remaining allowance near generation controls. After three successful
+  file do not consume **generation** slots. Once the separate export allowance is
+  enabled they may consume an export slot; see below.
+- Show the remaining allowances in the guest ticket beside the page heading. After three successful
   operations, offer Google sign-in instead of starting another provider call.
   Keep the existing draft/result available through that flow.
 - Signing in removes this guest restriction; it does not automatically grant
@@ -101,6 +104,38 @@ abuse prevention. Clearing storage, using incognito or another browser can obtai
 a new guest identity; that bypass is accepted. Do not add IP fingerprinting or
 claim this caps total Gemini spend. General rate limiting/circuit breakers remain
 separate deferred work, and authenticated usage can still incur provider costs.
+
+## Separate guest PNG export allowance (migration 0002; not enabled by merging)
+
+[ADR 0007](adr/0007-distinct-guest-png-exports.md) records the later decision.
+Three distinct PNG exports per guest are independent of the three AI requests.
+Downloading and sharing a PNG file use the **same** export allowance; changing
+artwork, caption, layout, style or included frame makes a new composition.
+Re-exporting unchanged pixels of the same artwork is free, even at zero remaining.
+Changing only PNG compression or metadata is not a new composition. Copying an
+existing public meme's link does not consume an export; public Storage URLs
+remain accessible and browser tools can bypass this signup gate.
+
+Reserve the slot only after rendering and verifying a PNG. A failed/cancelled
+native share releases its pending reservation; an abandoned reservation expires.
+Native sharing may ask for a second click because browsers require a fresh
+gesture after asynchronous authorization. A blocked download can resume once
+after explicit Google login; a blocked file share asks for another click on
+return. A guest bookmark/save still requires sign-in and must never consume
+either allowance. The ticket explains both separate balances instead of adding
+a second line to the old ribbon.
+
+`data/migrations/0002_guest_exports.sql` changes only the operation ledger's
+allowed kind/function and adds a service-role-only `export_remaining` RPC.
+It preserves all existing 0001 records and counts. Apply it **once** through a
+trusted SQL connection only after confirming 0001 exists; do not rerun
+`data/schema.sql` or 0001. First deploy the compatible backend and frontend with
+`GUEST_EXPORT_LIMIT_ENABLED=false`. Then apply 0002, verify that
+`export_remaining('startup')` is callable by service role but neither `anon`
+nor `authenticated`, and enable the flag on the backend. A real-auth startup
+probe checks the RPC only when that flag is enabled. Keep the previous guest
+signing secret and three-generation enforcement unchanged; rollback sets the
+new flag false and redeploys without undoing SQL or deleting records.
 
 ## Sign-in initiated by Save
 
@@ -259,15 +294,17 @@ Do not log bearer tokens, OAuth codes or guest credentials.
 ## Acceptance before enabling accounts
 
 - Guest browsing, manual creation and PNG download work without login; AI flows
-  work within the guest allowance.
+  work within the generation guest allowance. Before migration 0002 and flag
+  activation, PNG export remains unchanged.
 - A fresh guest can complete exactly three successful requests across phrase
   matching and captions. Batches count once; more-variants requests count again;
   usable fallback counts and failures do not.
 - The fourth request is rejected before any provider call. Concurrent requests
   cannot exceed the allowance, and abandoned reservations recover. Browser
   reload and backend restart do not reset recorded usage.
-- At the limit, manual editing and download remain available; successful Google
-  sign-in unlocks generation. Logout retains the browser's prior guest usage.
+- At the generation limit, manual editing remains available and PNG exports use
+  their independent allowance. Successful Google sign-in unlocks both. Logout
+  retains the browser's prior guest usage.
 - Guest Save survives redirect with all draft fields intact and completes once;
   duplicate callbacks, refresh and a lost-response retry produce one saved meme.
 - Cancelled/failed login retains the draft without creating a meme. Failed saves

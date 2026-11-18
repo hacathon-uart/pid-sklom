@@ -37,8 +37,14 @@ One successful phrase match or batch of suggested captions. Alternatives within
 one result are not additional generations. Manual editing is not a generation.
 
 **Guest allowance**:
-The initial three generations available without an account, shared across
-matching and caption suggestions. It does not renew daily.
+Two independent initial allowances without an account: three generations, shared
+across matching and caption suggestions, and three distinct PNG exports.
+Neither renews daily. Repeating an unchanged export does not use another slot.
+
+**PNG export**:
+A prepared meme image downloaded or shared as a file. Changing the artwork,
+caption, layout, styling or included frame produces a distinct composition.
+Sharing an existing public link is not a PNG export.
 
 **Save intent**:
 A visitor's request to add a particular meme to their collection. Continuing or
