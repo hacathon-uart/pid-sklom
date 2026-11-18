@@ -1,6 +1,6 @@
 # ADR 0008: Art quizzes with personal best scores and a short guest version
 
-- **Status:** Proposed
+- **Status:** Accepted; best scores persist only after migration 0003 is applied
 - **Date:** 2026-11-18
 - **Related:** [ADR 0004](0004-reviewed-enrichment-and-catalogue-authority.md),
   [ADR 0006](0006-google-identity-and-guest-allowance.md), [Data model](../DATA_MODEL.md)
@@ -100,8 +100,12 @@ ticket.
   already shown and whether the run is a guest run.
 - No table stores individual runs.
 - Only the final best score is written. It goes to a new owner-scoped table,
-  for example `quiz_best_scores (user_id, game, scope, best_score, achieved_at)`,
-  added by an additive migration.
+  `quiz_best_scores (user_id, quiz_key, best_score, achieved_at)`, where
+  `quiz_key` is `who`, `pairs` or `titles:<scope>`. It is added by the additive
+  migration `data/migrations/0003_quiz_best_scores.sql`.
+- A run that scores zero is not a record.
+- If the score store is unavailable, for example before migration 0003 is
+  applied, the games still work and scores are simply not shown or kept.
 
 A guest token is capped at the preview length and cannot later be turned into
 a signed-in record. Signing in mid-run starts a new run; the guest's score is

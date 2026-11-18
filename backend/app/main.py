@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import content, create, exports, guest, memes
+from app.api import content, create, exports, guest, memes, quiz
 from app.bot import webhook
 from app.config import get_settings
 from app.data import get_repo
@@ -98,6 +98,7 @@ api.include_router(create.router)
 api.include_router(memes.router)
 api.include_router(guest.router)
 api.include_router(exports.router)
+api.include_router(quiz.router)
 app.include_router(api)
 app.include_router(webhook.router)
 

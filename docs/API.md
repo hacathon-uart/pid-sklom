@@ -27,6 +27,9 @@ editing and deletion return `403`, even with a bearer token. Public reads remain
 | GET | `/api/memes/{id}` | – | 4b, `/m/{id}` | Anyone with the link can read (UUID ids) |
 | PATCH | `/api/memes/{id}` | owner | 4b heart, edit | `{style?, image_data_url?, is_favorite?}` |
 | DELETE | `/api/memes/{id}` | owner | 4b | 204 |
+| GET | `/api/quiz` | optional | Вікторина | `QuizInfo`: playable games, «Назва картини» scopes, whether the caller gets the short guest version, and (signed in) best scores keyed `who` / `pairs` / `titles:<scope>` |
+| POST | `/api/quiz/runs` | optional | Вікторина | `{game, scope?}` → `QuizRun` (201): signed run token and the first question. Guests: `scope` must be `all` |
+| POST | `/api/quiz/runs/answer` | optional | Вікторина | `{token, answer}` → `QuizResult`: reveals, next question, and on the last answer `finished` ∈ `mistake, complete, guest_limit` plus the best score. `409`/`400` with `code: quiz_restart` means start a new run |
 | POST | `/telegram/webhook/{secret}` | secret | – | Telegram updates (not for the frontend) |
 
 ## Key shapes

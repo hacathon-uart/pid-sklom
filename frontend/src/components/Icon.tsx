@@ -4,6 +4,7 @@ const PATHS = {
   home: "M3 9 12 4l9 5zM4.5 11h15M6 11v8M10 11v8M14 11v8M18 11v8M3 21h18", // museum portico
   pencil: "M20 3C12 4 7 10 5 19l-1 2M5 19c7-1 12-6 15-16M9 14h4", // quill
   image: "M3 6h18v15H3zM6.5 9.5h11v8h-11zM9 6l3-3.5L15 6", // painting on a hanging cord
+  quiz: "M4 3h16v18H4zM9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.8M12 16.8v.2", // a framed question
   user: "M9 2.5h6v3H9zM5.5 5.5h13V21h-13zM12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9 17.5h6", // visitor badge
   heart: "M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z",
   bookmark: "M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v2M14 11v2M14 15v2", // ticket to the collection

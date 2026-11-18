@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     guest_limit_enabled: bool = False
     guest_export_limit_enabled: bool = False
     guest_token_secret: str = ""
+    quiz_token_secret: str = ""  # signs quiz run tokens (ADR 0008); falls back to GUEST_TOKEN_SECRET
 
     # AI (ADR 0002). AI_PROVIDER=llm uses Gemini: embeddings for matching, LLM only in hybrid mode.
     ai_api_key: str = ""  # Gemini API key (Google AI Studio)

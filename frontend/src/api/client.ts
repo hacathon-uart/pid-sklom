@@ -9,6 +9,10 @@ import type {
   MatchResult,
   Meme,
   MemeStyle,
+  QuizGame,
+  QuizInfo,
+  QuizResult,
+  QuizRun,
 } from "./types";
 import { pending, read, RESUME, remove, route, write, type PendingAction } from "../auth/workflow";
 import { authEnabled } from "../auth/supabase";
@@ -192,4 +196,10 @@ export const api = {
   updateMeme: (id: string, patch: { style?: MemeStyle; image_data_url?: string; is_favorite?: boolean }) =>
     request<Meme>(`/api/memes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteMeme: (id: string) => request<void>(`/api/memes/${id}`, { method: "DELETE" }),
+
+  // quizzes (ADR 0008): public; signed-in visitors also get best scores
+  quiz: () => request<QuizInfo>("/api/quiz"),
+  startQuiz: (game: QuizGame, scope = "all") => request<QuizRun>("/api/quiz/runs", post({ game, scope })),
+  answerQuiz: (token: string, answer: Record<string, string>) =>
+    request<QuizResult>("/api/quiz/runs/answer", post({ token, answer })),
 };

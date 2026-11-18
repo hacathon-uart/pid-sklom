@@ -146,3 +146,52 @@ export interface Meme {
   created_at: string;
   can_edit: boolean;
 }
+
+// ---------- Quizzes (ADR 0008) ----------
+
+export type QuizGame = "who" | "pairs" | "titles";
+export type QuizEnd = "mistake" | "complete" | "guest_limit";
+
+export interface QuizScope {
+  key: string; // "all" or an artist slug
+  name: string;
+  artworks: number;
+}
+
+export interface QuizInfo {
+  games: QuizGame[];
+  title_scopes: QuizScope[];
+  limited: boolean;
+  guest_limits: Record<QuizGame, number>;
+  best: Record<string, number> | null; // "who" | "pairs" | "titles:<scope>"
+}
+
+export interface QuizQuestion {
+  images: { key: string; image_url: string }[];
+  options: { key: string; label: string }[];
+}
+
+export interface QuizRun {
+  token: string | null;
+  score: number;
+  limit: number | null;
+  question: QuizQuestion | null;
+}
+
+export interface QuizReveal {
+  image_key: string;
+  correct: boolean;
+  chosen: string | null;
+  right: string;
+  artwork: ArtworkSummary;
+  fact: string;
+}
+
+export interface QuizResult {
+  correct: boolean;
+  reveals: QuizReveal[];
+  run: QuizRun;
+  finished: QuizEnd | null;
+  best: number | null;
+  new_record: boolean;
+}

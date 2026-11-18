@@ -125,6 +125,31 @@ def main():
         for role in ("anon", "authenticated"):
             assert sql(f"select has_function_privilege('{role}', 'export_remaining(text)', 'execute');") == "f"
         print("PASS: additive export migration, independent atomic quota, identical-export deduplication, cancellation, expiry and grants")
+        migration = migration.with_name("0003_quiz_best_scores.sql")
+        sql(migration.read_text())
+        assert sql("select export_remaining('guest:same-png');") == "2"
+
+        def record(user, key, score):
+            return json.loads(sql(f"select quiz_record_score('{user}', '{key}', {score});"))
+
+        assert record("user-a", "who", 0) == {"best_score": 0, "new_record": False}
+        assert sql("select count(*) from quiz_best_scores;") == "0"
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+            records = list(pool.map(lambda score: record("user-a", "who", score), range(1, 11)))
+        assert sql("select best_score from quiz_best_scores where user_id='user-a' and quiz_key='who';") == "10"
+        assert any(result == {"best_score": 10, "new_record": True} for result in records)
+        assert record("user-a", "who", 4) == {"best_score": 10, "new_record": False}
+        assert record("user-a", "titles:mykola-pymonenko", 3) == {"best_score": 3, "new_record": True}
+        assert record("user-b", "who", 2) == {"best_score": 2, "new_record": True}
+        try:
+            record("user-a", "Titles: Everything", 1)
+            raise AssertionError("Malformed quiz keys must be rejected")
+        except subprocess.CalledProcessError:
+            pass
+        for role in ("anon", "authenticated"):
+            assert sql(f"select has_function_privilege('{role}', 'quiz_record_score(text,text,integer)', 'execute');") == "f"
+            assert sql(f"select has_table_privilege('{role}', 'quiz_best_scores', 'select');") == "f"
+        print("PASS: additive quiz migration keeps the higher best score atomically, ignores scoreless runs, validates keys and grants")
     finally:
         subprocess.run(["docker", "rm", "--force", name], check=True, stdout=subprocess.DEVNULL)
 
