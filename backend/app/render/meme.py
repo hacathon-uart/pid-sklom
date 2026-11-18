@@ -4,6 +4,7 @@ Must look like the browser editor: same TTF files as the frontend (fonts/ folder
 same TextBlock coordinates (see schemas.TextBlock). Test «ґ є і ї ʼ» after any font change.
 """
 
+import asyncio
 import io
 from pathlib import Path
 
@@ -19,6 +20,7 @@ FONT_FILES = {
     # TODO(D): add Rubik, Montserrat, Lobster, Comfortaa (Cyrillic TTFs from Google Fonts, OFL)
 }
 MARGIN = 0.04  # of image height
+_render_slots = asyncio.Semaphore(2)
 
 
 def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
@@ -35,11 +37,19 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> list[
     lines, current = [], ""
     for word in text.split():
         candidate = f"{current} {word}".strip()
-        if draw.textlength(candidate, font=font) <= max_width or not current:
+        if draw.textlength(candidate, font=font) <= max_width:
             current = candidate
-        else:
+            continue
+        if current:
             lines.append(current)
-            current = word
+            current = ""
+        for character in word:
+            candidate = current + character
+            if current and draw.textlength(candidate, font=font) > max_width:
+                lines.append(current)
+                current = character
+            else:
+                current = candidate
     if current:
         lines.append(current)
     return lines
@@ -52,9 +62,15 @@ def render_meme(image_bytes: bytes, blocks: list[TextBlock], watermark: bool = T
     scale = W / REFERENCE_WIDTH
 
     for block in blocks:
-        font = _font(block.font, max(8, round(block.size * scale)))
+        font_size = max(8, round(block.size * scale))
         box_w = (block.width or 0.9) * W
-        lines = _wrap(draw, block.text.upper(), font, box_w)
+        while True:
+            font = _font(block.font, font_size)
+            lines = _wrap(draw, block.text.upper(), font, box_w)
+            max_height = H * (0.8 if block.position == "middle" else 0.45)
+            if font_size <= 8 or len(lines) * font.size * 1.1 <= max_height:
+                break
+            font_size = max(8, round(font_size * 0.9))
         line_h = font.size * 1.1
         total_h = line_h * len(lines)
         if block.y is not None:
@@ -96,4 +112,6 @@ async def fetch_image(image_url: str) -> bytes:
 
 
 async def render_from_url(image_url: str, blocks: list[TextBlock]) -> bytes:
-    return render_meme(await fetch_image(image_url), blocks)
+    image_bytes = await fetch_image(image_url)
+    async with _render_slots:
+        return await asyncio.to_thread(render_meme, image_bytes, blocks)
