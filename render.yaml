@@ -27,9 +27,9 @@ services:
       - key: AI_PROVIDER
         value: llm
       - key: AUTH_MODE
-        value: disabled
+        value: supabase
       - key: GUEST_LIMIT_ENABLED
-        value: "false"
+        value: "true"
       - key: GUEST_TOKEN_SECRET
         generateValue: true
       - key: SUPABASE_JWT_ALGORITHM
@@ -76,7 +76,14 @@ services:
           name: pidsklom-api
           envVarKey: PUBLIC_BASE_URL
       - key: VITE_AUTH_MODE
-        value: disabled
+        value: supabase
+      - key: VITE_SUPABASE_URL
+        fromService:
+          type: web
+          name: pidsklom-api
+          envVarKey: SUPABASE_URL
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
     routes:
       - type: rewrite
         source: /*

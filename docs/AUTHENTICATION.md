@@ -1,9 +1,11 @@
 # Google sign-in and saved-meme behaviour
 
-Status: implemented on the feature branch; not enabled in production.
+Status: production rollout approved; release configuration enables accounts and the guest allowance.
 Date: 2026-11-18.
 
-Production accounts remain disabled pending provider configuration and release acceptance.
+The migration and real Google login, save and two-user ownership checks passed
+against the local app with the existing Supabase project. Hosted acceptance is a
+separate release gate; record deployment evidence on PR #8.
 Decisions are recorded in [ADR 0006](adr/0006-google-identity-and-guest-allowance.md).
 This builds on the Supabase choice in [ADR 0001](adr/0001-artwork-data-storage.md)
 and the account/admin safeguards in
@@ -212,10 +214,10 @@ growth that browser-only downloads did not.
 
 ## Approved rollout only
 
-This PR does not merge itself, apply production SQL, change cloud credentials or
-enable accounts. The Blueprint keeps `AUTH_MODE=disabled`, `GUEST_LIMIT_ENABLED=false`
-and `VITE_AUTH_MODE=disabled`; the generated guest signing secret alone grants
-no application privileges.
+The production rollout was explicitly approved on 2026-11-18. The Blueprint now
+declares `AUTH_MODE=supabase`, `GUEST_LIMIT_ENABLED=true` and
+`VITE_AUTH_MODE=supabase`. Its manual sync remains a deliberate operator action;
+merging the file alone does not supply credentials or apply production SQL.
 
 After review and explicit release approval:
 
@@ -234,11 +236,12 @@ After review and explicit release approval:
    `GUEST_LIMIT_ENABLED=true`, with a stable private `GUEST_TOKEN_SECRET` of at
    least 32 characters. Set frontend `VITE_AUTH_MODE=supabase`,
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (public key only), then rebuild.
-   Update Blueprint-managed flag values as part of that approved release so a
-   later sync cannot silently disable accounts again. Rehearse the transition:
-   backend/frontend deploy independently, and an old frontend lacks guest tokens.
-   There may be a short generation interruption while both new configurations
-   converge; do not enable only one side and leave it that way.
+   The frontend project URL follows the backend's `SUPABASE_URL`; its public key
+   is supplied separately and never committed. For a staged transition, first
+   deploy backend auth with guest enforcement still false, then deploy the
+   account-enabled frontend, and only then enable guest enforcement. Backend and
+   frontend deploy independently; an old frontend lacks guest tokens. Align the
+   final runtime values with the Blueprint before completing the release.
 5. Verify the acceptance list below against the actual hosted URLs, including
    cancelled login, two-user ownership and shared-page deletion. Keep a rollback
    path that disables both account UI and guest enforcement without dropping data.
