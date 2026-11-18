@@ -33,7 +33,10 @@ class TesterAccessMiddleware(BaseMiddleware):
                 await callback.answer("Бот працює лише в приватному чаті")
             return
         if user.id not in get_settings().telegram_allowed_ids:
-            text = "Зараз бот доступний лише запрошеним учасникам тестування."
+            text = (
+                "Зараз бот доступний лише запрошеним учасникам тестування.\n"
+                f"Твій Telegram ID: {user.id}"
+            )
             if callback is not None:
                 await callback.answer(text, show_alert=True)
             else:

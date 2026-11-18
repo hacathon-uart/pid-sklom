@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiogram import Bot
 from aiogram.exceptions import TelegramNetworkError
-from aiogram.methods import GetMe
+from aiogram.methods import GetMe, SendMessage
 from aiogram.types import Update
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -131,6 +131,10 @@ def test_access_gate(transport, callback, user_id, chat_type, allowed):
     assert handler.await_count == int(allowed)
     if user_id == 99:
         assert transport.bot.session.make_request.await_count == 1
+        method = transport.bot.session.make_request.await_args.args[1]
+        if not callback:
+            assert isinstance(method, SendMessage)
+            assert "Telegram ID: 99" in method.text
 
 
 def test_unsupported_updates_are_ignored(transport):
