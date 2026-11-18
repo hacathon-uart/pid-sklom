@@ -9,6 +9,7 @@ from aiogram.types import Message, Update
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import ValidationError
 
+from app.bot.commands import setup_commands
 from app.bot.handlers import router as bot_router
 from app.config import get_settings
 
@@ -69,6 +70,7 @@ async def setup_webhook() -> bool:
     if not settings.public_base_url.startswith("https://"):
         log.info("PUBLIC_BASE_URL is not https — skipping webhook; use `python -m app.bot.polling` locally")
         return False
+    await setup_commands(bot)
     url = f"{settings.public_base_url.rstrip('/')}/telegram/webhook/{settings.telegram_webhook_secret}"
     await bot.set_webhook(
         url, secret_token=settings.telegram_webhook_secret,
