@@ -51,7 +51,7 @@ export function InkStamp({ className = "", rotate = -12 }: { className?: string;
 /** A corner flourish; the four corners are this one drawing, rotated. */
 export function CornerOrnament({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 64 64" className={`cert-corner ${className}`} fill="none" stroke="currentColor" aria-hidden>
+    <svg viewBox="0 0 64 64" className={`cert-corner max-md:!h-8 max-md:!w-8 ${className}`} fill="none" stroke="currentColor" aria-hidden>
       <path d="M3 61V20Q3 3 20 3H61" strokeWidth="2.2" />
       <path d="M11 61V24Q11 11 24 11H61" strokeWidth="1" />
       <path d="M19 19l6 6-6 6-6-6z" strokeWidth="1.4" fill="currentColor" />
@@ -75,7 +75,7 @@ export function OrnamentRule({ className = "" }: { className?: string }) {
 /** The director's signature: a hand-drawn scribble above a rule and the title. */
 export function Signature({ title }: { title: ReactNode }) {
   return (
-    <div className="w-[190px] text-center">
+    <div className="w-full max-w-[190px] text-center md:w-[190px]">
       <svg viewBox="0 0 190 44" className="mx-auto block h-11 w-full" fill="none" stroke="#2E2620" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M8 30C16 8 24 4 28 14c3 9-6 20 2 22 9 2 12-22 20-22 6 0 2 14 8 14 7 0 8-10 14-10 7 0 4 12 11 10 8-2 10-14 18-14 7 0 6 12 14 10 8-2 12-8 20-6" strokeWidth="1.9" />
         <path d="M30 38C70 33 120 33 168 36" strokeWidth="1.1" />
@@ -92,7 +92,7 @@ export function Signature({ title }: { title: ReactNode }) {
  */
 export function CertificateFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="certificate w-full px-14 pb-14 pt-12 text-center lg:grid lg:grid-cols-[236px_minmax(0,1fr)] lg:items-center lg:gap-x-14 lg:px-20 lg:pb-12 lg:pt-10">
+    <div className="certificate min-w-0 w-full break-words px-6 pb-10 pt-10 text-center md:px-14 md:pb-14 md:pt-12 lg:grid lg:grid-cols-[236px_minmax(0,1fr)] lg:items-center lg:gap-x-14 lg:px-20 lg:pb-12 lg:pt-10">
       <CornerOrnament className="cert-tl" />
       <CornerOrnament className="cert-tr" />
       <CornerOrnament className="cert-bl" />

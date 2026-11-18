@@ -141,7 +141,7 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
   });
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
       <Artwork
         src={question.images[0].image_url}
         alt="Картина з вікторини"
@@ -161,12 +161,12 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
                 type="button"
                 disabled={busy || !!reveal}
                 onClick={() => pick(option.key)}
-                className={`catalogue-card ${state === "other" ? "faded" : ""} ${state === "wrong" ? "struck" : ""}`}
+                className={`catalogue-card !flex-wrap max-md:!grid max-md:!grid-cols-[22px_minmax(0,1fr)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${state === "other" ? "faded" : ""} ${state === "wrong" ? "struck" : ""}`}
               >
                 <span className="card-no">{index + 1}</span>
-                <span className="card-text min-w-0 flex-1 pr-36">{option.label}</span>
-                {state === "right" && <span className="stamp stamp-right">ПРАВИЛЬНО</span>}
-                {state === "wrong" && <span className="stamp stamp-wrong">НЕПРАВИЛЬНО</span>}
+                <span className="card-text min-w-0 flex-1 break-words">{option.label}</span>
+                {state === "right" && <span className="stamp stamp-right !static ml-auto !translate-y-0 !animate-none max-md:col-start-2 max-md:!ml-0 max-md:justify-self-start">ПРАВИЛЬНО</span>}
+                {state === "wrong" && <span className="stamp stamp-wrong !static ml-auto !translate-y-0 !animate-none max-md:col-start-2 max-md:!ml-0 max-md:justify-self-start">НЕПРАВИЛЬНО</span>}
                 <span className="card-hole" aria-hidden />
               </button>
             );
@@ -200,7 +200,7 @@ function RevealCard({ reveal, result, onNext }: { reveal: QuizReveal; result: Qu
 
 function NextButton({ result, onNext }: { result: QuizResult; onNext: () => void }) {
   return (
-    <Button autoFocus className="mt-5 flex items-center gap-2" onClick={onNext}>
+    <Button autoFocus className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 md:w-auto" onClick={onNext}>
       {result.finished ? "Підсумки" : "Далі"} <Icon name="arrowRight" size={18} />
     </Button>
   );
@@ -219,7 +219,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
   const complete = question.images.every((i) => pairs[i.key]);
 
   const assign = (option: string) => {
-    if (result) return;
+    if (busy || result) return;
     const target = selected ?? question.images.find((i) => !pairs[i.key])?.key;
     if (!target) return;
     const nextPairs = Object.fromEntries(Object.entries(pairs).filter(([, o]) => o !== option));
@@ -228,10 +228,25 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
     setSelected(question.images.find((i) => !nextPairs[i.key])?.key ?? null);
   };
   const unassign = (image: string) => {
-    if (result) return;
+    if (busy || result) return;
     setPairs(Object.fromEntries(Object.entries(pairs).filter(([k]) => k !== image)));
     setSelected(image);
   };
+
+  const optionButtons = () => question.options.map((option) => {
+    const used = Object.values(pairs).includes(option.key);
+    return (
+      <button
+        key={option.key}
+        type="button"
+        disabled={used || busy || !selected}
+        onClick={() => assign(option.key)}
+        className={`wall-label min-h-11 min-w-0 break-words text-left transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${used ? "opacity-30" : "hover:-translate-y-0.5"}`}
+      >
+        <span className="wl-who">{option.label}</span>
+      </button>
+    );
+  });
 
   return (
     <div>
@@ -242,23 +257,24 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
           : "Повісьте етикетки під картини: оберіть картину, а потім етикетку з лотка. Натисніть на повішену етикетку, щоб зняти її."}
       </p>
       {/* P1 · blank wall labels from the curator's tray, hung on hooks under the paintings */}
-      <div className="mt-6 grid grid-cols-3 gap-10">
+      <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6 lg:gap-10">
         {question.images.map((image, index) => {
           const reveal = revealed(image.key);
           const chosen = pairs[image.key];
           return (
-            <div key={image.key} className="flex flex-col">
+            <div key={image.key} className="flex min-w-0 flex-col break-words">
               <button
                 type="button"
                 aria-label={`Картина ${index + 1}`}
                 aria-pressed={selected === image.key}
-                disabled={!!result}
+                disabled={busy || !!result}
                 onClick={() => setSelected(image.key)}
-                className="block text-left"
+                className="block text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
                 <Artwork src={image.image_url} alt={`Картина ${index + 1} з вікторини`} aspect="4/5" selected={!result && selected === image.key}
                   crack={reveal && !reveal.correct ? "animate" : null} />
               </button>
+              <span className="t-small mt-3 text-center">Картина {index + 1}{!result && selected === image.key ? " · Обрано" : ""}</span>
               <span className="label-hook mt-3" aria-hidden />
               {reveal ? (
                 <div className="wall-label" style={reveal.correct ? undefined : { boxShadow: `0 0 0 2px ${WRONG}` }}>
@@ -268,17 +284,25 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
                   <div className="wl-inv">Інв. № {inventoryNo(reveal.artwork.id)}</div>
                 </div>
               ) : chosen ? (
-                <button type="button" onClick={() => unassign(image.key)} className="wall-label text-left transition hover:-translate-y-0.5" title="Зняти етикетку">
+                <button type="button" disabled={busy} onClick={() => unassign(image.key)} className="wall-label min-h-11 text-left transition disabled:opacity-50 hover:-translate-y-0.5" aria-label={`Зняти етикетку: ${labels[chosen]}`} title="Зняти етикетку">
                   <div className="wl-who">{labels[chosen]}</div>
                 </button>
               ) : (
                 <button
                   type="button"
+                  disabled={busy}
+                  aria-pressed={selected === image.key}
                   onClick={() => setSelected(image.key)}
                   className={`flex min-h-[64px] items-center justify-center border-2 border-dashed px-4 py-2 text-center transition t-small ${selected === image.key ? "border-accent text-accent" : "border-line text-text-secondary"}`}
                 >
-                  {selected === image.key ? "Тепер оберіть етикетку з лотка ↓" : "Повісьте етикетку"}
+                  {selected === image.key ? "Тепер оберіть етикетку нижче ↓" : "Повісьте етикетку"}
                 </button>
+              )}
+              {!result && selected === image.key && (
+                <div className="label-tray mt-4 grid gap-3 rounded-card p-4 md:hidden" role="group" aria-label={`Етикетки для картини ${index + 1}`}>
+                  <span className="t-label !text-[#C9B08F]">Оберіть етикетку</span>
+                  {optionButtons()}
+                </div>
               )}
             </div>
           );
@@ -286,27 +310,14 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
       </div>
 
       {!result && (
-        <div className="label-tray mt-10 flex flex-wrap items-center gap-4 rounded-card px-6 py-5">
+        <div className="label-tray mt-6 flex flex-wrap items-center gap-4 rounded-card p-4 md:mt-10 md:px-6 md:py-5">
           <span className="t-label !text-[#C9B08F]">Лоток куратора</span>
-          {question.options.map((option) => {
-            const used = Object.values(pairs).includes(option.key);
-            return (
-              <button
-                key={option.key}
-                type="button"
-                disabled={used}
-                onClick={() => assign(option.key)}
-                className={`wall-label text-left transition ${used ? "opacity-30" : "hover:-translate-y-0.5"}`}
-              >
-                <span className="wl-who">{option.label}</span>
-              </button>
-            );
-          })}
-          <Button className="ml-auto" disabled={!complete || busy} onClick={() => onAnswer(pairs)}>Перевірити</Button>
+          <div className="hidden flex-wrap gap-4 md:flex">{optionButtons()}</div>
+          <Button className="min-h-11 w-full md:ml-auto md:w-auto" disabled={!complete || busy} onClick={() => onAnswer(pairs)}>{busy ? "Перевіряємо…" : "Перевірити"}</Button>
         </div>
       )}
       {result && (
-        <div className="mt-8 flex items-center gap-6 rounded-card bg-muted p-5" role="status">
+        <div className="mt-8 flex flex-col items-stretch gap-4 rounded-card bg-muted p-5 md:flex-row md:items-center md:gap-6" role="status">
           <div className="flex-1">
             <div className="t-label" style={result.correct ? undefined : { color: WRONG }}>
               {result.correct ? "Усі етикетки на своїх місцях!" : "Одна з етикеток висить не там"}
@@ -343,15 +354,15 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
   const date = new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="mx-auto flex max-w-[660px] flex-col items-center lg:max-w-[980px]">
+    <div className="mx-auto flex w-full min-w-0 max-w-[660px] flex-col items-center lg:max-w-[980px]">
       <CertificateFrame>
-        {guest && <span className="temp-stamp" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
+        {guest && <span className="temp-stamp max-md:!static max-md:mb-6 max-md:inline-block max-md:!transform-none max-md:!text-xs max-md:!tracking-normal" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
 
         {/* Header: spans both columns on a laptop */}
         <div className="lg:col-span-2">
           <CertificateCrest />
-          <h2 className="mt-5 font-heading text-[60px] font-semibold italic leading-none lg:mt-3 lg:text-[64px]">Посвідчення</h2>
-          <OrnamentRule className="mx-auto mt-4 h-4 w-[240px] text-accent" />
+          <h2 className="mt-5 break-words font-heading text-4xl md:text-[60px] font-semibold italic leading-none lg:mt-3 lg:text-[64px]">Посвідчення</h2>
+          <OrnamentRule className="mx-auto mt-4 h-4 w-full max-w-[240px] text-accent" />
           <p className="t-body mt-4 text-text-secondary">
             засвідчує, що відвідувач пройшов залу <strong className="font-heading text-[22px] italic text-text">«{GAMES[game].title}»</strong>
             {scopeName && <> · {scopeName}</>}
@@ -370,10 +381,10 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
         <div className="mt-6 lg:mt-8">
           <div className="t-label">Звання</div>
           {/* The rules sit on the rank's own row, so they line up with the middle of the text, not of the label above it. */}
-          <div className="mt-1 flex items-center justify-center gap-4">
-            <span className="h-px w-14 bg-accent-soft lg:w-10" />
-            <div className="font-heading text-[40px] font-semibold italic leading-tight lg:text-[46px]">{rankName(part)}</div>
-            <span className="h-px w-14 bg-accent-soft lg:w-10" />
+          <div className="mt-1 flex min-w-0 items-center justify-center gap-2 md:gap-4">
+            <span className="hidden h-px w-14 shrink-0 bg-accent-soft md:block lg:w-10" />
+            <div className="min-w-0 break-words font-heading text-3xl md:text-[40px] font-semibold italic leading-tight lg:text-[46px]">{rankName(part)}</div>
+            <span className="hidden h-px w-14 shrink-0 bg-accent-soft md:block lg:w-10" />
           </div>
           <p className="t-small mt-1 text-text-secondary">впізнано {percent(part)} колекції</p>
           {result.new_record && <p className="t-label mt-3">Новий рекорд!</p>}
@@ -384,15 +395,15 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
         </div>
 
         {/* Footer: spans both columns; the right gap is where the stamp sits */}
-        <div className="mt-8 flex items-end justify-between px-4 text-left lg:col-span-2 lg:mt-6">
+        <div className="mt-8 flex flex-col items-center justify-between gap-6 text-center md:flex-row md:items-end md:gap-4 md:px-4 md:text-left lg:col-span-2 lg:mt-6">
           <div>
             <div className="t-caption text-text-secondary">Видано</div>
             <div className="t-strong">{date}</div>
           </div>
           <Signature title="Директор музею" />
-          <div className="w-[150px]" aria-hidden />
+          <div className="hidden w-[150px] shrink-0 md:block" aria-hidden />
         </div>
-        <InkStamp />
+        <InkStamp className="max-md:!static max-md:mx-auto max-md:mt-6 max-md:!h-24 max-md:!w-24" />
       </CertificateFrame>
       {guest && (
         <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
@@ -400,9 +411,9 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}
-      <div className={`flex gap-3 ${guest ? "mt-6" : "mt-12"}`}>
+      <div className={`flex w-full flex-col gap-3 md:w-auto md:flex-row ${guest ? "mt-6" : "mt-12"}`}>
         <Button onClick={onAgain}>Зіграти ще</Button>
-        <Link to="/quiz" className="rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі зали</Link>
+        <Link to="/quiz" className="flex min-h-11 items-center justify-center rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі зали</Link>
       </div>
     </div>
   );
