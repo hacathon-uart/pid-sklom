@@ -1,11 +1,12 @@
 # Telegram bot implementation plan
 
 Status: first implementation pass and local test-bot acceptance completed on
-2026-11-18; offline backend suite passes (162 tests). Hosted webhook acceptance
+2026-11-18; offline backend suite passes (164 tests). Hosted webhook acceptance
 and public release are still pending. Real Gemini caption generation needs a
 follow-up check after the provider returns a successful response. See
 [TELEGRAM_TESTING.md](TELEGRAM_TESTING.md) for evidence and instructions, and
-[TELEGRAM_HANDOFF.md](TELEGRAM_HANDOFF.md) for the starting code map.
+[TELEGRAM_HANDOFF.md](TELEGRAM_HANDOFF.md) for the starting code map. The staged
+hosted-release runbook is [TELEGRAM_PRODUCTION_HANDOFF.md](TELEGRAM_PRODUCTION_HANDOFF.md).
 
 ## Agreed first release
 
@@ -19,8 +20,9 @@ follow-up check after the provider returns a successful response. See
   configuration. Other users receive a Ukrainian testing notice before any
   catalogue, AI, image, or rendering work.
 - Each finished meme is sent as a convenient photo with its story and as the
-  original PNG document. `/random` first shows the artwork photo and three
-  buttons; the chosen meme then gets both formats.
+  original PNG document. `/random` first shows the artwork photo, three full
+  captions in text and three numbered buttons; the chosen meme then gets both
+  formats.
 - Include reviewed artwork and artist facts and source links. If photo-caption
   space is insufficient, send the remaining story in a separate text message.
   Generated meme text must not be represented as a historical fact.
