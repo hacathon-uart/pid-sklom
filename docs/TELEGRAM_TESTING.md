@@ -36,6 +36,11 @@ Telegram or Gemini traffic.
 
 ## Separate local test bot
 
+The bot avatar is `assets/telegram-avatar.jpg`, a square JPG of the glass-pane
+mark in `frontend/public/favicon.svg` on the site's cream background. Keep the
+mark inside the center of the square so Telegram's circular crop preserves it.
+The test bot profile photo was set with Telegram's `setMyProfilePhoto` method.
+
 1. Create a **separate bot** with BotFather. Keep its token private. In BotFather,
    turn off group additions and leave inline mode disabled for this private-chat
    release. Do not use the public bot's token for polling.
