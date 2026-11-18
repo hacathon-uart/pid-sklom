@@ -290,7 +290,7 @@ try {
     await navigate("/me");
     await until("document.body.innerText.includes('Вийти')");
     await click("Вийти");
-    await until("location.pathname === '/' && document.body.innerText.includes('Продовжити через Google') && document.body.innerText.includes('Новий акаунт створиться автоматично')");
+    await until("location.pathname === '/' && document.body.innerText.includes('Увійти з Google')");
   };
   const editCaption = async (text) => {
     await until("document.querySelector('input[maxlength=\"200\"]') !== null");
@@ -387,7 +387,7 @@ try {
   } else {
   {
     await navigate("/");
-    await until("document.body.innerText.includes('Продовжити через Google')");
+    await until("document.body.innerText.includes('Увійти з Google')");
     await navigate("/create/painting/1/own");
     await editCaption("Direct-entry tab draft");
     await evaluate("document.querySelector('select').value = 'Rubik'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
@@ -473,13 +473,14 @@ try {
     "Reload must not restore the older pre-login caption after a later save");
   const savedId = [...state.memes.keys()][0];
   await navigate(`/me/memes/${savedId}`);
-  await until("document.body.innerText.includes('Видалити мем')");
+  const removeSaved = `[aria-label="Прибрати з «Моїх мемів»"]`;
+  await until(`document.querySelector(${JSON.stringify(removeSaved)}) !== null`);
   acceptDialog = false;
-  await click("Видалити мем");
+  await evaluate(`document.querySelector(${JSON.stringify(removeSaved)}).click()`);
   await delay(200);
   assert.equal(state.memes.size, 1, "Cancelled deletion must do nothing");
   acceptDialog = true;
-  await click("Видалити мем");
+  await evaluate(`document.querySelector(${JSON.stringify(removeSaved)}).click()`);
   await until("location.pathname === '/me'");
   assert.equal(state.memes.size, 0);
   await logout();
