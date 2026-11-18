@@ -36,7 +36,7 @@ const FEATURES = [
   ["Історія за кожним мемом", "Поруч із мемом є коротка історія картини і несподівані факти про автора. Ви можете дізнатись більше у галереї."],
   ["ШІ на підхваті", "Підбирає картину до вашої фрази або вигадує підпис до обраної картини. Або не заважає, якщо ви самі."],
 ];
-const TEAM = ["Алла Ковальчук", "Олена Попова", "Герман Гавва", "Вікторія Лозяк"];
+const TEAM = ["Алла Ковальчук", "Герман Гавва", "Вікторія Лозяк"];
 const EMAIL = "kov.koalla@gmail.com";
 
 export function HomePage() {
@@ -52,8 +52,8 @@ export function HomePage() {
 
   return (
     <>
-      <section className="relative flex flex-col items-center px-8 pb-10 pt-24 text-center">
-        {authEnabled && <div className="absolute inset-x-8 top-8 mx-auto flex max-w-[1120px] items-start gap-6">
+      <section className="relative flex flex-col items-center px-8 pb-8 pt-6 text-center">
+        {authEnabled && <div className="absolute inset-x-8 top-6 mx-auto flex max-w-[1120px] items-start gap-6">
           <GuestAllowance />
           <div className="ml-auto">
           {user ? (
@@ -61,27 +61,26 @@ export function HomePage() {
               {user.name}
             </Link>
           ) : (
-            <div className="flex flex-col items-end gap-2">
-              <Button variant="secondary" onClick={login}>Продовжити через Google</Button>
-              <p className="t-small text-text-secondary">Новий акаунт створиться автоматично</p>
-            </div>
+            <Button variant="secondary" onClick={login} title="Новий акаунт створиться автоматично">Увійти з Google</Button>
           )}
           </div>
         </div>}
 
-        <LogoMark size={88} className="mb-6 text-accent" />
-        <h1 className="t-logo">Під склом</h1>
-        <p className="t-quote mt-6 text-text-secondary">Мистецтво крізь жарти</p>
-        <p className="t-body mt-10 text-text-secondary">Три шляхи до мему. Оберіть свій.</p>
+        <div className="mt-10 flex flex-col items-center gap-3">
+          <LogoMark size={56} className="text-accent" />
+          <h1 className="t-logo !text-[80px]">Під склом</h1>
+        </div>
+        <p className="t-quote mt-3 text-text-secondary">Мистецтво крізь жарти</p>
+        <p className="t-body mt-10 text-text-secondary">Три шляхи до мему – оберіть свій!</p>
 
         {/* Path I — the fastest one, right here */}
-        <div className="mt-6 w-full max-w-[920px] rounded-card border border-line bg-surface p-6 text-left">
+        <div className="mt-4 w-full max-w-[920px] rounded-card border border-line bg-surface p-5 text-left">
           <PathHead no="I" title="Фраза → картина" text="Напишіть фразу чи опишіть ситуацію, а ШІ знайде українську картину, яка пасує найкраще." />
-          <form onSubmit={onSubmit} className="mt-5 flex gap-3">
+          <form onSubmit={onSubmit} className="mt-4 flex gap-3">
             <Input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
             <Button type="submit" className="shrink-0">Створити мем</Button>
           </form>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="t-small text-text-secondary">Спробуйте:</span>
             {EXAMPLES.map((ex) => (
               <Tag key={ex} onClick={() => go(ex)}>{ex}</Tag>
@@ -90,18 +89,18 @@ export function HomePage() {
         </div>
 
         {/* Paths II and III start from a painting */}
-        <div className="mt-6 grid w-full max-w-[920px] grid-cols-2 gap-6 text-left">
+        <div className="mt-4 grid w-full max-w-[920px] grid-cols-2 gap-4 text-left">
           {PAINTING_PATHS.map((p) => (
-            <Link key={p.no} to={p.to} className="group flex flex-col rounded-card border border-line bg-surface p-6 transition hover:border-accent">
+            <Link key={p.no} to={p.to} className="group flex flex-col rounded-card border border-line bg-surface p-5 transition hover:border-accent">
               <PathHead no={p.no} title={p.title} text={p.text} />
-              <span className="t-strong mt-5 flex items-center gap-2 text-accent">
+              <span className="t-strong mt-4 flex items-center gap-2 text-accent">
                 Обрати картину <Icon name="arrowRight" size={18} />
               </span>
             </Link>
           ))}
         </div>
 
-        <a href="#about" className="t-small mt-16 flex flex-col items-center text-text-secondary hover:text-accent">
+        <a href="#about" className="t-small mt-6 flex flex-col items-center text-text-secondary hover:text-accent">
           Про проєкт <Icon name="chevronDown" size={18} />
         </a>
       </section>

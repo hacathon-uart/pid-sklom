@@ -25,6 +25,8 @@ interface Props {
   stageRef?: RefObject<Konva.Stage | null>;
 }
 
+const WATERMARK_FONT = '"Cormorant Garamond"';
+
 export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelect, onBackgroundClick, onMove, stageRef }: Props) {
   // crossOrigin="anonymous" is REQUIRED, otherwise PNG export throws (tainted canvas).
   const [image, imageStatus] = useImage(imageUrl, "anonymous");
@@ -46,7 +48,10 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   useEffect(() => {
     let active = true;
     setFontError(false);
-    Promise.all(blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`)))
+    Promise.all([
+      ...blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`)),
+      document.fonts.load(`italic 600 40px ${WATERMARK_FONT}`, "Під склом"),
+    ])
       .then(() => { if (active) setFontsReady(fontsKey); })
       .catch(() => { if (active) setFontError(true); });
     return () => { active = false; };
@@ -115,14 +120,14 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
             name="watermark"
             visible={false}
             text="Під склом"
-            fontFamily="Oswald"
-            fontStyle="600"
-            fontSize={12 * scale}
-            fill="#FFFFFF"
-            stroke="#000000"
-            strokeWidth={0.5}
-            x={width - 80 * scale}
-            y={height - 20 * scale}
+            fontFamily="Cormorant Garamond" // same face as the «Під склом» title
+            fontStyle="italic 600"
+            fontSize={18 * scale}
+            fill={blocks[0]?.color ?? "#FFFFFF"} // single colour, same as the caption
+            width={140 * scale}
+            align="right"
+            x={width - 148 * scale}
+            y={height - 26 * scale}
           />
         </Layer>
       </Stage>

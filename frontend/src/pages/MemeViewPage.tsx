@@ -102,14 +102,14 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             />
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <IconButton icon="download" label="Завантажити" disabled={exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
-            <IconButton icon="share" label="Поділитися" onClick={share} />
             {canEdit && (
               <>
-                <Button variant="soft" onClick={toggleSaved}>Видалити мем</Button>
+                <IconButton icon="bookmark" label="Прибрати з «Моїх мемів»" active aria-pressed onClick={toggleSaved} />
                 <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} onClick={toggleFavorite} />
               </>
             )}
+            <IconButton icon="download" label="Завантажити" disabled={exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
+            <IconButton icon="share" label="Поділитися" onClick={share} />
           </div>
           <div className="mt-5">
             <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
