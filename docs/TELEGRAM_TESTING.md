@@ -29,7 +29,7 @@ docker run --rm --network none \
   pid-sklom-bot-test python -m pytest -q -p no:cacheprovider
 ```
 
-Result on 2026-11-18: 162 passed, one Starlette/AnyIO deprecation warning.
+Result on 2026-11-18: 164 passed, one Starlette/AnyIO deprecation warning.
 This verifies bot update dispatch, restricted access, callback retries, image
 format calls, webhook authentication, lifecycle, and rendering without live
 Telegram or Gemini traffic.
@@ -60,9 +60,11 @@ Telegram or Gemini traffic.
    `TELEGRAM_ALLOWED_USER_IDS` with your ID and restart Compose with
    `docker compose -f compose.telegram-test.yaml up --build --force-recreate`.
    The allowlist must contain at least one ID while a token is configured.
-4. Check `/start`, `/help`, a phrase, `/random` and each caption choice. Check
-   that each finished meme arrives as a photo plus an original PNG document,
-   with artwork/artist context and source links. Try an uninvited account,
+4. Check `/start`, `/help`, a phrase, `/random` and each caption choice. For
+   `/random`, confirm all three captions are fully visible in the numbered text
+   above the short choice buttons. Check that each finished meme arrives as a
+   photo plus an original PNG document, with bold artwork/artist context and
+   clickable source labels. Try an uninvited account,
    unknown command, non-text message, overlong phrase, repeated button, and a
    button from another account. Check that group and inline behavior remain off.
 5. Repeat a small private pass with the real catalogue and Gemini configuration

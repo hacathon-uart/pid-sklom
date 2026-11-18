@@ -108,7 +108,8 @@ class Harness:
         await self.feed(callback_query=payload)
 
     def choice(self, index=0):
-        return self.transport.of(SendPhoto)[-1].reply_markup.inline_keyboard[index][0].callback_data
+        options = next(call for call in reversed(self.transport.of(SendMessage)) if call.reply_markup)
+        return options.reply_markup.inline_keyboard[index][0].callback_data
 
 
 @pytest.fixture
@@ -227,10 +228,22 @@ async def test_phrase_photo_and_identical_original_png_with_reviewed_context(bot
     assert photo.photo.data == document.document.data == bot.png
     assert document.document.filename == "meme.png"
     assert photo.parse_mode is None
-    assert photo.caption == h.story_text(bot.art, bot.art.story)
+    assert "«Картина»" in photo.caption and "Художник" in photo.caption
     assert "Мемний підпис" not in photo.caption
-    for url in ("artwork", "artist", "catalogue"):
-        assert f"https://example.test/{url}" in photo.caption
+    links = {entity.url for entity in photo.caption_entities if entity.type == "text_link"}
+    assert links == {f"https://example.test/{name}" for name in ("artwork", "artist", "catalogue")}
+
+
+@offline
+async def test_story_uses_bold_title_and_embedded_source_links(bot):
+    await bot.message()
+    photo, = bot.transport.of(SendPhoto)
+    assert photo.caption_entities
+    assert any(entity.type == "bold" for entity in photo.caption_entities)
+    links = {entity.url for entity in photo.caption_entities if entity.type == "text_link"}
+    assert {"https://example.test/artwork", "https://example.test/artist",
+            "https://example.test/catalogue"} <= links
+    assert "https://example.test/" not in photo.caption
 
 
 @offline
@@ -246,9 +259,13 @@ async def test_long_emoji_story_preserves_all_context_and_intact_source_links(bo
     assert len(photo.caption.encode("utf-16-le")) // 2 <= 1024
     assert all(len(m.text.encode("utf-16-le")) // 2 <= 4096 for m in messages)
     pieces = [photo.caption] + [m.text for m in messages]
-    assert "".join(pieces) == h.story_text(bot.art, bot.art.story)
+    visible = "".join(pieces)
+    assert visible.count("🎨") == 2601  # all 2600 artwork emoji plus the artist-fact heading
+    assert bot.art.story.artwork_fact.text in visible
     for url in (bot.art.story.artwork_fact.source_url, bot.art.story.artist_fact.source_url, bot.art.story.source_url):
-        assert any(url in piece for piece in pieces)
+        assert any(entity.url == url for entity in photo.caption_entities) or any(
+            entity.url == url for message in messages for entity in (message.entities or [])
+        )
     assert len(bot.transport.of(SendDocument)) == 1
 
 
@@ -279,7 +296,8 @@ async def test_random_success_and_duplicate_callback(bot):
     await bot.message("/random")
     preview, = bot.transport.of(SendPhoto)
     assert preview.photo.data == bot.png
-    assert len(preview.reply_markup.inline_keyboard) == 3
+    options = bot.transport.of(SendMessage)[-1]
+    assert len(options.reply_markup.inline_keyboard) == 3
     data = bot.choice(2)
     assert len(data.encode()) <= 64
     await bot.callback(data)
@@ -290,6 +308,19 @@ async def test_random_success_and_duplicate_callback(bot):
     await bot.callback(data)
     assert bot.transport.of(AnswerCallbackQuery)[-1].text == h.STALE
     bot.render.assert_awaited_once()
+
+
+@offline
+async def test_random_shows_complete_caption_options_with_short_buttons(bot):
+    texts = [f"Коли ґава їсть борщ і всі питають про дедлайн — варіант {i} " * 3 for i in range(3)]
+    bot.suggest.return_value.captions = [CaptionOption(text=t, kind="everyday") for t in texts]
+    await bot.message("/random")
+    preview, = bot.transport.of(SendPhoto)
+    messages = bot.transport.of(SendMessage)
+    visible = preview.caption + "\n" + "\n".join(message.text for message in messages)
+    assert all(text in visible for text in texts)
+    options = messages[-1]
+    assert all(len(row[0].text) <= 24 for row in options.reply_markup.inline_keyboard)
 
 
 @pytest.mark.parametrize("stage, error, expected", [

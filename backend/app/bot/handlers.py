@@ -9,10 +9,12 @@ import re
 import secrets
 import time
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.utils.formatting import Bold, Text, TextLink
 from pydantic import ValidationError
 
 from app.ai.moderation import ModerationError
@@ -101,23 +103,66 @@ def _prune_pending() -> None:
             del _pending[token]
 
 
-def story_text(artwork: ArtworkSummary, story: Story) -> str:
-    """Only catalogue context belongs here; generated meme text is not a fact."""
+def _units(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
+
+
+def _source(label: str, url: str) -> Text:
+    parsed = urlsplit(url)
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return TextLink(label, url=url)
+    return Text(label, ": ", url)
+
+
+def _story_blocks(artwork: ArtworkSummary, story: Story) -> list[Text]:
+    """Build Telegram entities without treating meme captions as historical facts."""
     years = f"{artwork.artist.birth_year or '?'}–{artwork.artist.death_year or '?'}"
-    parts = [f"«{artwork.title}»{', ' + str(artwork.year) if artwork.year else ''}",
-             f"{artwork.artist.name} ({years})"]
+    blocks = [Text(
+        Bold(f"«{artwork.title}»"), f", {artwork.year}" if artwork.year else "",
+        "\n", Bold(artwork.artist.name), f" ({years})",
+    )]
+
+    def add_body(heading: str, body: str) -> None:
+        remaining = body
+        first = True
+        while remaining:
+            fragment, remaining = _split_text(remaining, 3500)
+            blocks.append(Text(Bold(heading if first else f"{heading} (продовження)"), "\n", fragment))
+            first = False
+
     if story.museum:
-        parts.append(story.museum)
+        add_body("🏛 Музей", story.museum)
     if story.about_artwork:
-        parts.append(story.about_artwork)
-    for label, fact in (("💡", story.artwork_fact), ("🎨", story.artist_fact)):
+        add_body("Про картину", story.about_artwork)
+    for heading, fact in (("💡 Факт про картину", story.artwork_fact),
+                          ("🎨 Факт про художника", story.artist_fact)):
         if fact:
-            parts.append(f"{label} {fact.text}")
+            add_body(heading, fact.text)
             if fact.source_url:
-                parts.append(f"Джерело: {fact.source_url}")
+                blocks.append(Text(_source("🔗 Джерело факту", fact.source_url)))
     if story.source_url:
-        parts.append(f"Джерело картини: {story.source_url}")
-    return "\n\n".join(parts)
+        blocks.append(Text(_source("🔗 Джерело картини", story.source_url)))
+    return blocks
+
+
+def _story_chunks(artwork: ArtworkSummary, story: Story) -> list[Text]:
+    chunks: list[Text] = []
+    nodes: list[Text | str] = []
+    length = 0
+    limit = 1024  # first chunk goes beside the photo; subsequent messages may be 4096
+    for block in _story_blocks(artwork, story):
+        block_length = _units(block.render()[0])
+        if nodes and length + 2 + block_length > limit:
+            chunks.append(Text(*nodes))
+            nodes, length, limit = [], 0, 4096
+        if nodes:
+            nodes.append("\n\n")
+            length += 2
+        nodes.append(block)
+        length += block_length
+    if nodes:
+        chunks.append(Text(*nodes))
+    return chunks
 
 
 def _split_text(text: str, limit: int) -> tuple[str, str]:
@@ -140,11 +185,15 @@ def _split_text(text: str, limit: int) -> tuple[str, str]:
 
 
 async def _deliver(message: Message, png: bytes, artwork: ArtworkSummary, story: Story) -> None:
-    caption, remaining = _split_text(story_text(artwork, story), 1024)
-    await message.answer_photo(BufferedInputFile(png, "meme.png"), caption=caption, parse_mode=None)
-    while remaining:
-        chunk, remaining = _split_text(remaining, 4096)
-        await message.answer(chunk, parse_mode=None)
+    chunks = _story_chunks(artwork, story)
+    caption, caption_entities = chunks[0].render()
+    await message.answer_photo(
+        BufferedInputFile(png, "meme.png"), caption=caption,
+        caption_entities=caption_entities, parse_mode=None,
+    )
+    for chunk in chunks[1:]:
+        text, entities = chunk.render()
+        await message.answer(text, entities=entities, parse_mode=None)
     await message.answer_document(
         BufferedInputFile(png, "meme.png"), caption="Оригінальний PNG", parse_mode=None
     )
@@ -194,9 +243,17 @@ async def on_random(message: Message):
             artwork.id, texts, message.from_user.id, message.chat.id, time.monotonic() + PENDING_TTL_S
         )
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=t, callback_data=f"cap:{token}:{i}")] for i, t in enumerate(texts)
+            [InlineKeyboardButton(text=f"{i + 1} · Зробити мем", callback_data=f"cap:{token}:{i}")]
+            for i in range(len(texts))
         ])
-        await message.answer_photo(photo, caption="Обери підпис:", reply_markup=keyboard, parse_mode=None)
+        preview, preview_entities = Text(Bold(f"«{artwork.title}»"), "\n", artwork.artist.name).render()
+        await message.answer_photo(photo, caption=preview, caption_entities=preview_entities, parse_mode=None)
+        choices = Text(Bold("Обери підпис до картини:"), "\n\n", *[
+            Text(Bold(f"{i + 1}. "), caption, "\n\n" if i < len(texts) - 1 else "")
+            for i, caption in enumerate(texts)
+        ])
+        choices_text, choices_entities = choices.render()
+        await message.answer(choices_text, entities=choices_entities, reply_markup=keyboard, parse_mode=None)
     except Exception as exc:
         if token is not None:
             _pending.pop(token, None)
