@@ -85,10 +85,12 @@ Telegram or Gemini traffic.
 - A real-catalogue `/random` preview and caption callback both completed and the
   tester confirmed delivery. Captions came from the reviewed fallback path:
   the local ignored `.env` has an empty `AI_MODEL`, yielding a 404 from the
-  caption endpoint. A one-off retry with the application's default model received
-  a Gemini 503. Real Gemini caption generation is therefore **not yet verified**;
-  the fallback behavior worked. The local bot was restored to seed data and stub
-  AI after this pass to avoid ongoing provider use.
+  caption endpoint. Google's model list confirms that the application's default
+  `gemini-3.1-flash-lite` supports `generateContent`, but two controlled checks
+  with that model received a Gemini 503 and then exceeded the configured
+  eight-second timeout. Real Gemini caption generation is therefore **not yet
+  verified**; the fallback behavior worked. The local bot was restored to seed
+  data and stub AI after this pass to avoid ongoing provider use.
 
 Hosted webhook delivery and a public usage policy remain separate release gates.
 
