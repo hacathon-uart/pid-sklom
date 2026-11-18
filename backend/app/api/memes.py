@@ -1,24 +1,19 @@
 """Saved memes — «Мої меми» (US-08). Login required except reading a meme by its link."""
 
-import base64
-import binascii
-import io
 import logging
 from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
-from PIL import Image, UnidentifiedImageError
 
 from app import operations
 from app.auth import User, current_user, optional_user
 from app.config import get_settings
 from app.data import get_repo
+from app.png import png_bytes
 from app.schemas import Meme, MemeCreate, MemeUpdate
 
 router = APIRouter(prefix="/memes", tags=["memes"])
 
-MAX_PNG_BYTES = 5 * 1024 * 1024
-MAX_PNG_DATA_URL = 4 * ((MAX_PNG_BYTES + 2) // 3) + len("data:image/png;base64,")
 log = logging.getLogger(__name__)
 
 
@@ -30,20 +25,8 @@ def _owned(meme_id: str, user: User) -> Meme:
 
 
 def _check_png(data_url: str | None) -> None:
-    if not data_url:
-        return
-    try:
-        if not data_url.startswith("data:image/png;base64,") or len(data_url) > MAX_PNG_DATA_URL:
-            raise ValueError("Invalid PNG size or prefix")
-        raw = base64.b64decode(data_url.split(",", 1)[1], validate=True)
-        if len(raw) > MAX_PNG_BYTES:
-            raise ValueError("PNG exceeds Storage limit")
-        with Image.open(io.BytesIO(raw)) as image:
-            if image.format != "PNG":
-                raise ValueError("Not a PNG")
-            image.verify()
-    except (ValueError, binascii.Error, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
-        raise HTTPException(422, "Очікуємо справжній PNG до 5 МіБ") from error
+    if data_url:
+        png_bytes(data_url)
 
 
 @router.get("", response_model=list[Meme])

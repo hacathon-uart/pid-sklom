@@ -59,6 +59,10 @@ def remaining(actor: str) -> int:
     return rpc("operation_remaining", {"p_actor": actor})
 
 
+def export_remaining(actor: str) -> int:
+    return rpc("export_remaining", {"p_actor": actor})
+
+
 def begin(actor: str, request_id: str | None, kind: str, payload: dict, limited: bool) -> dict:
     try:
         request_id = str(UUID(request_id or ""))
@@ -71,7 +75,12 @@ def begin(actor: str, request_id: str | None, kind: str, payload: dict, limited:
     })
     status = operation["status"]
     errors = {
-        "limited": (403, "guest_limit_exceeded", "Три безкоштовні генерації використано. Увійдіть через Google"),
+        "limited": (
+            403,
+            "guest_export_limit_exceeded" if kind == "export" else "guest_limit_exceeded",
+            "Три унікальні PNG використано. Увійдіть через Google"
+            if kind == "export" else "Три безкоштовні генерації використано. Увійдіть через Google",
+        ),
         "pending": (409, "operation_pending", "Запит ще виконується"),
         "conflict": (409, "operation_conflict", "Цей запит уже використано для іншої дії"),
     }
