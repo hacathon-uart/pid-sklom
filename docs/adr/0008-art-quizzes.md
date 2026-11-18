@@ -61,6 +61,27 @@ the visitor picks.
   from a similar period or genre when that data is available. If there are not
   enough, fall back to random choices.
 
+### Museum ranks
+
+Every score maps to a museum rank by the **share of the whole collection** it
+covers, not by a raw count, so ranks stay fair as the catalogue grows. For
+«Пари» the base is the number of rounds the collection can fill (three
+paintings per round). A perfect run over one artist's works is not 100%,
+because the base is always the whole collection.
+
+| Share | Rank |
+|---|---|
+| 0% | Відвідувач |
+| 10% | Доглядач зали |
+| 30% | Екскурсовод |
+| 60% | Науковий співробітник |
+| 90% | Куратор |
+| 100% | Директор музею |
+
+The rank is shown on the lobby hall sign, the result certificate and the
+profile tickets. It is derived from the best score and the current catalogue
+size, so it is not stored and can change when artworks are added.
+
 ### Signed-in visitors
 
 - Runs are unlimited.

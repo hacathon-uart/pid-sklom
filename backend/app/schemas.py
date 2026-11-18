@@ -204,6 +204,7 @@ class QuizScope(BaseModel):
 class QuizInfo(BaseModel):
     games: list[QuizGame]  # games the published catalogue can fill right now
     title_scopes: list[QuizScope]
+    artworks: int  # published artworks: the base of a visitor's museum rank (percent of the collection)
     limited: bool  # true = the caller plays the short guest version
     guest_limits: dict[QuizGame, int]
     best: dict[str, int] | None = None  # signed-in only: "who" | "pairs" | "titles:<scope>" -> best score

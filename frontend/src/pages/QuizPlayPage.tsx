@@ -12,7 +12,8 @@ import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { inventoryNo } from "../components/Museum";
 import { plural } from "../plural";
 import { bestKey, GAMES } from "../quiz/games";
-import { BrassPlaque, rank, Turnstile } from "../quiz/Museum";
+import { CertificateCrest, CertificateFrame, InkStamp, OrnamentRule, Signature } from "../quiz/Certificate";
+import { CloakroomTag, percent, rankName, share } from "../quiz/Museum";
 
 const WRONG = "#7b1e2a"; // the velvet-rope red
 
@@ -39,6 +40,7 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
   const [error, setError] = useState<string | null>(null);
   const [best, setBest] = useState<number | null>(null);
   const [scopeName, setScopeName] = useState<string | null>(null);
+  const [artworks, setArtworks] = useState<number | null>(null); // size of the collection: the base of the museum rank
 
   useEffect(() => {
     let active = true;
@@ -49,6 +51,7 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
       if (!active) return;
       setBest(info.best?.[bestKey(game, scope)] ?? null);
       if (scope !== "all") setScopeName(info.title_scopes.find((s) => s.key === scope)?.name ?? null);
+      setArtworks(info.artworks); // the rank is always a share of the whole collection
     }).catch(() => undefined);
     return () => { active = false; };
   }, [game, scope]);
@@ -79,19 +82,11 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     }
   }, [result]);
 
-  // S1 · the visitor turnstile counts right answers; the record is a brass plaque beside it.
+  // B1 · cloakroom tags: the score on the dark one, the record on the burgundy one.
   const header = (
-    <div className="flex items-center gap-5">
-      <div className="text-center">
-        <div className="t-label mb-2">Рахунок</div>
-        <Turnstile value={run?.score ?? 0} label="Рахунок" />
-        {run?.limit && <div className="t-caption mt-2 text-text-secondary">гостьовий: з {run.limit}</div>}
-      </div>
-      {user && (
-        <BrassPlaque className="self-end">
-          <span className="engraved text-[19px]">Рекорд {best ?? "—"}</span>
-        </BrassPlaque>
-      )}
+    <div className="flex items-end gap-3">
+      <CloakroomTag value={run?.score ?? 0} label={run?.limit ? `з ${run.limit}` : "рахунок"} />
+      {user && <CloakroomTag value={best ?? "—"} label="рекорд" tone="burgundy" />}
     </div>
   );
   const page = (children: ReactNode) => (
@@ -110,7 +105,7 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
   if (showFinal && result?.finished) {
     return page(
       <FinalCard
-        game={game} result={result} signedIn={!!user}
+        game={game} scope={scope} scopeName={scopeName} result={result} signedIn={!!user} artworks={artworks}
         onAgain={onRestart} onLogin={() => void login()}
       />,
     );
@@ -334,10 +329,12 @@ const ENDINGS = {
 } as const;
 
 /** R1 · a museum certificate with a rank and a wax seal; guests get it stamped «ТИМЧАСОВЕ». */
-function FinalCard({ game, result, signedIn, onAgain, onLogin }: {
-  game: QuizGame; result: QuizResult; signedIn: boolean; onAgain: () => void; onLogin: () => void;
+function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain, onLogin }: {
+  game: QuizGame; scope: string; scopeName: string | null; result: QuizResult; signedIn: boolean; artworks: number | null; onAgain: () => void; onLogin: () => void;
 }) {
   const score = result.run.score;
+  // Finishing one artist's works is not finishing the collection, so «complete» only counts on the whole one.
+  const part = share(game, score, artworks ?? Math.max(score, 1), scope === "all" ? result.finished : null);
   const ending = ENDINGS[result.finished!];
   const unit = game === "pairs"
     ? `${plural(score, "раунд", "раунди", "раундів")} без помилки`
@@ -346,29 +343,60 @@ function FinalCard({ game, result, signedIn, onAgain, onLogin }: {
   const date = new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="mx-auto flex max-w-[620px] flex-col items-center">
-      <div className="certificate w-full px-12 pb-16 pt-12 text-center">
+    <div className="mx-auto flex max-w-[660px] flex-col items-center lg:max-w-[980px]">
+      <CertificateFrame>
         {guest && <span className="temp-stamp" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
-        <div className="t-label">{ending.label}</div>
-        <h2 className="mt-3 font-heading text-[52px] font-semibold italic leading-none">Посвідчення</h2>
-        <p className="t-small mt-2 text-text-secondary">видано за знання колекції · {GAMES[game].title}</p>
-        {/* Old-style figures (T2) hang below the line, so the score gets room underneath. */}
-        <div className="mt-5 pb-3 font-heading text-[120px] font-semibold leading-[1.15]">{score}</div>
-        <div className="t-body-lg text-text-secondary">{unit}</div>
-        <p className="mt-5 font-heading text-[26px] leading-tight">
-          Звання: <strong className="italic">{rank(game, score, result.finished!)}</strong>
-        </p>
-        {result.new_record && <p className="t-label mt-4">Новий рекорд!</p>}
-        {signedIn && !result.new_record && !!result.best && (
-          <p className="t-small mt-4 text-text-secondary">Ваш рекорд: <strong className="text-text">{result.best}</strong></p>
-        )}
-        {ending.text && <p className="t-small mx-auto mt-4 max-w-[420px] text-text-secondary">{ending.text}</p>}
-        <p className="t-caption mt-6 text-text-secondary">{date}</p>
-        <div className="wax-seal" aria-hidden>ПІД<br />СКЛОМ</div>
-      </div>
+
+        {/* Header: spans both columns on a laptop */}
+        <div className="lg:col-span-2">
+          <CertificateCrest />
+          <h2 className="mt-5 font-heading text-[60px] font-semibold italic leading-none lg:mt-3 lg:text-[64px]">Посвідчення</h2>
+          <OrnamentRule className="mx-auto mt-4 h-4 w-[240px] text-accent" />
+          <p className="t-body mt-4 text-text-secondary">
+            засвідчує, що відвідувач пройшов залу <strong className="font-heading text-[22px] italic text-text">«{GAMES[game].title}»</strong>
+            {scopeName && <> · {scopeName}</>}
+          </p>
+        </div>
+
+        {/* The score in a medallion (left on a laptop); lining figures, so a 1 never reads as a Roman numeral. */}
+        <div className="mt-10 lg:mt-8">
+          <div className="medallion">
+            <span className="font-heading text-[92px] font-semibold leading-none [font-variant-numeric:lining-nums]">{score}</span>
+          </div>
+          <div className="t-body mt-5 text-text-secondary">{unit}</div>
+        </div>
+
+        {/* The rank (right on a laptop) */}
+        <div className="mt-6 lg:mt-8">
+          <div className="t-label">Звання</div>
+          {/* The rules sit on the rank's own row, so they line up with the middle of the text, not of the label above it. */}
+          <div className="mt-1 flex items-center justify-center gap-4">
+            <span className="h-px w-14 bg-accent-soft lg:w-10" />
+            <div className="font-heading text-[40px] font-semibold italic leading-tight lg:text-[46px]">{rankName(part)}</div>
+            <span className="h-px w-14 bg-accent-soft lg:w-10" />
+          </div>
+          <p className="t-small mt-1 text-text-secondary">впізнано {percent(part)} колекції</p>
+          {result.new_record && <p className="t-label mt-3">Новий рекорд!</p>}
+          {signedIn && !result.new_record && !!result.best && (
+            <p className="t-small mt-3 text-text-secondary">Ваш рекорд: <strong className="text-text">{result.best}</strong></p>
+          )}
+          {ending.text && <p className="t-small mx-auto mt-3 max-w-[420px] text-text-secondary">{ending.text}</p>}
+        </div>
+
+        {/* Footer: spans both columns; the right gap is where the stamp sits */}
+        <div className="mt-8 flex items-end justify-between px-4 text-left lg:col-span-2 lg:mt-6">
+          <div>
+            <div className="t-caption text-text-secondary">Видано</div>
+            <div className="t-strong">{date}</div>
+          </div>
+          <Signature title="Директор музею" />
+          <div className="w-[150px]" aria-hidden />
+        </div>
+        <InkStamp />
+      </CertificateFrame>
       {guest && (
         <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
-          <p className="t-body">Посвідчення тимчасове. Увійдіть, щоб грати без обмежень, обирати автора і потрапити на почесну дошку.</p>
+          <p className="t-body">Посвідчення тимчасове. Увійдіть, щоб грати без обмежень, обирати автора і зберегти звання в профілі.</p>
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}

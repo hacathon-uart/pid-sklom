@@ -12,7 +12,7 @@ import { authEnabled } from "../auth/supabase";
 import { Button } from "../components/Button";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { bestKey, GAME_ORDER, GAMES } from "../quiz/games";
-import { BrassPlaque } from "../quiz/Museum";
+import { CatalogueRecord, percent, rankName, share } from "../quiz/Museum";
 
 /** Halls on the plan (viewBox 640×420): wall colour follows the genre halls of the gallery. */
 const HALLS: Record<QuizGame, { x: number; y: number; w: number; h: number; wall: string }> = {
@@ -57,7 +57,7 @@ export function QuizPage() {
             <div className="mt-10 flex items-center gap-6 rounded-card bg-muted px-6 py-5">
               <p className="t-body flex-1">
                 Гості грають коротку версію кожної гри. Увійдіть, щоб грати без обмежень, обирати автора
-                в «Назві картини» і потрапити на почесну дошку.
+                в «Назві картини» і зберігати звання в профілі.
               </p>
               <Button variant="secondary" className="shrink-0" onClick={() => void login()}>Увійти з Google</Button>
             </div>
@@ -147,6 +147,11 @@ function HallSign({ game, info }: { game: QuizGame; info: QuizInfo }) {
   const scopes = game === "titles" ? info.title_scopes.filter((s) => !info.limited || s.key === "all") : [];
   const [scope, setScope] = useState(scopes[0]?.key ?? "all");
   const best = info.best?.[bestKey(game, scope)];
+  const record: [string, string | number][] = info.limited
+    ? [["Гостьова версія", meta.guestShort(info.guest_limits[game])], ["Звання", "після входу"]]
+    : best === undefined
+      ? [["Рекорд", "—"], ["Звання", "ще попереду"]]
+      : [["Рекорд", best], ["Звання", `${rankName(share(game, best, info.artworks))} · ${percent(share(game, best, info.artworks))}`]];
   const play = () => navigate(`/quiz/${game}${game === "titles" ? `?scope=${encodeURIComponent(scope)}` : ""}`);
 
   return (
@@ -178,11 +183,13 @@ function HallSign({ game, info }: { game: QuizGame; info: QuizInfo }) {
               </select>
             </label>
           )}
-          <BrassPlaque className="mt-6 inline-block">
-            <span className="engraved text-[19px]">
-              {info.limited ? meta.guestNote(info.guest_limits[game]) : best !== undefined ? `Ваш рекорд: ${best}` : "Рекорду ще немає"}
-            </span>
-          </BrassPlaque>
+          {/* A3 · the record and the museum rank as a typed catalogue card */}
+          <div className="mt-6">
+            <CatalogueRecord rows={record} />
+            <p className="t-caption mt-3 text-text-secondary">
+              Звання залежить від частки колекції, яку ви впізнали: від відвідувача до директора музею за 100%.
+            </p>
+          </div>
           <div className="mt-6">
             <Button onClick={play}>Увійти до зали</Button>
           </div>

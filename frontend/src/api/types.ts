@@ -161,6 +161,7 @@ export interface QuizScope {
 export interface QuizInfo {
   games: QuizGame[];
   title_scopes: QuizScope[];
+  artworks: number; // published artworks: the base of the museum rank
   limited: boolean;
   guest_limits: Record<QuizGame, number>;
   best: Record<string, number> | null; // "who" | "pairs" | "titles:<scope>"

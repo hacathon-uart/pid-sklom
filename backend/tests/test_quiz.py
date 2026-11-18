@@ -47,6 +47,7 @@ def test_info_lists_games_and_scopes(client):
     info = client.get("/api/quiz").json()
     assert set(info["games"]) == {"who", "pairs", "titles"}
     assert info["title_scopes"][0]["key"] == "all"
+    assert info["artworks"] == info["title_scopes"][0]["artworks"] > 0
     assert info["limited"] is True and info["best"] is None
     assert info["guest_limits"] == {"who": 5, "pairs": 1, "titles": 5}
     signed_in = client.get("/api/quiz", headers=AUTH).json()

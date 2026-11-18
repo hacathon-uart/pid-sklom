@@ -9,7 +9,7 @@ import { MemeCard } from "../components/cards";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { RopedOff, Ticket } from "../components/Museum";
 import { Tag } from "../components/Tag";
-import { HonoursBoard } from "../quiz/Museum";
+import { RecordTickets } from "../quiz/Museum";
 
 export function MyMemesPage() {
   const { user, login, logout } = useAuth();
@@ -75,10 +75,9 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
   );
 }
 
-/** Best quiz scores (ADR 0008) on H1 «Почесна дошка». */
+/** Best quiz scores and museum ranks (ADR 0008): one entrance ticket per game (C4). */
 function QuizRecords() {
   const { data } = useApi(() => api.quiz(), []);
-  const best = data?.best;
-  if (!best || Object.keys(best).length === 0) return null;
-  return <HonoursBoard best={best} />;
+  if (!data?.best || Object.keys(data.best).length === 0) return null;
+  return <RecordTickets info={data} />;
 }

@@ -49,6 +49,7 @@ def info(user: User | None = Depends(optional_user)):
     return QuizInfo(
         games=quiz.available_games(cat),
         title_scopes=quiz.title_scopes(cat),
+        artworks=len(cat.artworks),
         limited=_limited(user),
         guest_limits=quiz.GUEST_LIMITS,
         best=_best(user) if user else None,

@@ -9,6 +9,7 @@ export const GAMES: Record<QuizGame, {
   text: string;
   prompt: string;
   guestNote: (limit: number) => string;
+  guestShort: (limit: number) => string; // the same, short enough for a one-line catalogue card
 }> = {
   who: {
     no: "I",
@@ -17,6 +18,7 @@ export const GAMES: Record<QuizGame, {
     text: "Картина й чотири художники. Вгадуйте, доки не помилитесь або доки не впізнаєте всю колекцію.",
     prompt: "Хто написав цю картину?",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "картина", "картини", "картин")}`,
+    guestShort: (n) => `${n} ${plural(n, "картина", "картини", "картин")}`,
   },
   pairs: {
     no: "II",
@@ -25,6 +27,7 @@ export const GAMES: Record<QuizGame, {
     text: "Три картини і три художники. З’єднайте кожну картину з її автором — без жодної помилки.",
     prompt: "З’єднайте картини з їхніми авторами",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "раунд", "раунди", "раундів")} по 3 пари`,
+    guestShort: (n) => `${n} ${plural(n, "раунд", "раунди", "раундів")}`,
   },
   titles: {
     no: "III",
@@ -33,6 +36,7 @@ export const GAMES: Record<QuizGame, {
     text: "Найважче: згадайте, як називається картина. Грайте за всією колекцією або за одним автором.",
     prompt: "Як називається ця картина?",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "картина", "картини", "картин")} з усієї колекції`,
+    guestShort: (n) => `${n} ${plural(n, "картина", "картини", "картин")}`,
   },
 };
 
