@@ -3,7 +3,8 @@
 - **Status:** Accepted; production enablement requires a separately approved release.
 - **Date:** 2026-11-18
 - **Related:** [Authentication map](../AUTHENTICATION.md), [ADR 0001](0001-artwork-data-storage.md),
-  [ADR 0003](0003-portable-render-first-release.md)
+  [ADR 0003](0003-portable-render-first-release.md). Guest PNG exports were subsequently
+  limited separately in [ADR 0007](0007-distinct-guest-png-exports.md).
 
 Use Google through Supabase Auth for identity, while keeping saved-meme writes and
 ownership enforcement in FastAPI. The browser gets its own Supabase session and
@@ -13,7 +14,8 @@ issuer. There is no separate application user database or first-user admin rule.
 
 Guests receive three successful generations combined across matching and caption
 suggestions, including successful fallback results. The allowance does not reset
-daily; manual editing and PNG downloads remain free. A signed-in user is exempt
+daily; manual editing is free. Originally PNG downloads were also free; ADR 0007
+adds a separate three-distinct-export guest allowance. A signed-in user is exempt
 from this guest allowance, not from ownership checks.
 
 ## Trade-offs

@@ -51,10 +51,18 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       res.status, typeof detail === "string" ? detail : detail?.message ?? "Щось пішло не так", detail?.code,
     );
   }
-  const remaining = res.headers.get("X-Guest-Remaining");
-  if (remaining !== null) {
-    if (guestState) guestState.remaining = Number(remaining);
-    window.dispatchEvent(new CustomEvent("pidsklom:allowance", { detail: Number(remaining) }));
+  let allowanceChanged = false;
+  for (const [header, key] of [
+    ["X-Guest-Remaining", "remaining"], ["X-Guest-Exports-Remaining", "exports_remaining"],
+  ] as const) {
+    const remaining = res.headers.get(header);
+    if (remaining !== null && guestState) {
+      guestState[key] = Number(remaining);
+      allowanceChanged = true;
+    }
+  }
+  if (allowanceChanged) {
+    window.dispatchEvent(new CustomEvent("pidsklom:allowance", { detail: { ...guestState } }));
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }
@@ -68,11 +76,16 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 
 const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 
-interface Guest {
+export interface Guest {
   enabled: boolean;
   token: string | null;
   remaining: number | null;
+  exports_remaining?: number | null;
 }
+
+export type ExportAuthorization =
+  | { enabled: false; remaining: null }
+  | { enabled: true; fingerprint: string; lease: string | null; remaining: number };
 
 let guestRequest: Promise<Guest> | null = null;
 let guestState: Guest | null = null;
@@ -96,6 +109,24 @@ export function getGuest(): Promise<Guest> {
 
 const running = new Map<string, Promise<unknown>>();
 
+async function waitForOperation<T>(action: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await action();
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "operation_pending" || attempt >= 120) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+async function exportRequest<T>(path: string, body: unknown): Promise<T> {
+  const guest = authToken ? null : await getGuest();
+  const headers: Record<string, string> = {};
+  if (guest?.token) headers["X-Guest-Token"] = guest.token;
+  return waitForOperation(() => request<T>(path, { ...post(body), headers }));
+}
+
 async function generation<T>(path: string, body: Record<string, unknown>): Promise<T> {
   if (!authEnabled) return request<T>(path, post(body));
   const resume = pending(RESUME);
@@ -112,23 +143,17 @@ async function generation<T>(path: string, body: Record<string, unknown>): Promi
     const guest = authToken ? null : await getGuest();
     const headers: Record<string, string> = { "Idempotency-Key": id };
     if (guest?.token) headers["X-Guest-Token"] = guest.token;
-    for (let attempt = 0; ; attempt++) {
-      try {
-        const result = await request<T>(path, { ...post(actualBody), headers });
-        write(key, { id, result });
-        if (continuation) remove(RESUME);
-        return result;
-      } catch (error) {
-        if (error instanceof ApiError && error.code === "operation_pending" && attempt < 120) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
-        }
-        if (error instanceof ApiError && error.code === "guest_limit_exceeded") {
-          const action: PendingAction = { kind: "generation", id, route: route(), path, body: actualBody };
-          window.dispatchEvent(new CustomEvent("pidsklom:login-needed", { detail: action }));
-        }
-        throw error;
+    try {
+      const result = await waitForOperation(() => request<T>(path, { ...post(actualBody), headers }));
+      write(key, { id, result });
+      if (continuation) remove(RESUME);
+      return result;
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "guest_limit_exceeded") {
+        const action: PendingAction = { kind: "generation", id, route: route(), path, body: actualBody };
+        window.dispatchEvent(new CustomEvent("pidsklom:login-needed", { detail: action }));
       }
+      throw error;
     }
   };
   const promise = run().finally(() => running.delete(id));
@@ -151,6 +176,11 @@ export const api = {
   match: (phrase: string, description?: string) => generation<MatchResult>("/api/matches", { phrase, description }),
   captions: (artworkId: number, exclude: string[] = []) =>
     generation<CaptionsResult>(`/api/artworks/${artworkId}/captions`, { exclude }),
+
+  authorizeExport: (artworkId: number, imageDataUrl: string) =>
+    exportRequest<ExportAuthorization>("/api/exports", { artwork_id: artworkId, image_data_url: imageDataUrl }),
+  finishExport: (fingerprint: string, lease: string, success: boolean) =>
+    exportRequest<{ remaining: number | null }>("/api/exports/finish", { fingerprint, lease, success }),
 
   // memes (login required)
   memes: (favorite?: boolean) => request<Meme[]>(`/api/memes${qs({ favorite })}`),

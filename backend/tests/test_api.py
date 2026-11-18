@@ -63,9 +63,14 @@ def test_captions(client):
     assert not {c["text"] for c in again["captions"]} & {c["text"] for c in body["captions"]}
 
 
-def _png_data_url() -> str:
+def _png_data_url(color="red", metadata=None) -> str:
+    from PIL.PngImagePlugin import PngInfo
+
     buf = io.BytesIO()
-    Image.new("RGB", (4, 4), "red").save(buf, "PNG")
+    info = PngInfo()
+    if metadata:
+        info.add_text("comment", metadata)
+    Image.new("RGB", (4, 4), color).save(buf, "PNG", pnginfo=info)
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
@@ -123,6 +128,7 @@ def test_cors_allows_only_configured_origins(client):
         {"data_backend": "supabase"},
         {"ai_provider": "llm"},
         {"auth_mode": "supabase"},
+        {"guest_export_limit_enabled": True},
         {"telegram_bot_token": "configured"},
         {"environment": "production"},
         {
@@ -454,6 +460,106 @@ def test_png_rejects_spoofed_content_and_storage_oversize(client):
             "artwork_id": 1, "style": {"blocks": [{"text": "PNG"}]}, "image_data_url": image,
         })
         assert response.status_code == 422
+
+
+def test_distinct_exports_are_independent_replayable_and_cancel_safe(client, monkeypatch):
+    from uuid import uuid4
+
+    from app import operations
+    from app.api import exports, guest
+    from app.config import Settings
+
+    settings = Settings(
+        _env_file=None, guest_limit_enabled=True, guest_export_limit_enabled=True,
+        guest_token_secret="test" * 10,
+    )
+    for module in (operations, exports, guest):
+        monkeypatch.setattr(module, "get_settings", lambda: settings)
+    records = {}
+
+    def rpc(name, values):
+        actor = values["p_actor"]
+        if name == "operation_remaining":
+            return 3
+        if name == "export_remaining":
+            return 3 - sum(key[0] == actor and record["state"] != "failed" for key, record in records.items())
+        key = (actor, values["p_request_id"])
+        if name == "operation_begin":
+            assert values["p_kind"] == "export" and values["p_limited"]
+            old = records.get(key)
+            if old and old["state"] == "complete":
+                return {"status": "complete", "response": old["response"]}
+            if old and old["state"] == "pending":
+                return {"status": "pending"}
+            if rpc("export_remaining", {"p_actor": actor}) == 0:
+                return {"status": "limited"}
+            records[key] = {"state": "pending", "lease": str(uuid4())}
+            return {"status": "started", "lease": records[key]["lease"]}
+        record = records.get(key)
+        if not record or record["state"] != "pending" or record["lease"] != values["p_lease"]:
+            return False
+        record.update(state="complete" if values["p_success"] else "failed", response=values["p_response"])
+        return True
+
+    monkeypatch.setattr(operations, "rpc", rpc)
+    headers = {"X-Guest-Token": client.post("/api/guest").json()["token"], "Origin": "http://localhost:5173"}
+
+    def authorize(color="red", metadata=None, artwork_id=1):
+        return client.post("/api/exports", headers=headers, json={
+            "artwork_id": artwork_id, "image_data_url": _png_data_url(color, metadata),
+        })
+
+    def finish(receipt, success=True, custom_headers=None):
+        return client.post("/api/exports/finish", headers=custom_headers or headers, json={
+            "fingerprint": receipt["fingerprint"], "lease": receipt["lease"], "success": success,
+        })
+
+    assert client.post("/api/exports", json={"artwork_id": 1, "image_data_url": _png_data_url()}).status_code == 401
+    assert client.post("/api/exports", headers=headers, json={"artwork_id": 1, "image_data_url": "not PNG"}).status_code == 422
+    assert client.post("/api/exports", headers=headers, json={"artwork_id": 0, "image_data_url": _png_data_url()}).status_code == 422
+    assert not records
+    first = authorize()
+    assert first.status_code == 200 and first.headers["X-Guest-Exports-Remaining"] == "2"
+    assert "X-Guest-Exports-Remaining" in first.headers["Access-Control-Expose-Headers"]
+    first = first.json()
+    assert finish({**first, "lease": str(uuid4())}).status_code == 503
+    assert finish(first, False).json()["remaining"] == 3
+    retry = authorize().json()
+    assert retry["lease"] != first["lease"]
+    assert finish(first).status_code == 503
+    assert finish(retry).json()["remaining"] == 2
+    repeated = authorize(metadata="Different container metadata, same visible composition").json()
+    assert repeated["fingerprint"] == first["fingerprint"] and repeated["lease"] is None
+    assert repeated["remaining"] == 2 and len(records) == 1
+    for color, artwork_id, remaining in (("red", 2, 1), ("blue", 1, 0)):
+        receipt = authorize(color, artwork_id=artwork_id).json()
+        assert receipt["remaining"] == remaining
+        assert finish(receipt).json()["remaining"] == remaining
+    assert client.post("/api/guest", headers=headers).json()["remaining"] == 3
+    assert client.post("/api/guest", headers=headers).json()["exports_remaining"] == 0
+    blocked = authorize("yellow")
+    assert blocked.status_code == 403 and blocked.json()["detail"]["code"] == "guest_export_limit_exceeded"
+    assert authorize().json()["lease"] is None
+    assert client.post("/api/exports", headers=AUTH, json={"artwork_id": 1, "image_data_url": _png_data_url("yellow")}).json() == {
+        "enabled": False, "remaining": None,
+    }
+    other = {"X-Guest-Token": client.post("/api/guest").json()["token"]}
+    assert finish(retry, custom_headers=other).status_code == 503
+    assert client.post("/api/guest", headers=other).json()["exports_remaining"] == 3
+
+
+def test_export_fingerprint_rejects_unbounded_decode(client, monkeypatch):
+    from app import operations, png
+    from app.api import exports
+    from app.config import Settings
+
+    settings = Settings(_env_file=None, guest_export_limit_enabled=True, guest_token_secret="test" * 10)
+    for module in (operations, exports):
+        monkeypatch.setattr(module, "get_settings", lambda: settings)
+    monkeypatch.setattr(png, "MAX_EXPORT_PIXELS", 8)
+    response = client.post("/api/exports", headers={"X-Guest-Token": operations.issue_guest()},
+                           json={"artwork_id": 1, "image_data_url": _png_data_url()})
+    assert response.status_code == 422
 
 
 def test_story_artist_fact_about_this_artwork_first_then_rotates(tmp_path):

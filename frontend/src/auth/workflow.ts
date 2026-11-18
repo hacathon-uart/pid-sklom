@@ -6,6 +6,7 @@ export const PENDING = "pending";
 export const RESUME = "resume";
 export type PendingAction =
   | { kind: "save"; route: string; id: string }
+  | { kind: "export"; route: string; id: string; scope: string; mode: "download" | "share" }
   | { kind: "generation"; route: string; id: string; path: string; body: Record<string, unknown> };
 
 export function route() {
@@ -47,7 +48,7 @@ export function pending(key = PENDING): PendingAction | null {
   const action = read<PendingAction>(key);
   if (!action) return null;
   safeRoute(action.route);
-  if (!["save", "generation"].includes(action.kind) ||
+  if (!["save", "generation", "export"].includes(action.kind) ||
       typeof action.id !== "string" || !/^[0-9a-f-]{36}$/i.test(action.id)) {
     throw new Error("Некоректна збережена дія входу");
   }
@@ -55,6 +56,10 @@ export function pending(key = PENDING): PendingAction | null {
     !/^\/api\/(matches|artworks\/[0-9]+\/captions)$/.test(action.path) ||
     !action.body || typeof action.body !== "object"
   )) throw new Error("Некоректна збережена генерація");
+  if (action.kind === "export" && (
+    typeof action.scope !== "string" || !/^(artwork:[1-9][0-9]*|meme:[0-9a-f-]{36})$/i.test(action.scope) ||
+    !["download", "share"].includes(action.mode)
+  )) throw new Error("Некоректний збережений експорт");
   return action;
 }
 

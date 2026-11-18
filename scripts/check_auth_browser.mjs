@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const chromePath = process.env.CHROME_PATH ?? [
@@ -22,7 +22,10 @@ let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
 const state = { used: 0, calls: 0, exchanges: 0, saves: 0, updates: 0, cancelNext: false,
   holdNextSave: false, releaseSave: null, holdNextArtwork: false, releaseArtwork: null,
-  lastExclude: [], authPrompts: [], results: new Map(), memes: new Map() };
+  lastExclude: [], authPrompts: [], results: new Map(), memes: new Map(),
+  exports: new Map(), exportReservations: 0, exportCancellations: 0, lastRejectedExport: null,
+  holdNextExport: false, releaseExport: null };
+const exportsRemaining = () => 3 - [...state.exports.values()].filter((item) => item.state !== "failed").length;
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=", "base64");
 const artist = { id: 1, slug: "artist", name: "Artist", birth_year: 1800, death_year: 1900, portrait_url: null };
 const art = (id = 1) => ({
@@ -61,7 +64,41 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === "/auth/v1/user") return json(user);
   if (url.pathname === "/auth/v1/logout") { res.writeHead(204).end(); return; }
-  if (url.pathname === "/api/guest") return json({ enabled: true, token: "browser-guest", remaining: 3 - state.used });
+  if (url.pathname === "/api/guest") return json({
+    enabled: true, token: "browser-guest", remaining: 3 - state.used, exports_remaining: exportsRemaining(),
+  });
+  if (url.pathname === "/api/exports") {
+    if (state.holdNextExport) {
+      state.holdNextExport = false;
+      await new Promise((done) => { state.releaseExport = done; });
+    }
+    if (signedIn) return json({ enabled: false, remaining: null });
+    assert.equal(req.headers["x-guest-token"], "browser-guest");
+    const fingerprint = createHash("sha256").update(`${body.artwork_id}:${body.image_data_url}`).digest("hex");
+    const existing = state.exports.get(fingerprint);
+    if (existing?.state === "pending") return json({ detail: { code: "operation_pending", message: "Pending" } }, 409);
+    if (existing?.state !== "complete") {
+      if (exportsRemaining() === 0) {
+        state.lastRejectedExport = body.image_data_url;
+        return json({ detail: { code: "guest_export_limit_exceeded", message: "Sign in to export" } }, 403);
+      }
+      state.exports.set(fingerprint, { state: "pending", lease: randomUUID() });
+      state.exportReservations++;
+    }
+    return json({
+      enabled: true, fingerprint, lease: existing?.state === "complete" ? null : state.exports.get(fingerprint).lease,
+      remaining: exportsRemaining(),
+    }, 200, { "X-Guest-Exports-Remaining": String(exportsRemaining()) });
+  }
+  if (url.pathname === "/api/exports/finish") {
+    assert.equal(req.headers["x-guest-token"], "browser-guest");
+    const existing = state.exports.get(body.fingerprint);
+    assert.equal(existing?.lease, body.lease);
+    assert.equal(existing?.state, "pending");
+    existing.state = body.success ? "complete" : "failed";
+    if (!body.success) state.exportCancellations++;
+    return json({ remaining: exportsRemaining() }, 200, { "X-Guest-Exports-Remaining": String(exportsRemaining()) });
+  }
   if (/^\/api\/artworks\/[12]$/.test(url.pathname)) {
     if (state.holdNextArtwork) {
       state.holdNextArtwork = false;
@@ -184,8 +221,26 @@ try {
   });
   await command("Runtime.enable");
   await command("Page.enable");
-  const evaluate = async (expression) => {
-    const result = await command("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
+  await command("Page.addScriptToEvaluateOnNewDocument", { source: `
+    window.exportedPNGs = [];
+    window.sharedPNGs = [];
+    window.sharedLinks = [];
+    const anchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download && this.href.startsWith("data:image/png")) { window.exportedPNGs.push(this.href); return; }
+      return anchorClick.call(this);
+    };
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false });
+    Object.defineProperty(navigator, "share", { configurable: true, value: async ({ files }) => {
+      if (window.cancelNextShare) { window.cancelNextShare = false; throw new DOMException("Cancelled", "AbortError"); }
+      window.sharedPNGs.push(await files[0].text());
+    } });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: async (value) => { window.sharedLinks.push(value); },
+    } });
+  ` });
+  const evaluate = async (expression, userGesture = false) => {
+    const result = await command("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true, userGesture });
     assert(!result.exceptionDetails, JSON.stringify(result.exceptionDetails));
     return result.result.value;
   };
@@ -220,6 +275,9 @@ try {
     })()`);
     await delay(100);
   };
+  const exportImage = (mode = "download", publicView = false) => evaluate(
+    `document.querySelector('[aria-label="${mode === "share" ? "Поділитися" : publicView ? "Завантажити" : "Завантажити PNG"}"]').click()`, true,
+  );
   const saveEditor = async () => {
     await evaluate("document.fonts.ready");
     const before = state.saves + state.updates;
@@ -229,6 +287,46 @@ try {
     assert.equal(state.saves + state.updates, before + 1, "Save must make exactly one mutation");
     await delay(100);
   };
+  const checkSlowNativeShare = async () => {
+    await editCaption("Shared PNG after slow authorization");
+    await evaluate(`Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
+      Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: false } });`);
+    const shared = await evaluate("window.sharedPNGs.length");
+    await exportImage("share");
+    await until("document.querySelector('[role=\"status\"]')?.textContent.includes('PNG готовий')");
+    const reserved = state.exportReservations;
+    assert.equal(await evaluate("window.sharedPNGs.length"), shared);
+    await evaluate(`Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: true } });`);
+    await exportImage("share");
+    await until(`window.sharedPNGs.length === ${shared + 1}`);
+    assert.equal(state.exportReservations, reserved, "A new gesture reuses the already-prepared PNG reservation");
+  };
+  if (process.env.AUTH_BROWSER_CASE === "share-gesture") {
+    await navigate("/create/painting/1/own");
+    await editCaption("Prepared share");
+    await evaluate("document.fonts.ready");
+    await delay(200);
+    await checkSlowNativeShare();
+    console.log("PASS: delayed native sharing reuses its prepared PNG and reservation");
+  } else if (process.env.AUTH_BROWSER_CASE === "export-switch") {
+    await navigate("/create/result?q=export-switch");
+    await until("document.querySelector('[aria-label=\"Завантажити PNG\"]') !== null");
+    await evaluate("document.fonts.ready");
+    await delay(200);
+    state.holdNextExport = true;
+    await exportImage();
+    const deadline = Date.now() + 10000;
+    while (!state.releaseExport && Date.now() < deadline) await delay(50);
+    assert(state.releaseExport, "The export request should be awaiting authorization");
+    await click("Інша картина");
+    await until("document.body.innerText.includes('Test painting 2')");
+    state.releaseExport();
+    state.releaseExport = null;
+    await delay(500);
+    assert.equal(exportsRemaining(), 3, "Switching artwork must release the old export slot");
+    assert.equal(await evaluate("window.exportedPNGs.length"), 0, "A late response must not export the previous artwork");
+    console.log("PASS: artwork switch during authorization never downloads the old PNG and releases its reservation");
+  } else {
   for (let n = 1; n <= 3; n++) {
     await navigate(`/create/result?q=guest-${n}`);
     await until(`document.querySelector('input[maxlength="200"]')?.value === 'guest-${n}' && document.querySelector('canvas') !== null`);
@@ -276,6 +374,8 @@ try {
   await command("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await until("document.querySelector('dialog[open]') === null");
   assert.equal(state.exchanges, 2, "Cancel and Escape must not start OAuth");
+  assert.equal(state.used, 3, "Guest bookmark attempts must not consume generations");
+  assert.equal(state.exports.size, 0, "Guest bookmark attempts must not consume PNG exports");
   await evaluate("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]').click()");
   await until("document.querySelector('dialog[open]') !== null");
   await click("Увійти через Google і зберегти");
@@ -426,17 +526,91 @@ try {
   }
   const savesBeforeLogin = state.saves;
   await logout();
+  await navigate("/create/painting/1/own");
+  await editCaption("First unique PNG");
+  await evaluate("document.fonts.ready");
+  await delay(200);
+  await exportImage();
+  await until("window.exportedPNGs.length === 1");
+  await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 2/3')");
+  assert.equal(state.used, 3, "Downloads must not consume or require AI allowance");
+  assert.equal(state.exportReservations, 1);
+  await exportImage();
+  await until("window.exportedPNGs.length === 2");
+  await exportImage("share");
+  await until("window.exportedPNGs.length === 3");
+  assert.equal(state.exportReservations, 1, "Repeated downloads and file-sharing fallback reuse one export");
+  await editCaption("Cancelled native share");
+  await evaluate(`Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true }); window.cancelNextShare = true;`);
+  await exportImage("share");
+  const cancelledDeadline = Date.now() + 10000;
+  while (state.exportCancellations === 0 && Date.now() < cancelledDeadline) await delay(50);
+  assert.equal(state.exportCancellations, 1, "Native share cancellation releases its reservation");
+  assert.equal(exportsRemaining(), 2);
+  await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 2/3')");
+  await checkSlowNativeShare();
+  await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 1/3')");
+  await editCaption("Third distinct composition");
+  await exportImage();
+  await until("window.exportedPNGs.length === 4");
+  await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 0/3')");
+  await editCaption("First unique PNG");
+  await exportImage();
+  await until("window.exportedPNGs.length === 5");
+  assert.equal(exportsRemaining(), 0, "An unchanged PNG stays free after exhaustion");
+  await editCaption("Fourth PNG requires Google");
+  await evaluate("document.querySelector('input[type=\"checkbox\"]').click()");
+  const exchangesBeforeExport = state.exchanges;
+  await exportImage();
+  await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Три унікальні PNG')");
+  assert.equal(await evaluate("window.exportedPNGs.length"), 5, "Blocked fourth export must not dispatch a download");
+  assert.equal(state.exchanges, exchangesBeforeExport, "Blocked export needs explicit Google consent");
+  await click("Закрити");
+  const publicId = [...state.memes.keys()][0];
+  await navigate(`/m/${publicId}`);
+  await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
+  assert.equal(await evaluate("document.querySelector('[aria-label^=\"Додати до улюблених\"]')"), null,
+    "A public guest cannot favourite someone else's saved meme");
+  await exportImage("download", true);
+  await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Три унікальні PNG')");
+  assert.equal(await evaluate("window.exportedPNGs.length"), 0, "Public saved-PNG downloads use the same export gate");
+  await click("Закрити");
+  const reservationsBeforeLink = state.exportReservations;
+  await exportImage("share", true);
+  await until("window.sharedLinks.length === 1");
+  assert.equal(state.exportReservations, reservationsBeforeLink, "Sharing a public link is not a PNG export");
+  console.log("PASS: independent distinct PNG quota, replay after exhaustion, sharing/cancellation, slow native-share gesture and public-download gate");
   await navigate("/me");
   await until("document.body.innerText.includes('Продовжити через Google') && document.body.innerText.includes('Новий акаунт створиться автоматично')");
   await click("Продовжити через Google");
   await until("location.pathname === '/me' && document.body.innerText.includes('Вийти')");
   assert.equal(state.saves, savesBeforeLogin, "Ordinary sign-in must not replay a cancelled or unrelated save");
+  assert.equal(await evaluate("window.exportedPNGs.length"), 0, "Ordinary sign-in must not replay a cancelled export");
+  await logout();
+  await navigate("/create/painting/1/own");
+  await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Fourth PNG requires Google'");
+  await exportImage();
+  await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Три унікальні PNG')");
+  const expectedPNG = state.lastRejectedExport;
+  const reservationsBeforeLogin = state.exportReservations;
+  await click("Увійти через Google і продовжити");
+  await until("window.exportedPNGs.length === 1");
+  assert.equal(await evaluate("window.exportedPNGs[0]"), expectedPNG, "OAuth restores the exact composition and frame-inclusion setting");
+  assert.equal(state.exportReservations, reservationsBeforeLogin, "Signed-in exports do not use the guest ledger");
+  assert.equal(state.saves, savesBeforeLogin, "Export after login must not create a saved meme");
+  assert.equal(await evaluate("document.querySelector('summary[aria-label^=\"Гостьовий квиток\"]')"), null);
+  await command("Page.reload");
+  await until("document.querySelector('input[maxlength=\"200\"]') !== null");
+  assert.equal(await evaluate("window.exportedPNGs.length"), 0, "Reload must not repeat the post-login export");
+  console.log("PASS: explicit blocked-download OAuth continuation preserves the exact PNG and runs once; unrelated login does not export");
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   assert(state.authPrompts.every((prompt) => prompt === "select_account"), "Every Google entry point must request account selection");
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");
+  }
 } finally {
   state.releaseSave?.();
   state.releaseArtwork?.();
+  state.releaseExport?.();
   if (chrome && chrome.exitCode === null) {
     const exited = new Promise((done) => chrome.once("exit", done));
     if (closeBrowser) await closeBrowser();

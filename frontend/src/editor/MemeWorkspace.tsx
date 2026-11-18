@@ -19,16 +19,17 @@ import { Link } from "react-router";
 import type { ArtworkSummary, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
-import { pending, RESUME, remove, route } from "../auth/workflow";
+import { pending, RESUME, remove, route, useTabState } from "../auth/workflow";
 import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
 import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
 import type { Frame } from "../api/types";
-import { downloadDataUrl, exportPng, framePng, shareMeme } from "./exportPng";
+import { exportPng, framePng } from "./exportPng";
 import { FramePicker } from "./FramePicker";
 import { MemeCanvas } from "./MemeCanvas";
 import type { MemeDraft } from "./useMemeDraft";
+import { useMemeExport } from "./useMemeExport";
 
 export function MemeWorkspace({
   artwork,
@@ -59,7 +60,7 @@ export function MemeWorkspace({
   const { user } = useAuth();
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const canvasZone = useRef<HTMLDivElement>(null);
-  const [withFrame, setWithFrame] = useState(true);
+  const [withFrame, setWithFrame] = useTabState(`export-frame:artwork:${artwork.id}`, true);
 
   // Crack the glass when the meme becomes saved (not when an already-saved meme is opened).
   const [crackRun, setCrackRun] = useState(0);
@@ -73,9 +74,14 @@ export function MemeWorkspace({
     draft.setFrame(frame);
   };
   const png = async () => {
+    await document.fonts.ready;
     const plain = exportPng(stageRef.current!);
     return withFrame ? framePng(plain, draft.frame) : plain;
   };
+  const exporting = useMemeExport(
+    `artwork:${artwork.id}`, artwork.id, png,
+    () => Boolean(stageRef.current?.getAttr("exportReady")) && !stageRef.current?.getAttr("exportError"),
+  );
   const controlsZone = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,18 +144,22 @@ export function MemeWorkspace({
           <IconButton
             icon="download"
             label="Завантажити PNG"
-            onClick={async () => stageRef.current && downloadDataUrl(await png())}
+            disabled={exporting.busy}
+            onClick={() => void exporting.run("download")}
           />
           <IconButton
             icon="share"
             label="Поділитися"
-            onClick={async () => stageRef.current && shareMeme(await png())}
+            disabled={exporting.busy}
+            onClick={() => void exporting.run("share")}
           />
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
           {toolbarEnd && <div className="ml-auto flex items-center gap-3">{toolbarEnd}</div>}
         </div>
         {authEnabled && <p className="t-small mt-3 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
         {workspaceError && <ErrorMessage error={workspaceError} />}
+        {exporting.error && <ErrorMessage error={exporting.error} />}
+        {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
         <div className="mt-5">
           <FramePicker frame={draft.frame} onFrameChange={changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
         </div>

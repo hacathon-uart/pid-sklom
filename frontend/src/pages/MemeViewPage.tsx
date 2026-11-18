@@ -10,9 +10,10 @@ import { years } from "../components/cards";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { Portrait } from "../components/Portrait";
-import { downloadDataUrl, framePng } from "../editor/exportPng";
+import { framePng, urlToDataUrl } from "../editor/exportPng";
 import { FramePicker } from "../editor/FramePicker";
-import { forgetSaved } from "../auth/workflow";
+import { forgetSaved, useTabState } from "../auth/workflow";
+import { useMemeExport } from "../editor/useMemeExport";
 
 export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const { memeId = "" } = useParams();
@@ -20,7 +21,12 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const meme = useApi(() => api.meme(memeId), [memeId]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
-  const [withFrame, setWithFrame] = useState(true);
+  const [withFrame, setWithFrame] = useTabState(`export-frame:meme:${memeId}`, true);
+  const exporting = useMemeExport(`meme:${memeId}`, meme.data?.artwork.id ?? 0, async () => {
+    const src = meme.data?.image_url;
+    if (!src) throw new Error("Для цього мему ще немає PNG");
+    return withFrame ? framePng(src, meme.data?.style.frame ?? "gold") : urlToDataUrl(src);
+  }, () => Boolean(meme.data?.image_url));
   const artworkId = meme.data?.artwork.id;
   const artistSlug = meme.data?.artwork.artist.slug;
   const detail = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
@@ -52,15 +58,6 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
       setActionError(null);
       meme.setData(await api.updateMeme(m.id, { style }));
     } catch (failure) { setActionError((failure as Error).message); }
-  };
-  const download = async () => {
-    const src = m.image_url;
-    if (!src) return;
-    try {
-      downloadDataUrl(withFrame ? await framePng(src, frame) : await urlToDataUrl(src));
-    } catch (e) {
-      setActionError((e as Error).message);
-    }
   };
   const toggleSaved = async () => {
     if (!window.confirm("Видалити мем і PNG? Посилання перестане працювати. Завантажені копії залишаться в одержувачів.")) return;
@@ -105,7 +102,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             />
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <IconButton icon="download" label="Завантажити" onClick={download} />
+            <IconButton icon="download" label="Завантажити" disabled={exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
             <IconButton icon="share" label="Поділитися" onClick={share} />
             {canEdit && (
               <>
@@ -118,6 +115,8 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
           </div>
           {actionError && <ErrorMessage error={actionError} />}
+          {exporting.error && <ErrorMessage error={exporting.error} />}
+          {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
           {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
           {isPublic && <ArtworkCardLink id={a.id} />}
         </div>
@@ -169,16 +168,4 @@ function ArtworkCardLink({ id }: { id: number }) {
       <Button>Зробити свій мем з цієї картини</Button>
     </Link>
   );
-}
-
-async function urlToDataUrl(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Не вдалося завантажити зображення мему");
-  const blob = await res.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }

@@ -7,7 +7,6 @@ export function Layout() {
   return (
     <div className="min-h-screen pl-[var(--sidebar-width)]">
       <Sidebar />
-      <GuestAllowance />
       <Outlet />
     </div>
   );
@@ -31,8 +30,11 @@ export function Page({
     <main className="mx-auto max-w-[1280px] px-16 py-12">
       {back && <div className="mb-4">{back}</div>}
       <header className="mb-10 flex items-start justify-between gap-6">
-        <div>
-          <h1 className="t-h1">{title}</h1>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <h1 className="t-h1">{title}</h1>
+            <GuestAllowance />
+          </div>
           {subtitle && <p className="t-body mt-3 text-text-secondary">{subtitle}</p>}
         </div>
         {actions && <div className="flex items-center gap-3">{actions}</div>}

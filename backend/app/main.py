@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import content, create, guest, memes
+from app.api import content, create, exports, guest, memes
 from app.bot import webhook
 from app.config import get_settings
 from app.data import get_repo
@@ -29,6 +29,8 @@ async def lifespan(app: FastAPI):
         from app import operations
 
         operations.remaining("startup")
+        if settings.guest_export_limit_enabled:
+            operations.export_remaining("startup")
     catalogue = get_repo().catalogue()
     if not catalogue:
         raise RuntimeError("No visible artworks loaded; import approved content before deployment")
@@ -67,7 +69,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Guest-Remaining"],
+    expose_headers=["X-Guest-Remaining", "X-Guest-Exports-Remaining"],
 )
 
 api = APIRouter(prefix="/api")
@@ -95,6 +97,7 @@ api.include_router(content.router)
 api.include_router(create.router)
 api.include_router(memes.router)
 api.include_router(guest.router)
+api.include_router(exports.router)
 app.include_router(api)
 app.include_router(webhook.router)
 

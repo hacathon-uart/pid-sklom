@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_jwt_algorithm: Literal["ES256", "RS256", "HS256"] = "ES256"
     guest_limit_enabled: bool = False
+    guest_export_limit_enabled: bool = False
     guest_token_secret: str = ""
 
     # AI (ADR 0002). AI_PROVIDER=llm uses Gemini: embeddings for matching, LLM only in hybrid mode.
@@ -67,7 +68,7 @@ class Settings(BaseSettings):
                 raise RuntimeError("AUTH_MODE=supabase needs Supabase URL and data backend")
             if self.supabase_jwt_algorithm == "HS256" and not self.supabase_jwt_secret:
                 raise RuntimeError("HS256 needs SUPABASE_JWT_SECRET")
-        if self.guest_limit_enabled and (
+        if (self.guest_limit_enabled or self.guest_export_limit_enabled) and (
             self.auth_mode != "supabase" or len(self.guest_token_secret) < 32
         ):
             raise RuntimeError("Guest limits need real Supabase auth and a GUEST_TOKEN_SECRET of at least 32 characters")
