@@ -247,7 +247,7 @@ try {
   const until = async (expression) => {
     const end = Date.now() + 20000;
     while (Date.now() < end) {
-      try { if (await evaluate(expression)) return; } catch (error) {
+      try { if (await evaluate(`document.body && (${expression})`)) return; } catch (error) {
         if (!/context|navigation/i.test(error.message)) throw error;
       }
       await delay(100);
@@ -255,6 +255,15 @@ try {
     throw new Error(`Browser assertion timed out: ${expression}\n${await evaluate("document.body.innerText")}`);
   };
   const navigate = async (path) => { await command("Page.navigate", { url: origin + path }); };
+  await command("Page.navigate", { url: "about:blank" });
+  await until("document.body !== null");
+  await evaluate(`document.body.remove();
+    setTimeout(() => {
+      const body = document.createElement('body');
+      body.textContent = 'poll-ready';
+      document.documentElement.appendChild(body);
+    }, 500);`);
+  await until("document.body.innerText.includes('poll-ready')");
   const click = async (text) => evaluate(`(() => {
     const button = [...document.querySelectorAll('button,a')].find((item) => item.textContent.includes(${JSON.stringify(text)}));
     if (!button) throw new Error('Missing button: ' + ${JSON.stringify(text)});
