@@ -40,10 +40,18 @@ the transport gate, including rejection of empty entries and nonpositive IDs.
 
 ## Separate local test bot
 
-The bot avatar is `assets/telegram-avatar.jpg`, a square JPG of the glass-pane
-mark in `frontend/public/favicon.svg` on the site's cream background. Keep the
-mark inside the center of the square so Telegram's circular crop preserves it.
+The bot avatar is `assets/telegram-avatar.jpg`, rendered from
+`assets/telegram-avatar.svg`: the homepage's large `LogoMark` in
+`frontend/src/components/Museum.tsx`, with both glass reflections, on the site's
+cream background. Keep the mark inside the center of the square so Telegram's
+circular crop preserves it.
 The test bot profile photo was set with Telegram's `setMyProfilePhoto` method.
+Avatar uploads are a separate profile operation, not repeated at app startup.
+Telegram stores the uploaded avatar independently of Render deployments.
+
+Both polling and HTTPS webhook startup register `/start`, `/help`, and `/random`
+with Ukrainian descriptions and Telegram's native command menu in private chats.
+Typing `/` filters these suggestions; the tester allowlist still controls access.
 
 1. Create a **separate bot** with BotFather. Keep its token private. In BotFather,
    turn off group additions and leave inline mode disabled for this private-chat

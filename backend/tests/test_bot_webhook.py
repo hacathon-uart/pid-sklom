@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiogram import Bot
 from aiogram.exceptions import TelegramNetworkError
-from aiogram.methods import GetMe, SendMessage
+from aiogram.methods import GetMe, SendMessage, SetChatMenuButton, SetMyCommands
 from aiogram.types import Update
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -157,10 +157,35 @@ def test_webhook_registration_preserves_updates(transport):
         f"https://example.com/telegram/webhook/{SECRET}", secret_token=SECRET,
         allowed_updates=["message", "callback_query"],
     )
+    assert_command_suggestions(transport.bot)
+
+
+def assert_command_suggestions(bot):
+    methods = [call.args[1] for call in bot.session.make_request.await_args_list]
+    commands, = [method for method in methods if isinstance(method, SetMyCommands)]
+    assert [command.command for command in commands.commands] == ["start", "help", "random"]
+    assert all(command.description for command in commands.commands)
+    assert commands.scope.type == "all_private_chats"
+    menu, = [method for method in methods if isinstance(method, SetChatMenuButton)]
+    assert menu.menu_button.type == "commands"
+    assert menu.chat_id is None
 
 
 def test_local_http_skips_registration(transport):
     asyncio.run(webhook.setup_webhook())
+    transport.bot.set_webhook.assert_not_awaited()
+    transport.bot.session.make_request.assert_not_awaited()
+
+
+@pytest.mark.parametrize("successful_calls", [0, 1])
+def test_command_setup_failure_does_not_report_webhook_ready(transport, successful_calls):
+    transport.config.public_base_url = "https://example.com"
+    transport.bot.session.make_request.side_effect = [
+        *([True] * successful_calls),
+        TelegramNetworkError(method=GetMe(), message="offline"),
+    ]
+    with pytest.raises(TelegramNetworkError):
+        asyncio.run(webhook.setup_webhook())
     transport.bot.set_webhook.assert_not_awaited()
 
 
@@ -177,6 +202,25 @@ def test_polling_preserves_updates_and_closes_on_failure(transport, monkeypatch)
     transport.dp.start_polling.assert_awaited_once_with(
         transport.bot, allowed_updates=["message", "callback_query"], close_bot_session=False,
     )
+    assert_command_suggestions(transport.bot)
+    close.assert_awaited_once()
+
+
+@pytest.mark.parametrize("successful_calls", [0, 1])
+def test_command_setup_failure_closes_polling_without_starting(transport, monkeypatch, successful_calls):
+    close = AsyncMock()
+    monkeypatch.setattr(polling, "get_settings", lambda: transport.config)
+    monkeypatch.setattr(polling, "get_bot", lambda: transport.bot)
+    monkeypatch.setattr(polling, "get_dispatcher", lambda: transport.dp)
+    monkeypatch.setattr(polling, "close_bot", close)
+    transport.bot.session.make_request.side_effect = [
+        *([True] * successful_calls),
+        TelegramNetworkError(method=GetMe(), message="offline"),
+    ]
+    with pytest.raises(TelegramNetworkError):
+        asyncio.run(polling.main())
+    transport.bot.delete_webhook.assert_not_awaited()
+    transport.dp.start_polling.assert_not_awaited()
     close.assert_awaited_once()
 
 
