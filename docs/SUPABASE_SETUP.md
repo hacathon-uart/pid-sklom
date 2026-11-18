@@ -11,7 +11,7 @@ Decisions: [ADR 0001](adr/0001-artwork-data-storage.md) and
 1. supabase.com → New project. Name `pidsklom`, region closest to Render (e.g. Frankfurt), free plan.
 2. Save the **database password** in the team password manager. Nothing in this repo needs it.
 3. For a new project, run `data/schema.sql` in the SQL editor. It creates tables,
-   security rules, `artworks`/`memes` buckets and `artwork_embeddings vector(768)`.
+   security rules, `artworks`/`portraits`/`memes` buckets and `artwork_embeddings vector(768)`.
    **For an existing project, review and back up first:** this version drops the
    old `artworks.embedding`, `embedding_model` and `match_artworks()` function.
    Re-running SQL is not a substitute for a reviewed migration/restore plan.

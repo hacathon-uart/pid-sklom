@@ -7,6 +7,7 @@ the backend — no code changes needed. Memes are kept in backend/media/memes.js
 import base64
 import json
 import random
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -30,6 +31,33 @@ from app.schemas import (
 
 def _load(path: Path) -> list[dict]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _plain(text: str) -> str:
+    return text.casefold().replace("’", "'").replace("ʼ", "'")
+
+
+def _mentions_title(text: str, title: str) -> bool:
+    """True when every longer word of the title occurs in the text, ignoring Ukrainian case endings
+    («Ідилія» matches «за «Ідилію»», «Жнива в Україні» matches «у «Жнивах в Україні»»)."""
+    words = re.findall(r"[\w']+", _plain(title))
+    stems = [w[: max(4, len(w) - 2)] for w in words if len(w) >= 4] or words
+    plain = _plain(text)
+    return bool(stems) and all(s in plain for s in stems)
+
+
+def order_artist_facts(facts: list[Fact], artwork_id: int, artwork_title: str) -> list[Fact]:
+    """Order of artist facts on an artwork's StoryCard («Про автора» shows the first one).
+
+    Facts that mention this very artwork come first. The rest are rotated by artwork id, so
+    different paintings of one artist show different facts, and one painting always shows the same.
+    """
+    about_this = [f for f in facts if artwork_title and _mentions_title(f.text, artwork_title)]
+    rest = [f for f in facts if f not in about_this]
+    if rest:
+        k = artwork_id % len(rest)
+        rest = rest[k:] + rest[:k]
+    return about_this + rest
 
 
 def visible_statuses(settings: Settings) -> set[str]:
@@ -149,7 +177,11 @@ class LocalRepository:
         if w is None:
             return None
         facts = [self._fact(f) for f in self.facts if f.get("artwork_id") == artwork_id]
-        artist_facts = [self._fact(f) for f in self.facts if f.get("artist_id") == w["artist_id"]]
+        artist_facts = order_artist_facts(
+            [self._fact(f) for f in self.facts if f.get("artist_id") == w["artist_id"]],
+            artwork_id,
+            w.get("title_uk", ""),
+        )
         return ArtworkDetail(
             **self._artwork_summary(w).model_dump(),
             museum=w.get("museum"),

@@ -1,13 +1,146 @@
 [
-  {"id": 1, "artist_id": 1, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Шевченка-художника (1–2 речення).", "source_url": null, "verified": true},
-  {"id": 2, "artist_id": 1, "artwork_id": null, "text_uk": "ЗАГЛУШКА: ще один факт про Шевченка.", "source_url": null, "verified": true},
-  {"id": 3, "artist_id": 2, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Куїнджі.", "source_url": null, "verified": true},
-  {"id": 4, "artist_id": 3, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Пимоненка.", "source_url": null, "verified": true},
-  {"id": 5, "artist_id": 4, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Мурашка.", "source_url": null, "verified": true},
-  {"id": 6, "artist_id": 5, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Малевича.", "source_url": null, "verified": true},
-  {"id": 7, "artist_id": 6, "artwork_id": null, "text_uk": "ЗАГЛУШКА: несподіваний факт про Нарбута.", "source_url": null, "verified": true},
-  {"id": 8, "artist_id": null, "artwork_id": 1, "text_uk": "ЗАГЛУШКА: факт про картину №1, після якого хочеться переслати мем друзям.", "source_url": null, "verified": true},
-  {"id": 9, "artist_id": null, "artwork_id": 3, "text_uk": "ЗАГЛУШКА: факт про місячний пейзаж.", "source_url": null, "verified": true},
-  {"id": 11, "artist_id": null, "artwork_id": 8, "text_uk": "ЗАГЛУШКА: факт про авангардну роботу.", "source_url": null, "verified": true},
-  {"id": 12, "artist_id": null, "artwork_id": 8, "text_uk": "ЗАГЛУШКА: неперевірений факт — не має показуватися.", "source_url": null, "verified": false}
+  {
+    "id": 1,
+    "artist_id": 1,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: несподіваний факт про Шевченка-художника (1–2 речення).",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 2,
+    "artist_id": 1,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: ще один факт про Шевченка.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 3,
+    "artist_id": 2,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: несподіваний факт про Куїнджі.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 4,
+    "artist_id": 3,
+    "artwork_id": null,
+    "text_uk": "Пимоненка оцінили в Парижі: його «Гопак» з успіхом показали в Салоні 1909 року, після чого картину придбав Лувр.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE_%D0%9C%D0%B8%D0%BA%D0%BE%D0%BB%D0%B0_%D0%9A%D0%BE%D1%80%D0%BD%D0%B8%D0%BB%D0%BE%D0%B2%D0%B8%D1%87",
+    "verified": true
+  },
+  {
+    "id": 5,
+    "artist_id": 4,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: несподіваний факт про Мурашка.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 6,
+    "artist_id": 5,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: несподіваний факт про Малевича.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 7,
+    "artist_id": 6,
+    "artwork_id": null,
+    "text_uk": "ЗАГЛУШКА: несподіваний факт про Нарбута.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 8,
+    "artist_id": null,
+    "artwork_id": 1,
+    "text_uk": "ЗАГЛУШКА: факт про картину №1, після якого хочеться переслати мем друзям.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 9,
+    "artist_id": null,
+    "artwork_id": 3,
+    "text_uk": "ЗАГЛУШКА: факт про місячний пейзаж.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 11,
+    "artist_id": null,
+    "artwork_id": 8,
+    "text_uk": "ЗАГЛУШКА: факт про авангардну роботу.",
+    "source_url": null,
+    "verified": true
+  },
+  {
+    "id": 12,
+    "artist_id": null,
+    "artwork_id": 8,
+    "text_uk": "ЗАГЛУШКА: неперевірений факт — не має показуватися.",
+    "source_url": null,
+    "verified": false
+  },
+  {
+    "id": 13,
+    "artist_id": 3,
+    "artwork_id": null,
+    "text_uk": "Рекорд продажів Пимоненка — 160 тисяч доларів: стільки у 2006 році заплатили на аукціоні за його «Продавщицю полотна».",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE_%D0%9C%D0%B8%D0%BA%D0%BE%D0%BB%D0%B0_%D0%9A%D0%BE%D1%80%D0%BD%D0%B8%D0%BB%D0%BE%D0%B2%D0%B8%D1%87",
+    "verified": true
+  },
+  {
+    "id": 14,
+    "artist_id": null,
+    "artwork_id": 14,
+    "text_uk": "Хлопець на «Ідилії», який розмовляє з дівчиною, — незрячий (можливо, пастух): він злегка спирається на палицю.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%86%D0%B4%D0%B8%D0%BB%D1%96%D1%8F_%28%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE%29",
+    "verified": true
+  },
+  {
+    "id": 15,
+    "artist_id": null,
+    "artwork_id": 14,
+    "text_uk": "Праворуч від закоханої пари на «Ідилії» — грайливий індик і манірна гусочка.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%86%D0%B4%D0%B8%D0%BB%D1%96%D1%8F_%28%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE%29",
+    "verified": true
+  },
+  {
+    "id": 16,
+    "artist_id": null,
+    "artwork_id": 14,
+    "text_uk": "«Ідилію» написано на початку літа 1908 року в селі Малютянка на Київщині, де художник жив із дружиною і трьома дітьми.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%86%D0%B4%D0%B8%D0%BB%D1%96%D1%8F_%28%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE%29",
+    "verified": true
+  },
+  {
+    "id": 17,
+    "artist_id": null,
+    "artwork_id": 15,
+    "text_uk": "Після успіху «Весілля в Київській губернії» та «Ранку Христового Воскресіння» на академічній виставці 1891 року Пимоненко отримав звання почесного вільного общника Академії мистецтв.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%92%D0%B5%D1%81%D1%96%D0%BB%D0%BB%D1%8F_%D0%B2_%D0%9A%D0%B8%D1%97%D0%B2%D1%81%D1%8C%D0%BA%D1%96%D0%B9_%D0%B3%D1%83%D0%B1%D0%B5%D1%80%D0%BD%D1%96%D1%97",
+    "verified": true
+  },
+  {
+    "id": 18,
+    "artist_id": 3,
+    "artwork_id": null,
+    "text_uk": "Пимоненку довелося судитися з горілчаним фабрикантом Шустовим: той без дозволу зробив з його картини «До дому» етикетку «Спотикача», а колеги-передвижники звинуватили художника в продажності.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE_%D0%9C%D0%B8%D0%BA%D0%BE%D0%BB%D0%B0_%D0%9A%D0%BE%D1%80%D0%BD%D0%B8%D0%BB%D0%BE%D0%B2%D0%B8%D1%87",
+    "verified": true
+  },
+  {
+    "id": 19,
+    "artist_id": 3,
+    "artwork_id": null,
+    "text_uk": "Пимоненко мав власну майстерню у селі Малютянка, де працював щоліта.",
+    "source_url": "https://uk.wikipedia.org/wiki/%D0%9F%D0%B8%D0%BC%D0%BE%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE_%D0%9C%D0%B8%D0%BA%D0%BE%D0%BB%D0%B0_%D0%9A%D0%BE%D1%80%D0%BD%D0%B8%D0%BB%D0%BE%D0%B2%D0%B8%D1%87",
+    "verified": true
+  }
 ]

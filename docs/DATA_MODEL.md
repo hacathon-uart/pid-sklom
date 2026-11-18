@@ -14,7 +14,7 @@ separate vector database. Use one Supabase project:
 | Store | Contents | Current implementation |
 | --- | --- | --- |
 | Supabase Postgres | Artist identity/biography, artwork metadata and profiles, reviewed facts, saved-meme metadata and embedding vectors | [`data/schema.sql`](../data/schema.sql) |
-| Supabase Storage | Artwork images/thumbnails/portraits and exported meme PNGs; Postgres keeps their URLs | Public `artworks` and `memes` buckets; bucket configuration is in the schema |
+| Supabase Storage | Artwork images/thumbnails/portraits and exported meme PNGs; Postgres keeps their URLs | Public `artworks`, `portraits` (artist portraits) and `memes` buckets; bucket configuration is in the schema |
 | Supabase Auth | Managed identities/sessions when application login is enabled; not a new database the app must operate | Existing frontend integration and legacy backend JWT verification are incomplete for release |
 | Backend memory | Catalogue snapshots, NumPy vector index and request/bot caches | Disposable acceleration/state, not the durable source of truth |
 | Local development files | Seed JSON, downloaded images and generated vector cache | Offline mode plus today's manual content pipeline |

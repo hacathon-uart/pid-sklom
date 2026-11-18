@@ -1,9 +1,10 @@
 """Seed JSON + images -> Supabase (tables and Storage). Owner: A — T04, T11.
 
 Reads data/seed/{artists,artworks,facts}.json and data/images/, then:
-  1. uploads every artwork image and thumbnail to the public bucket «artworks»,
-  2. upserts artists, artworks and facts (matched by `id`), with image_url / thumb_url
-     rewritten from «images/<file>» to the public Storage URL.
+  1. uploads every artwork image and thumbnail to the public bucket «artworks», and every
+     artist portrait copied by extract_bio.py (data/images/portraits/) to the bucket «portraits»,
+  2. upserts artists, artworks and facts (matched by `id`), with image_url / thumb_url /
+     portrait_url rewritten from «images/<file>» to the public Storage URL.
 
 Re-runnable: Storage files are overwritten and rows are upserted, nothing is duplicated.
 The seed files stay the source of truth and keep their relative paths (local mode still works).
@@ -33,6 +34,7 @@ import httpx
 DATA_DIR = Path(__file__).resolve().parents[1]
 SEED = DATA_DIR / "seed"
 BUCKET = "artworks"
+PORTRAIT_BUCKET = "portraits"  # created by data/schema.sql
 
 
 def load_env() -> dict[str, str]:
@@ -78,7 +80,7 @@ def main() -> int:
     facts = [f for f in facts if f.get("artist_id") is None or f["artist_id"] in artist_ids]
 
     public = f"{base}/storage/v1/object/public/{BUCKET}"
-    files: list[Path] = []
+    files: list[tuple[str, Path]] = []  # (bucket, local file)
     rows = []
     for w in artworks:
         row = dict(w)
@@ -89,9 +91,21 @@ def main() -> int:
                 if not path.exists():
                     print(f"  missing file for {w['slug']}: {rel}")
                     return 1
-                files.append(path)
+                files.append((BUCKET, path))
                 row[col] = f"{public}/{path.name}"
         rows.append(row)
+    # Artist portraits (data/images/portraits/, from extract_bio.py) have their own bucket.
+    portraits_public = f"{base}/storage/v1/object/public/{PORTRAIT_BUCKET}"
+    artists = [dict(a) for a in artists]
+    for a in artists:
+        rel = a.get("portrait_url")
+        if rel and not rel.startswith("http"):
+            path = DATA_DIR / rel
+            if not path.exists():
+                print(f"  missing portrait for {a['slug']}: {rel}")
+                return 1
+            files.append((PORTRAIT_BUCKET, path))
+            a["portrait_url"] = f"{portraits_public}/{path.name}"
     print(f"{len(artists)} artists, {len(rows)} artworks, {len(facts)} facts, {len(files)} image files")
     if args.dry_run:
         for w in rows:
@@ -100,17 +114,20 @@ def main() -> int:
 
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     with httpx.Client(headers=headers, timeout=60) as http:
-        for path in files:
+        for bucket, path in files:
             mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
             r = http.post(
-                f"{base}/storage/v1/object/{BUCKET}/{path.name}",
+                f"{base}/storage/v1/object/{bucket}/{path.name}",
                 content=path.read_bytes(),
                 headers={"Content-Type": mime, "x-upsert": "true"},
             )
             if r.status_code >= 300:
                 print(f"  upload FAILED {r.status_code}: {r.text}")
+                if "bucket" in r.text.lower() and "not found" in r.text.lower():
+                    print(f"  Bucket «{bucket}» does not exist yet: run the storage.buckets statement from")
+                    print("  data/schema.sql in the Supabase SQL editor (it only adds missing buckets).")
                 return 1
-            print(f"  uploaded {path.name}")
+            print(f"  uploaded {bucket}/{path.name}")
         # Parents first: artworks reference artists, facts reference both.
         for table, data in (("artists", artists), ("artworks", rows), ("facts", facts)):
             if not data:

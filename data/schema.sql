@@ -107,10 +107,13 @@ create policy "public read" on facts for select using (
 -- memes: no policies on purpose = the anon key can do nothing; only the backend (service key) touches it.
 
 -- Storage buckets, public read. Uploads need the service key (it bypasses Storage RLS).
--- «artworks» holds artwork images + thumbs (<slug>.jpg, <slug>-thumb.jpg) and artist portraits (portraits/<slug>.jpg).
+-- «artworks» holds artwork images + thumbs (<slug>.jpg, <slug>-thumb.jpg);
+-- «portraits» holds artist portraits (<artist-slug>.jpg, written by data/scripts/extract_bio.py).
+-- Existing project: running just this statement adds a missing bucket and touches nothing else.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
-  ('artworks', 'artworks', true, 5242880, array['image/jpeg','image/png','image/webp']),
-  ('memes',    'memes',    true, 5242880, array['image/png'])
+  ('artworks',  'artworks',  true, 5242880, array['image/jpeg','image/png','image/webp']),
+  ('portraits', 'portraits', true, 5242880, array['image/jpeg','image/png','image/webp']),
+  ('memes',     'memes',     true, 5242880, array['image/png'])
 on conflict (id) do update set public = excluded.public,
   file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
