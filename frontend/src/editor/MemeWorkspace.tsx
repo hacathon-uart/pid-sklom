@@ -19,6 +19,7 @@ import { Link } from "react-router";
 import type { ArtworkSummary, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
+import { PrototypeAllowanceActions } from "../auth/GuestAllowancePrototype";
 import { pending, RESUME, remove, route } from "../auth/workflow";
 import { Artwork } from "../components/Artwork";
 import { IconButton } from "../components/Button";
@@ -146,6 +147,7 @@ export function MemeWorkspace({
             onClick={async () => stageRef.current && shareMeme(await png())}
           />
           {onAnotherPainting && <IconButton icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
+          {import.meta.env.DEV && <PrototypeAllowanceActions />}
           {toolbarEnd && <div className="ml-auto flex items-center gap-3">{toolbarEnd}</div>}
         </div>
         {authEnabled && <p className="t-small mt-3 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}

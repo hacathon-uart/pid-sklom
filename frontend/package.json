@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prototype:guest-allowance": "vite --host 127.0.0.1 --open '/create/painting/13/own?prototype=guest-allowance&variant=A'",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

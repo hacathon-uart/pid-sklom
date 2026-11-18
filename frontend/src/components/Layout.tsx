@@ -1,16 +1,20 @@
 import type { ReactNode } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useSearchParams } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { GuestAllowance } from "../auth/GuestAllowance";
+import { GuestAllowancePrototype } from "../auth/GuestAllowancePrototype";
 
 export function Layout() {
-  return (
+  const [params] = useSearchParams();
+  const prototype = import.meta.env.DEV && params.get("prototype") === "guest-allowance";
+  const content = (
     <div className="min-h-screen pl-[var(--sidebar-width)]">
       <Sidebar />
-      <GuestAllowance />
+      {!prototype && <GuestAllowance />}
       <Outlet />
     </div>
   );
+  return prototype ? <GuestAllowancePrototype>{content}</GuestAllowancePrototype> : content;
 }
 
 /** Standard page: title + subtitle on the left, actions on the right. */
