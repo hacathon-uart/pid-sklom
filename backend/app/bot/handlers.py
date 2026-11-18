@@ -65,13 +65,11 @@ EMPTY = "Зараз немає доступних картин. Спробуй �
 
 
 def _allowed(user_id: int) -> bool:
-    # Empty or malformed configuration fails closed, including standalone slice use.
-    raw = getattr(get_settings(), "telegram_allowed_user_ids", "")
     try:
-        ids = {int(value.strip()) for value in raw.split(",") if value.strip()}
-    except (ValueError, AttributeError):
+        return user_id in get_settings().telegram_allowed_ids
+    except RuntimeError:
+        log.warning("Telegram access denied: invalid tester allowlist")
         return False
-    return user_id in ids
 
 
 def _access_notice(user_id: int | None) -> str:

@@ -15,6 +15,7 @@ from PIL import Image
 
 from app.ai.moderation import ModerationError
 from app.bot import handlers as h
+from app.config import Settings
 from app.schemas import ArtworkDetail, ArtistRef, CaptionOption, CaptionsResult, Fact, MatchResult, Story
 from app.services.create import NotFoundError
 
@@ -115,7 +116,8 @@ class Harness:
 @pytest.fixture
 def bot(monkeypatch):
     h._pending.clear()
-    monkeypatch.setattr(h, "get_settings", lambda: SimpleNamespace(telegram_allowed_user_ids="11, 22"))
+    config = Settings(_env_file=None, telegram_allowed_user_ids="11, 22")
+    monkeypatch.setattr(h, "get_settings", lambda: config)
     image = io.BytesIO()
     Image.new("RGB", (32, 32), "white").save(image, format="PNG")
     png = image.getvalue()
@@ -199,10 +201,11 @@ async def test_uninvited_user_gets_their_id_before_any_work(bot, text):
     assert_no_generation(bot)
 
 
-@pytest.mark.parametrize("allowed", ["", "11,garbage", None])
+@pytest.mark.parametrize("allowed", ["", "11,garbage", "11,", "11,,22", "-1,11", "0,11"])
 @offline
 async def test_empty_or_malformed_allowlist_fails_closed(bot, monkeypatch, allowed):
-    monkeypatch.setattr(h, "get_settings", lambda: SimpleNamespace(telegram_allowed_user_ids=allowed))
+    config = Settings(_env_file=None, telegram_allowed_user_ids=allowed)
+    monkeypatch.setattr(h, "get_settings", lambda: config)
     await bot.message("/random")
     assert h.ACCESS in bot.transport.of(SendMessage)[-1].text
     assert_no_generation(bot)
@@ -377,7 +380,8 @@ async def test_callback_requires_private_access_and_original_user_chat(bot, kwar
 @offline
 async def test_callback_rechecks_allowlist(bot, monkeypatch):
     await bot.message("/random")
-    monkeypatch.setattr(h, "get_settings", lambda: SimpleNamespace(telegram_allowed_user_ids=""))
+    config = Settings(_env_file=None, telegram_allowed_user_ids="")
+    monkeypatch.setattr(h, "get_settings", lambda: config)
     await bot.callback(bot.choice())
     assert h.ACCESS in bot.transport.of(AnswerCallbackQuery)[-1].text
     bot.render.assert_not_called()
