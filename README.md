@@ -2,6 +2,10 @@
 
 Мистецтво крізь жарти. Write a phrase and get a meme made from a public-domain Ukrainian painting, plus the story behind it. Website + Telegram bot.
 
+## License
+
+The project's original code, documentation, and design assets are **all rights reserved**; see [LICENSE](LICENSE). Third-party material, including the Oswald font and sourced artwork, retains its own license or copyright status.
+
 - Plan: [docs/Hachaton_plan.md](docs/Hachaton_plan.md)
 - Design: [docs/design/README.md](docs/design/README.md)
 - **Code map, stubs, who starts where, open questions:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
