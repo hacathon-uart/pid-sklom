@@ -21,7 +21,8 @@ let closeBrowser;
 let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
 const state = { used: 0, calls: 0, exchanges: 0, saves: 0, updates: 0, cancelNext: false,
-  holdNextSave: false, releaseSave: null, holdNextArtwork: false, releaseArtwork: null,
+  holdNextSave: false, releaseSave: null, failNextSaveResponse: false, saveRequests: 0,
+  holdNextArtwork: false, releaseArtwork: null,
   lastExclude: [], authPrompts: [], results: new Map(), memes: new Map(),
   exports: new Map(), exportReservations: 0, exportCancellations: 0, lastRejectedExport: null,
   holdNextExport: false, releaseExport: null };
@@ -106,6 +107,7 @@ const server = createServer(async (req, res) => {
     }
     return json({ ...art(Number(url.pathname.split("/").at(-1))), about: "Description", tags: [], facts: [], artist_facts: [], story });
   }
+  if (url.pathname === "/api/artworks") return json({ items: [art(), art(2)], total: 2 });
   if (url.pathname === "/api/artists/artist") return json({ ...artist, short_bio: "", long_bio: "", artworks: [art()], facts: [], sources: [] });
   if (url.pathname === "/api/matches" || /\/api\/artworks\/1\/captions/.test(url.pathname)) {
     const key = `${signedIn ? "user" : "guest"}:${req.headers["idempotency-key"]}`;
@@ -127,6 +129,7 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === "/api/memes" && req.method === "POST") {
     assert(signedIn, "No save before authentication");
+    state.saveRequests++;
     const key = `save:${req.headers["idempotency-key"]}`;
     if (!state.results.has(key)) {
       state.saves++;
@@ -139,6 +142,10 @@ const server = createServer(async (req, res) => {
     if (state.holdNextSave) {
       state.holdNextSave = false;
       await new Promise((done) => { state.releaseSave = done; });
+    }
+    if (state.failNextSaveResponse) {
+      state.failNextSaveResponse = false;
+      return json({ detail: "Synthetic save response failure" }, 503);
     }
     return json(state.results.get(key), 201);
   }
@@ -194,6 +201,8 @@ try {
   await new Promise((done) => socket.addEventListener("open", done, { once: true }));
   let sequence = 0;
   let acceptDialog = true;
+  const browserDialogs = [];
+  const popupWindows = [];
   const requests = new Map();
   const exceptions = [];
   const command = (method, params = {}) => new Promise((resolve, reject) => {
@@ -215,8 +224,10 @@ try {
       else request?.resolve(message.result);
     }
     if (message.method === "Page.javascriptDialogOpening") {
+      browserDialogs.push(message.params);
       void command("Page.handleJavaScriptDialog", { accept: acceptDialog });
     }
+    if (message.method === "Page.windowOpen") popupWindows.push(message.params);
     if (message.method === "Runtime.exceptionThrown") exceptions.push(message.params.exceptionDetails);
   });
   await command("Runtime.enable");
@@ -225,6 +236,12 @@ try {
     window.exportedPNGs = [];
     window.sharedPNGs = [];
     window.sharedLinks = [];
+    window.openedDialogs = 0;
+    const showModal = HTMLDialogElement.prototype.showModal;
+    HTMLDialogElement.prototype.showModal = function () {
+      window.openedDialogs++;
+      return showModal.call(this);
+    };
     const anchorClick = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = function () {
       if (this.download && this.href.startsWith("data:image/png")) { window.exportedPNGs.push(this.href); return; }
@@ -287,14 +304,46 @@ try {
   const exportImage = (mode = "download", publicView = false) => evaluate(
     `document.querySelector('[aria-label="${mode === "share" ? "Поділитися" : publicView ? "Завантажити" : "Завантажити PNG"}"]').click()`, true,
   );
-  const saveEditor = async () => {
+  const editorFields = () => evaluate(`({
+    caption: document.querySelector('input[maxlength="200"]').value,
+    font: document.querySelector('select').value,
+    size: document.querySelector('input[type="range"]').value,
+    outline: document.querySelector('[role="switch"]').getAttribute('aria-checked'),
+    color: [...document.querySelectorAll('button[aria-label]')].find((item) =>
+      item.getAttribute('aria-label').startsWith('#') && item.className.includes('ring-2'))?.getAttribute('aria-label'),
+    position: [...document.querySelectorAll('button')].find((item) =>
+      item.className.includes('bg-surface shadow-sm'))?.textContent,
+    frame: document.querySelector('[role="radio"][aria-checked="true"]').title,
+    withFrame: document.querySelector('input[type="checkbox"]').checked,
+  })`);
+  const saveEditor = async (clicks = 1, mutations = 1) => {
     await evaluate("document.fonts.ready");
     const before = state.saves + state.updates;
-    await evaluate("document.querySelector('[aria-label=\"Зберегти зміни\"], [aria-label=\"Зберегти в «Мої меми»\"]').click()");
+    const beforeRequests = state.saveRequests + state.updates;
+    const dialogs = browserDialogs.length;
+    const popups = popupWindows.length;
+    const modals = await evaluate("window.openedDialogs");
+    assert(await evaluate(`(() => {
+      const save = document.querySelector('[aria-label="Зберегти зміни"], [aria-label="Зберегти в «Мої меми»"]');
+      const disclosure = [...document.querySelectorAll('p')].find((item) =>
+        item.textContent === 'Збережені меми та PNG доступні всім, хто має посилання.');
+      return disclosure && disclosure.getBoundingClientRect().height > 0 &&
+        getComputedStyle(disclosure).visibility === 'visible' &&
+        Boolean(disclosure.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING);
+    })()`), "Public-by-link disclosure must be visible inline before Save");
+    await evaluate(`(() => {
+      const save = document.querySelector('[aria-label="Зберегти зміни"], [aria-label="Зберегти в «Мої меми»"]');
+      for (let n = 0; n < ${clicks}; n++) save.click();
+    })()`);
     const deadline = Date.now() + 10000;
-    while (state.saves + state.updates === before && Date.now() < deadline) await delay(50);
-    assert.equal(state.saves + state.updates, before + 1, "Save must make exactly one mutation");
+    while (state.saveRequests + state.updates === beforeRequests && Date.now() < deadline) await delay(50);
+    assert.equal(state.saveRequests + state.updates, beforeRequests + 1, "Rapid Save clicks must make exactly one request");
+    assert.equal(state.saves + state.updates, before + mutations, "Save must create or update only its intended meme");
     await delay(100);
+    assert.equal(browserDialogs.length, dialogs, "Signed-in Save must not open a browser confirmation");
+    assert.equal(popupWindows.length, popups, "Signed-in Save must not open a popup");
+    assert.equal(await evaluate("window.openedDialogs"), modals, "Signed-in Save must not open a modal");
+    assert.equal(await evaluate("document.querySelector('dialog[open], [role=\"dialog\"]')"), null);
   };
   const checkSlowNativeShare = async () => {
     await editCaption("Shared PNG after slow authorization");
@@ -336,6 +385,27 @@ try {
     assert.equal(await evaluate("window.exportedPNGs.length"), 0, "A late response must not export the previous artwork");
     console.log("PASS: artwork switch during authorization never downloads the old PNG and releases its reservation");
   } else {
+  {
+    await navigate("/");
+    await until("document.body.innerText.includes('Продовжити через Google')");
+    await navigate("/create/painting/1/own");
+    await editCaption("Direct-entry tab draft");
+    await evaluate("document.querySelector('select').value = 'Rubik'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
+    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    const draft = await editorFields();
+    const mutations = state.saves + state.updates;
+    const generations = state.calls;
+    const exports = exportsRemaining();
+    await click("До вибору картини");
+    await until("location.pathname === '/create/painting' && location.search === '?artwork=1' && document.body.innerText.includes('Написати свій підпис')");
+    await click("Написати свій підпис");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Direct-entry tab draft'");
+    assert.deepEqual(await editorFields(), draft, "Returning through artwork selection must restore the exact tab draft");
+    assert.equal(state.saves + state.updates, mutations, "Leaving and restoring a creation draft must not save");
+    assert.equal(state.calls, generations, "Leaving a manual draft must not generate or refund generations");
+    assert.equal(exportsRemaining(), exports, "Leaving a draft must not change the PNG allowance");
+    console.log("PASS: direct-entry creation exit selects the artwork and restores the tab draft without saving");
+  }
   for (let n = 1; n <= 3; n++) {
     await navigate(`/create/result?q=guest-${n}`);
     await until(`document.querySelector('input[maxlength="200"]')?.value === 'guest-${n}' && document.querySelector('canvas') !== null`);
@@ -492,11 +562,25 @@ try {
   {
     await navigate("/create/painting/2/own");
     await editCaption("Saved after login");
-    await saveEditor();
+    const beforeCreates = state.saves;
+    const beforeUpdates = state.updates;
+    state.holdNextSave = true;
+    state.failNextSaveResponse = true;
+    await saveEditor(3);
     const saved = [...state.memes.values()].find((meme) => meme.caption === "Saved after login");
     assert(saved);
+    assert(state.releaseSave, "Rapid clicks must share the pending creation");
+    state.releaseSave();
+    state.releaseSave = null;
+    await until("[...document.querySelectorAll('p')].some((item) => item.textContent === 'Synthetic save response failure')");
+    await saveEditor(3, 0);
+    await until("document.querySelector('[aria-label=\"Зберегти зміни\"]') !== null");
+    assert.equal(state.saves, beforeCreates + 1, "Retry after a persisted save loses its response must reuse the intent");
+    assert.equal(state.updates, beforeUpdates, "Retrying creation must not update a different meme");
     await editCaption("Saved revision");
-    await saveEditor();
+    await saveEditor(3);
+    assert.equal(state.saves, beforeCreates + 1, "Signed-in Save after editing must update the original meme");
+    assert.equal(state.updates, beforeUpdates + 1, "Rapid update clicks must PATCH exactly once");
     await command("Page.reload");
     await until("document.querySelector('input[maxlength=\"200\"]') !== null");
     assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Saved revision",
@@ -526,12 +610,25 @@ try {
     await navigate(`/me/memes/${saved.id}/edit`);
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved revision'");
     await editCaption("Unsaved existing-meme edit");
+    await evaluate("document.querySelector('select').value = 'Oswald'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
+    await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').click()");
+    const unsavedEdit = await editorFields();
+    const beforeLeaving = state.saves + state.updates;
+    await click("До мему");
+    await until(`location.pathname === '/me/memes/${saved.id}' && document.querySelector('[aria-label="Редагувати підпис"]') !== null`);
+    assert.equal(saved.caption, "Unsaved revision", "Leaving the saved editor must not publish the tab draft");
+    assert.equal(state.saves + state.updates, beforeLeaving, "Leaving the saved editor must not mutate a meme");
+    await evaluate("document.querySelector('[aria-label=\"Редагувати підпис\"]').click()");
+    await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved existing-meme edit'");
+    assert.deepEqual(await editorFields(), unsavedEdit, "Reopening the saved editor must restore every tab draft field");
     await command("Page.reload");
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved existing-meme edit'");
+    assert.deepEqual(await editorFields(), unsavedEdit, "Reload after returning must keep the same unsaved draft");
+    assert.equal(state.saves + state.updates, beforeLeaving, "Return and reload must not autosave");
     await saveEditor();
     assert.equal(state.saves, creates, "Editing a saved meme must never create a new meme");
     assert.equal(saved.caption, "Unsaved existing-meme edit");
-    console.log("PASS: reload restores latest saved and unsaved draft fields without autosaving");
+    console.log("PASS: signed-in Save has inline disclosure and no dialogs; rapid clicks/retry create once, edits update once; explicit exits retain unsaved drafts");
   }
   const savesBeforeLogin = state.saves;
   await logout();

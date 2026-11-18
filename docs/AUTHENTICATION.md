@@ -42,6 +42,8 @@ For guests, show an in-app dialog explaining Google sign-in, draft preservation
 and automatic saving, with an explicit "Sign in with Google and save" action and
 the public-by-link disclosure. "Continue editing" or Escape dismisses it without
 starting OAuth or creating a meme. Do not hide the redirect behind a generic OK.
+For signed-in users, show the disclosure inline next to the Save controls;
+explicit Save acts immediately without a confirmation dialog or another sign-in.
 There is no public collection directory implied by this decision. The owner-only
 collection listing does not make an individual saved meme private.
 
@@ -54,6 +56,12 @@ The latest editor draft, including unsaved caption/style/frame changes, survives
 a reload in the same browser tab. Restoring that draft does not publish changes:
 updating the saved meme, including its frame, requires explicit Save. Browser
 storage failures are shown rather than silently claiming the draft is durable.
+
+Leaving the own-caption editor returns to painting selection with the current
+artwork selected. Leaving a saved meme's editor returns to that meme's account
+page. Both actions use explicit destination labels rather than history-based
+"Cancel"; they retain the current tab's draft without saving or refunding usage.
+Returning to the editor restores those unsaved changes.
 
 Within one creation flow, each artwork has its own draft and saved-meme identity.
 Selecting an alternative for the first time inherits the current caption/style
@@ -309,6 +317,10 @@ Do not log bearer tokens, OAuth codes or guest credentials.
   retains the browser's prior guest usage.
 - Guest Save survives redirect with all draft fields intact and completes once;
   duplicate callbacks, refresh and a lost-response retry produce one saved meme.
+- Signed-in Save shows the inline public-by-link disclosure and saves without a
+  dialog; subsequent saves update the same meme.
+- Editor exit uses the explicit destination even after direct entry, preserves
+  the tab draft on return and does not save changes or refund an allowance.
 - Cancelled/failed login retains the draft without creating a meme. Failed saves
   show errors and can be retried without duplication.
 - Reload restores a valid session before account requests; refresh and logout
