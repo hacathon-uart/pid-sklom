@@ -10,6 +10,24 @@ import time
 import uuid
 
 
+def wait_database(name, sql):
+    for _ in range(60):
+        probe = subprocess.run(
+            ["docker", "exec", name, "sh", "-c",
+             'test "$(cat /proc/1/comm)" = postgres && pg_isready -U postgres'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if probe.returncode == 0:
+            try:
+                if sql("select 1;") == "1":
+                    return
+            except subprocess.CalledProcessError as error:
+                if error.returncode != 2:
+                    raise
+        time.sleep(1)
+    raise RuntimeError("Disposable Postgres did not become ready")
+
+
 def main():
     name = f"pidsklom-auth-sql-{uuid.uuid4().hex[:12]}"
 
@@ -36,16 +54,7 @@ def main():
         "-e", f"POSTGRES_PASSWORD={secrets.token_urlsafe(32)}", "postgres:17-alpine",
     ], check=True, stdout=subprocess.DEVNULL)
     try:
-        for _ in range(60):
-            probe = subprocess.run(
-                ["docker", "exec", name, "pg_isready", "-U", "postgres"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            )
-            if probe.returncode == 0:
-                break
-            time.sleep(1)
-        else:
-            raise RuntimeError("Disposable Postgres did not become ready")
+        wait_database(name, sql)
         sql("create role anon; create role authenticated; create role service_role;")
         migration = Path(__file__).resolve().parents[1] / "data/migrations/0001_auth_operations.sql"
         sql(migration.read_text())
