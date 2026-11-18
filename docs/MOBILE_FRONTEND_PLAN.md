@@ -3,6 +3,7 @@
 Status: **Plan approved for responsive web scope; implementation pending.**
 Decision: [ADR 0009](adr/0009-one-responsive-frontend.md).
 Desktop visual reference: [design README and Figma](design/README.md).
+Execution sequence: [responsive frontend implementation](MOBILE_FRONTEND_IMPLEMENTATION.md).
 
 ## Product outcome
 
