@@ -6,8 +6,8 @@ import { useApi } from "../api/useApi";
 import { Button } from "../components/Button";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 
 export function EditMemePage() {
   const { memeId = "" } = useParams();
@@ -16,14 +16,10 @@ export function EditMemePage() {
   const artworkId = meme.data?.artwork.id;
   const artwork = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const draft = useMemeDraft();
-  const { stageRef, save, saving, error, savedId, justSaved, toggle } = useSaveMeme(
-    (style, png) => api.createMeme(artworkId!, style, png),
-    memeId,
-  );
+  const { draft, stageRef, save, saving, error, savedId, justSaved } = useMemeEditor(artworkId, { memeId });
 
   useEffect(() => {
-    if (meme.data) {
+    if (meme.data && !draft.restored) {
       draft.setBlocks(meme.data.style.blocks);
       draft.setFrame(meme.data.style.frame ?? "gold");
     }
@@ -32,6 +28,7 @@ export function EditMemePage() {
 
   if (meme.loading || artwork.loading) return <Page title="Редагування"><Loading /></Page>;
   if (meme.error || !meme.data || !artwork.data) return <Page title="Редагування"><ErrorMessage error={meme.error ?? "Помилка"} /></Page>;
+  if (!meme.data.can_edit) return <Page title="Редагування"><ErrorMessage error="Мем не знайдено у вашій колекції" /></Page>;
 
   return (
     <Page
@@ -39,12 +36,12 @@ export function EditMemePage() {
       subtitle="Перетягніть підпис на картині або змініть його стиль під нею"
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={() => toggle(draft.style)}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
         savedId={savedId} stageRef={stageRef}
         toolbarEnd={
           <>
             <Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>
-            <Button onClick={() => save(draft.style)} disabled={saving}>Зберегти зміни</Button>
+            <Button onClick={save} disabled={saving}>Зберегти зміни</Button>
           </>
         }>
         {editing ? (

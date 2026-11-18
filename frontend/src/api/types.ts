@@ -144,4 +144,5 @@ export interface Meme {
   image_url: string | null;
   is_favorite: boolean;
   created_at: string;
+  can_edit: boolean;
 }

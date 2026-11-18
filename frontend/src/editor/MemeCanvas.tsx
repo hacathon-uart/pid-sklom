@@ -27,10 +27,11 @@ interface Props {
 
 export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelect, onBackgroundClick, onMove, stageRef }: Props) {
   // crossOrigin="anonymous" is REQUIRED, otherwise PNG export throws (tainted canvas).
-  const [image] = useImage(imageUrl, "anonymous");
+  const [image, imageStatus] = useImage(imageUrl, "anonymous");
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(560);
-  const [, setFontsReady] = useState(0);
+  const [fontsReady, setFontsReady] = useState("");
+  const [fontError, setFontError] = useState(false);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -43,9 +44,12 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   // Konva measures text once; re-render after web fonts finish loading.
   const fontsKey = blocks.map((b) => b.font).join();
   useEffect(() => {
-    Promise.all(blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`))).then(() =>
-      setFontsReady((n) => n + 1),
-    );
+    let active = true;
+    setFontError(false);
+    Promise.all(blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`)))
+      .then(() => { if (active) setFontsReady(fontsKey); })
+      .catch(() => { if (active) setFontError(true); });
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontsKey]);
 
@@ -55,6 +59,8 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   return (
     <div ref={wrapRef} className="w-full">
       <Stage
+        exportReady={Boolean(image) && fontsReady === fontsKey && !fontError}
+        exportError={imageStatus === "failed" || fontError}
         width={width}
         height={height}
         ref={stageRef}

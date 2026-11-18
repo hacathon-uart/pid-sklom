@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""
     supabase_jwt_secret: str = ""
+    supabase_jwt_algorithm: Literal["ES256", "RS256", "HS256"] = "ES256"
+    guest_limit_enabled: bool = False
+    guest_token_secret: str = ""
 
     # AI (ADR 0002). AI_PROVIDER=llm uses Gemini: embeddings for matching, LLM only in hybrid mode.
     ai_api_key: str = ""  # Gemini API key (Google AI Studio)
@@ -59,8 +62,15 @@ class Settings(BaseSettings):
             raise RuntimeError("DATA_BACKEND=supabase needs SUPABASE_URL and SUPABASE_SERVICE_KEY")
         if self.ai_provider == "llm" and not self.ai_api_key:
             raise RuntimeError("AI_PROVIDER=llm needs AI_API_KEY")
-        if self.auth_mode == "supabase" and not self.supabase_jwt_secret:
-            raise RuntimeError("AUTH_MODE=supabase needs SUPABASE_JWT_SECRET")
+        if self.auth_mode == "supabase":
+            if not self.supabase_url or self.data_backend != "supabase":
+                raise RuntimeError("AUTH_MODE=supabase needs Supabase URL and data backend")
+            if self.supabase_jwt_algorithm == "HS256" and not self.supabase_jwt_secret:
+                raise RuntimeError("HS256 needs SUPABASE_JWT_SECRET")
+        if self.guest_limit_enabled and (
+            self.auth_mode != "supabase" or len(self.guest_token_secret) < 32
+        ):
+            raise RuntimeError("Guest limits need real Supabase auth and a GUEST_TOKEN_SECRET of at least 32 characters")
         if self.telegram_bot_token and self.telegram_webhook_secret in ("", "change-me"):
             raise RuntimeError("Telegram needs a non-default TELEGRAM_WEBHOOK_SECRET")
         if self.environment == "production":

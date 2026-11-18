@@ -24,6 +24,10 @@ treated as reconciliation with independently edited database content.
 Saved memes are public by link under the current API/Storage model, not private
 per-user files. The first public release disables account saving altogether;
 neither this ADR nor disabling saving changes existing object access rules.
+[ADR 0006](0006-google-identity-and-guest-allowance.md) keeps public-by-link access
+for the next Google-account release while adding a durable operation ledger for
+guest allowance and retry handling. The original "private to each user" wording
+below is historical and does not describe file visibility.
 
 ## Context
 

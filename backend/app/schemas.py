@@ -184,3 +184,4 @@ class Meme(BaseModel):
     image_url: str | None = None
     is_favorite: bool = False
     created_at: datetime
+    can_edit: bool = False

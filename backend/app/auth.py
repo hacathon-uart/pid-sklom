@@ -6,6 +6,8 @@ AUTH_MODE=disabled  -> account operations are unavailable; public reads remain a
 """
 
 from dataclasses import dataclass
+from functools import lru_cache
+from uuid import UUID
 
 import jwt
 from fastapi import Header, HTTPException
@@ -19,19 +21,33 @@ class User:
     email: str | None = None
 
 
+@lru_cache(maxsize=4)
+def _jwks(url: str) -> jwt.PyJWKClient:
+    return jwt.PyJWKClient(f"{url.rstrip('/')}/auth/v1/.well-known/jwks.json", timeout=10)
+
+
 def _user_from_token(token: str) -> User:
     settings = get_settings()
     if settings.auth_mode == "stub":
         return User(id=token or "dev-user")
-    # TODO(A, T22): newer Supabase projects may sign with asymmetric keys (JWKS) instead of
-    # the legacy HS256 secret — check Project Settings → API → JWT and adjust.
     try:
+        algorithm = settings.supabase_jwt_algorithm
+        key = settings.supabase_jwt_secret if algorithm == "HS256" else _jwks(
+            settings.supabase_url
+        ).get_signing_key_from_jwt(token).key
         payload = jwt.decode(
-            token, settings.supabase_jwt_secret, algorithms=["HS256"], audience="authenticated"
+            token, key, algorithms=[algorithm], audience="authenticated",
+            issuer=f"{settings.supabase_url.rstrip('/')}/auth/v1",
+            options={"require": ["sub", "exp", "iss", "aud"]},
         )
-    except jwt.PyJWTError as e:
+        user_id = str(UUID(payload["sub"]))
+        if payload.get("is_anonymous"):
+            raise ValueError("Anonymous Auth identities cannot save memes")
+    except jwt.PyJWKClientConnectionError as e:
+        raise HTTPException(503, "Не вдалося перевірити сесію. Спробуйте ще раз") from e
+    except (jwt.PyJWTError, ValueError, TypeError) as e:
         raise HTTPException(401, "Сесія недійсна, увійдіть ще раз") from e
-    return User(id=payload["sub"], email=payload.get("email"))
+    return User(id=user_id, email=payload.get("email"))
 
 
 def _token(authorization: str | None) -> str | None:

@@ -6,11 +6,13 @@ API docs: http://localhost:8000/docs
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import content, create, memes
+from app.api import content, create, guest, memes
 from app.bot import webhook
 from app.config import get_settings
 from app.data import get_repo
@@ -23,6 +25,10 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     app.state.ready = False
     settings.validate_runtime()
+    if settings.auth_mode == "supabase":
+        from app import operations
+
+        operations.remaining("startup")
     catalogue = get_repo().catalogue()
     if not catalogue:
         raise RuntimeError("No visible artworks loaded; import approved content before deployment")
@@ -49,11 +55,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Під склом API", version="0.1.0", lifespan=lifespan)
 app.state.ready = False
 
+
+@app.exception_handler(httpx.HTTPError)
+async def upstream_error(_request, error: httpx.HTTPError):
+    logging.getLogger(__name__).error("Upstream persistence request failed (%s)", type(error).__name__)
+    return JSONResponse(status_code=503, content={"detail": "Сховище тимчасово недоступне. Повторіть дію"})
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Guest-Remaining"],
 )
 
 api = APIRouter(prefix="/api")
@@ -80,6 +94,7 @@ def ready():
 api.include_router(content.router)
 api.include_router(create.router)
 api.include_router(memes.router)
+api.include_router(guest.router)
 app.include_router(api)
 app.include_router(webhook.router)
 

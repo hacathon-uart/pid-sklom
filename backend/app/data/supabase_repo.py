@@ -69,6 +69,12 @@ class SupabaseRepository(LocalRepository):
         stamp = int(datetime.now(UTC).timestamp())  # cache-buster after edits
         return f"{self.base}/storage/v1/object/public/{MEMES_BUCKET}/{meme_id}.png?v={stamp}"
 
+    def _delete_png(self, meme_id: str) -> None:
+        self.http.request(
+            "DELETE", f"{self.base}/storage/v1/object/{MEMES_BUCKET}",
+            json={"prefixes": [f"{meme_id}.png"]},
+        ).raise_for_status()
+
     def list_memes(self, user_id: str, favorite: bool | None = None) -> list[Meme]:
         filters = {"user_id": f"eq.{user_id}", "order": "created_at.desc"}
         if favorite is not None:
@@ -82,10 +88,15 @@ class SupabaseRepository(LocalRepository):
             return None
         return self._meme(rows[0]), rows[0]["user_id"]
 
-    def create_meme(self, user_id: str, data: MemeCreate) -> Meme:
+    def create_meme(self, user_id: str, data: MemeCreate, meme_id: str | None = None) -> Meme:
         if data.artwork_id not in self.artworks:
             raise KeyError(data.artwork_id)
-        meme_id = str(uuid.uuid4())
+        meme_id = meme_id or str(uuid.uuid4())
+        existing = self.get_meme(meme_id)
+        if existing:
+            if existing[1] != user_id:
+                raise RuntimeError("Meme identity collision")
+            return existing[0]
         style = data.style.model_dump()
         row = {
             "id": meme_id,
@@ -95,10 +106,18 @@ class SupabaseRepository(LocalRepository):
             "style": style,
             "image_url": self._save_png(meme_id, data.image_data_url) if data.image_data_url else None,
         }
-        r = self.http.post(
-            f"{self.base}/rest/v1/memes", json=row, headers={"Prefer": "return=representation"}
-        )
-        r.raise_for_status()
+        try:
+            r = self.http.post(
+                f"{self.base}/rest/v1/memes", json=row, headers={"Prefer": "return=representation"}
+            )
+            r.raise_for_status()
+        except httpx.HTTPStatusError:
+            existing = self.get_meme(meme_id)
+            if existing and existing[1] == user_id:
+                return existing[0]
+            if row["image_url"]:
+                self._delete_png(meme_id)
+            raise
         return self._meme(r.json()[0])
 
     def update_meme(self, meme_id: str, data: MemeUpdate) -> Meme:
@@ -122,5 +141,5 @@ class SupabaseRepository(LocalRepository):
         return self._meme(r.json()[0])
 
     def delete_meme(self, meme_id: str) -> None:
+        self._delete_png(meme_id)
         self.http.delete(f"{self.base}/rest/v1/memes", params={"id": f"eq.{meme_id}"}).raise_for_status()
-        self.http.delete(f"{self.base}/storage/v1/object/{MEMES_BUCKET}/{meme_id}.png")

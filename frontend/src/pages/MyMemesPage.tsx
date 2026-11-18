@@ -22,7 +22,8 @@ export function MyMemesPage() {
   if (!user) {
     return (
       <Page title="Мої меми" subtitle="Увійдіть, щоб зберігати меми і повертатися до них.">
-        <Button onClick={login}>Увійти</Button>
+        <Button onClick={login}>Продовжити через Google</Button>
+        <p className="t-small mt-3 text-text-secondary">Новий акаунт створиться автоматично</p>
       </Page>
     );
   }
