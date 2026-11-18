@@ -1,6 +1,5 @@
 /** Screen 4 · Профіль — мої меми (US-08). Requires login. */
 import { useState } from "react";
-import { Link } from "react-router";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
@@ -10,7 +9,7 @@ import { MemeCard } from "../components/cards";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { RopedOff, Ticket } from "../components/Museum";
 import { Tag } from "../components/Tag";
-import { GAME_ORDER, GAMES } from "../quiz/games";
+import { HonoursBoard } from "../quiz/Museum";
 
 export function MyMemesPage() {
   const { user, login, logout } = useAuth();
@@ -76,24 +75,10 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
   );
 }
 
-/** Best quiz scores (ADR 0008). «Назва картини» shows the best of all its scopes. */
+/** Best quiz scores (ADR 0008) on H1 «Почесна дошка». */
 function QuizRecords() {
   const { data } = useApi(() => api.quiz(), []);
   const best = data?.best;
   if (!best || Object.keys(best).length === 0) return null;
-  const score = (game: string) => game === "titles"
-    ? Math.max(...Object.entries(best).filter(([k]) => k.startsWith("titles:")).map(([, v]) => v), -1)
-    : best[game] ?? -1;
-  return (
-    <div className="mb-8 flex items-center gap-10 rounded-card border border-line bg-surface px-6 py-4">
-      <span className="t-label">Рекорди вікторини</span>
-      {GAME_ORDER.map((game) => (
-        <div key={game} className="flex items-baseline gap-2">
-          <span className="t-small text-text-secondary">{GAMES[game].title}</span>
-          <strong className="font-heading text-[28px] leading-none">{score(game) >= 0 ? score(game) : "—"}</strong>
-        </div>
-      ))}
-      <Link to="/quiz" className="t-strong ml-auto text-accent hover:underline">До вікторини →</Link>
-    </div>
-  );
+  return <HonoursBoard best={best} />;
 }

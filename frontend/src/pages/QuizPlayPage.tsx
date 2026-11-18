@@ -9,8 +9,10 @@ import { Artwork } from "../components/Artwork";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
+import { inventoryNo } from "../components/Museum";
 import { plural } from "../plural";
 import { bestKey, GAMES } from "../quiz/games";
+import { BrassPlaque, rank, Turnstile } from "../quiz/Museum";
 
 const WRONG = "#7b1e2a"; // the velvet-rope red
 
@@ -77,17 +79,26 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     }
   }, [result]);
 
+  // S1 · the visitor turnstile counts right answers; the record is a brass plaque beside it.
   const header = (
-    <div className="flex items-center gap-8">
-      <Stat label="Рахунок" value={run?.limit ? `${run.score} / ${run.limit}` : run?.score ?? 0} />
-      {user && <Stat label="Рекорд" value={best ?? "—"} />}
+    <div className="flex items-center gap-5">
+      <div className="text-center">
+        <div className="t-label mb-2">Рахунок</div>
+        <Turnstile value={run?.score ?? 0} label="Рахунок" />
+        {run?.limit && <div className="t-caption mt-2 text-text-secondary">гостьовий: з {run.limit}</div>}
+      </div>
+      {user && (
+        <BrassPlaque className="self-end">
+          <span className="engraved text-[19px]">Рекорд {best ?? "—"}</span>
+        </BrassPlaque>
+      )}
     </div>
   );
   const page = (children: ReactNode) => (
     <Page
       title={meta.title}
       subtitle={scopeName ? `Картини: ${scopeName}` : undefined}
-      back={<Link to="/quiz" className="t-small inline-flex items-center gap-2 text-text-secondary hover:text-accent"><Icon name="arrowLeft" size={16} /> Усі ігри</Link>}
+      back={<Link to="/quiz" className="t-small inline-flex items-center gap-2 text-text-secondary hover:text-accent"><Icon name="arrowLeft" size={16} /> Усі зали</Link>}
       actions={!showFinal && header}
     >
       {children}
@@ -110,15 +121,6 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     game === "pairs"
       ? <PairsQuestion key={question.images.map((i) => i.image_url).join()} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} number={number} />
       : <SingleQuestion key={question.images[0].image_url} game={game} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} number={number} />,
-  );
-}
-
-function Stat({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="text-right">
-      <div className="t-label">{label}</div>
-      <div className="font-heading text-[40px] font-semibold leading-none">{value}</div>
-    </div>
   );
 }
 
@@ -154,7 +156,8 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
       <div>
         <div className="t-label">Питання {number}</div>
         <h2 className="t-h2 mt-2">{GAMES[game].prompt}</h2>
-        <div className="mt-6 space-y-3" role="group" aria-label="Варіанти відповіді">
+        {/* Q3 · typed index cards from the museum catalogue; the right one gets a «ВІРНО» stamp. */}
+        <div className="mt-6 space-y-4" role="group" aria-label="Картки каталогу: варіанти відповіді">
           {question.options.map((option, index) => {
             const state = !reveal ? "idle" : option.key === reveal.right ? "right" : option.key === reveal.chosen ? "wrong" : "other";
             return (
@@ -163,13 +166,13 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
                 type="button"
                 disabled={busy || !!reveal}
                 onClick={() => pick(option.key)}
-                className={`flex w-full items-center gap-4 rounded-card border px-5 py-4 text-left transition ${OPTION_STYLE[state]} ${game === "titles" ? "font-heading text-[22px] italic leading-tight" : "t-body-lg font-semibold"}`}
-                style={state === "wrong" ? { borderColor: WRONG, color: WRONG, background: `${WRONG}0f` } : undefined}
+                className={`catalogue-card ${state === "other" ? "faded" : ""} ${state === "wrong" ? "struck" : ""}`}
               >
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-ui text-[13px] not-italic ${state === "right" ? "bg-white/20" : "bg-muted"}`}>
-                  {state === "right" ? "✓" : state === "wrong" ? "✕" : index + 1}
-                </span>
-                {option.label}
+                <span className="card-no">{index + 1}</span>
+                <span className="card-text min-w-0 flex-1 pr-36">{option.label}</span>
+                {state === "right" && <span className="stamp stamp-right">ПРАВИЛЬНО</span>}
+                {state === "wrong" && <span className="stamp stamp-wrong">НЕПРАВИЛЬНО</span>}
+                <span className="card-hole" aria-hidden />
               </button>
             );
           })}
@@ -181,25 +184,20 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
   );
 }
 
-const OPTION_STYLE = {
-  idle: "border-line bg-surface hover:border-accent hover:bg-muted",
-  right: "border-accent bg-accent text-white",
-  wrong: "",
-  other: "border-line bg-surface opacity-45",
-} as const;
-
+/** After an answer: the painting's museum label, with one reviewed fact. */
 function RevealCard({ reveal, result, onNext }: { reveal: QuizReveal; result: QuizResult; onNext: () => void }) {
   const a = reveal.artwork;
   return (
-    <div className="mt-6 rounded-card bg-muted p-5" role="status">
+    <div className="mt-8" role="status">
       <div className="t-label" style={reveal.correct ? undefined : { color: WRONG }}>
-        {reveal.correct ? "Правильно!" : "Ой, ні"}
+        {reveal.correct ? "Правильно! Ось етикетка картини" : "Ой, ні. Ось етикетка картини"}
       </div>
-      <p className="mt-2 font-heading text-[24px] font-semibold italic leading-tight">
-        «{a.title}»{a.year ? `, ${a.year}` : ""}
-      </p>
-      <Link to={`/artists/${a.artist.slug}`} className="t-strong text-accent hover:underline">{a.artist.name} →</Link>
-      {reveal.fact && <p className="t-small mt-3">{reveal.fact}</p>}
+      <div className="wall-label mt-3 !p-5">
+        <Link to={`/artists/${a.artist.slug}`} className="wl-who hover:text-accent">{a.artist.name} →</Link>
+        <div className="wl-what !text-[22px]">«{a.title}»{a.year ? `, ${a.year}` : ""}</div>
+        {reveal.fact && <p className="t-small mt-3">{reveal.fact}</p>}
+        <div className="wl-inv">Інв. № {inventoryNo(a.id)}</div>
+      </div>
       <NextButton result={result} onNext={onNext} />
     </div>
   );
@@ -244,8 +242,11 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
     <div>
       <div className="t-label">Раунд {number}</div>
       <p className="t-body mt-2 text-text-secondary">
-        {result ? "Ось як було насправді." : "Оберіть картину, а потім її автора. Натисніть на ім’я під картиною, щоб прибрати його."}
+        {result
+          ? "Ось як було насправді."
+          : "Повісьте етикетки під картини: оберіть картину, а потім етикетку з лотка. Натисніть на повішену етикетку, щоб зняти її."}
       </p>
+      {/* P1 · blank wall labels from the curator's tray, hung on hooks under the paintings */}
       <div className="mt-6 grid grid-cols-3 gap-10">
         {question.images.map((image, index) => {
           const reveal = revealed(image.key);
@@ -263,23 +264,25 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
                 <Artwork src={image.image_url} alt={`Картина ${index + 1} з вікторини`} aspect="4/5" selected={!result && selected === image.key}
                   crack={reveal && !reveal.correct ? "animate" : null} />
               </button>
+              <span className="label-hook mt-3" aria-hidden />
               {reveal ? (
-                <div className="mt-4 rounded-card border px-4 py-3" style={{ borderColor: reveal.correct ? "var(--color-accent)" : WRONG }}>
-                  <div className="t-strong" style={reveal.correct ? undefined : { color: WRONG, textDecoration: "line-through" }}>
-                    {reveal.correct ? "✓ " : ""}{labels[chosen] ?? "—"}
-                  </div>
-                  {!reveal.correct && <div className="t-strong">✓ {labels[reveal.right]}</div>}
-                  <div className="mt-1 font-heading text-[18px] italic leading-tight">
-                    «{reveal.artwork.title}»{reveal.artwork.year ? `, ${reveal.artwork.year}` : ""}
-                  </div>
+                <div className="wall-label" style={reveal.correct ? undefined : { boxShadow: `0 0 0 2px ${WRONG}` }}>
+                  {!reveal.correct && <div className="wl-who" style={{ color: WRONG, textDecoration: "line-through" }}>{labels[chosen] ?? "—"}</div>}
+                  <div className="wl-who">{reveal.correct ? "✓ " : ""}{labels[reveal.right]}</div>
+                  <div className="wl-what">«{reveal.artwork.title}»{reveal.artwork.year ? `, ${reveal.artwork.year}` : ""}</div>
+                  <div className="wl-inv">Інв. № {inventoryNo(reveal.artwork.id)}</div>
                 </div>
+              ) : chosen ? (
+                <button type="button" onClick={() => unassign(image.key)} className="wall-label text-left transition hover:-translate-y-0.5" title="Зняти етикетку">
+                  <div className="wl-who">{labels[chosen]}</div>
+                </button>
               ) : (
                 <button
                   type="button"
-                  onClick={() => (chosen ? unassign(image.key) : setSelected(image.key))}
-                  className={`mt-4 flex min-h-[52px] items-center justify-center rounded-card border-2 border-dashed px-4 py-2 text-center transition ${chosen ? "border-accent bg-surface t-strong" : selected === image.key ? "border-accent text-accent t-small" : "border-line text-text-secondary t-small"}`}
+                  onClick={() => setSelected(image.key)}
+                  className={`flex min-h-[64px] items-center justify-center border-2 border-dashed px-4 py-2 text-center transition t-small ${selected === image.key ? "border-accent text-accent" : "border-line text-text-secondary"}`}
                 >
-                  {chosen ? labels[chosen] : selected === image.key ? "Тепер оберіть автора ↓" : "Оберіть автора"}
+                  {selected === image.key ? "Тепер оберіть етикетку з лотка ↓" : "Повісьте етикетку"}
                 </button>
               )}
             </div>
@@ -288,18 +291,19 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
       </div>
 
       {!result && (
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <span className="t-small text-text-secondary">Автори:</span>
+        <div className="label-tray mt-10 flex flex-wrap items-center gap-4 rounded-card px-6 py-5">
+          <span className="t-label !text-[#C9B08F]">Лоток куратора</span>
           {question.options.map((option) => {
             const used = Object.values(pairs).includes(option.key);
             return (
               <button
                 key={option.key}
                 type="button"
+                disabled={used}
                 onClick={() => assign(option.key)}
-                className={`rounded-full px-5 py-2.5 text-[15px] font-semibold transition ${used ? "bg-muted text-text-secondary line-through" : "bg-accent-soft text-text hover:brightness-95"}`}
+                className={`wall-label text-left transition ${used ? "opacity-30" : "hover:-translate-y-0.5"}`}
               >
-                {option.label}
+                <span className="wl-who">{option.label}</span>
               </button>
             );
           })}
@@ -310,7 +314,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
         <div className="mt-8 flex items-center gap-6 rounded-card bg-muted p-5" role="status">
           <div className="flex-1">
             <div className="t-label" style={result.correct ? undefined : { color: WRONG }}>
-              {result.correct ? "Усі пари правильні!" : "Є помилка"}
+              {result.correct ? "Усі етикетки на своїх місцях!" : "Одна з етикеток висить не там"}
             </div>
             {result.reveals[0]?.fact && <p className="t-small mt-2">{result.reveals.find((r) => !r.correct)?.fact || result.reveals[0].fact}</p>}
           </div>
@@ -329,6 +333,7 @@ const ENDINGS = {
   guest_limit: { label: "Гостьову версію пройдено", text: "Жодної помилки! Далі — лише для відвідувачів з акаунтом." },
 } as const;
 
+/** R1 · a museum certificate with a rank and a wax seal; guests get it stamped «ТИМЧАСОВЕ». */
 function FinalCard({ game, result, signedIn, onAgain, onLogin }: {
   game: QuizGame; result: QuizResult; signedIn: boolean; onAgain: () => void; onLogin: () => void;
 }) {
@@ -336,30 +341,40 @@ function FinalCard({ game, result, signedIn, onAgain, onLogin }: {
   const ending = ENDINGS[result.finished!];
   const unit = game === "pairs"
     ? `${plural(score, "раунд", "раунди", "раундів")} без помилки`
-    : `${plural(score, "правильна відповідь", "правильні відповіді", "правильних відповідей")}`;
+    : `${plural(score, "картина впізнана", "картини впізнано", "картин впізнано")}`;
   const guest = !signedIn && authEnabled;
+  const date = new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col items-center rounded-story border border-line bg-surface px-10 py-12 text-center">
-      <div className="t-label">{ending.label}</div>
-      <div className="mt-4 pb-4 font-heading text-[128px] font-semibold italic leading-[1.1] [font-variant-numeric:lining-nums]">{score}</div>
-      <div className="t-body-lg text-text-secondary">{unit}</div>
-      {result.new_record && (
-        <div className="mt-5 rounded-full bg-accent px-4 py-1.5 text-[13px] font-bold uppercase tracking-[0.1em] text-white">Новий рекорд!</div>
-      )}
-      {signedIn && !result.new_record && !!result.best && (
-        <div className="t-small mt-5 text-text-secondary">Ваш рекорд: <strong className="text-text">{result.best}</strong></div>
-      )}
-      {ending.text && <p className="t-body mt-5 max-w-[460px]">{ending.text}</p>}
+    <div className="mx-auto flex max-w-[620px] flex-col items-center">
+      <div className="certificate w-full px-12 pb-16 pt-12 text-center">
+        {guest && <span className="temp-stamp" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
+        <div className="t-label">{ending.label}</div>
+        <h2 className="mt-3 font-heading text-[52px] font-semibold italic leading-none">Посвідчення</h2>
+        <p className="t-small mt-2 text-text-secondary">видано за знання колекції · {GAMES[game].title}</p>
+        {/* Old-style figures (T2) hang below the line, so the score gets room underneath. */}
+        <div className="mt-5 pb-3 font-heading text-[120px] font-semibold leading-[1.15]">{score}</div>
+        <div className="t-body-lg text-text-secondary">{unit}</div>
+        <p className="mt-5 font-heading text-[26px] leading-tight">
+          Звання: <strong className="italic">{rank(game, score, result.finished!)}</strong>
+        </p>
+        {result.new_record && <p className="t-label mt-4">Новий рекорд!</p>}
+        {signedIn && !result.new_record && !!result.best && (
+          <p className="t-small mt-4 text-text-secondary">Ваш рекорд: <strong className="text-text">{result.best}</strong></p>
+        )}
+        {ending.text && <p className="t-small mx-auto mt-4 max-w-[420px] text-text-secondary">{ending.text}</p>}
+        <p className="t-caption mt-6 text-text-secondary">{date}</p>
+        <div className="wax-seal" aria-hidden>ПІД<br />СКЛОМ</div>
+      </div>
       {guest && (
-        <div className="mt-8 w-full rounded-card bg-muted p-5">
-          <p className="t-body">Увійдіть, щоб грати без обмежень, обирати автора і зберігати рекорди.</p>
+        <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
+          <p className="t-body">Посвідчення тимчасове. Увійдіть, щоб грати без обмежень, обирати автора і потрапити на почесну дошку.</p>
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}
-      <div className="mt-8 flex gap-3">
+      <div className={`flex gap-3 ${guest ? "mt-6" : "mt-12"}`}>
         <Button onClick={onAgain}>Зіграти ще</Button>
-        <Link to="/quiz" className="rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі ігри</Link>
+        <Link to="/quiz" className="rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі зали</Link>
       </div>
     </div>
   );
