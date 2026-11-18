@@ -27,6 +27,10 @@ admin role, an admin user seed or an admin interface.
 
 Saved memes and PNGs remain **public by link**, not private. Explain this before
 the first save, including a save initiated by a guest before the OAuth redirect.
+For guests, show an in-app dialog explaining Google sign-in, draft preservation
+and automatic saving, with an explicit "Sign in with Google and save" action and
+the public-by-link disclosure. "Continue editing" or Escape dismisses it without
+starting OAuth or creating a meme. Do not hide the redirect behind a generic OK.
 There is no public collection directory implied by this decision. The owner-only
 collection listing does not make an individual saved meme private.
 

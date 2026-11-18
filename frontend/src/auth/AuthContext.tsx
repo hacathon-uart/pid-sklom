@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { setAuthToken } from "../api/client";
 import { authConfigurationError, authEnabled, supabase } from "./supabase";
+import { SaveLoginDialog } from "./SaveLoginDialog";
 import { clearAccountState, flushDrafts, pending, PENDING, read, RESUME, remove, route, safeRoute, write, type PendingAction } from "./workflow";
 
 export interface AuthUser {
@@ -156,13 +157,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requireLogin = useCallback((action: () => void, continuation?: PendingAction) => {
     if (!ready) return;
     if (user) action();
+    else if (continuation?.kind === "save") {
+      setError(null);
+      setOffered(continuation);
+    }
     else if (continuation) void startLogin(continuation);
     else void login();
   }, [ready, user, startLogin, login]);
 
+  const saveOffer = offered?.kind === "save" ? offered : null;
+
   return (
     <AuthContext.Provider value={{ user, ready, login, logout, requireLogin }}>
-      {(error || offered) && <div role="alert" className="relative z-50 ml-[var(--sidebar-width)] border-b border-line bg-surface p-5">
+      {saveOffer && <SaveLoginDialog
+        error={error}
+        onContinue={() => startLogin(saveOffer)}
+        onCancel={() => { setOffered(null); setError(null); }}
+      />}
+      {!saveOffer && (error || offered) && <div role="alert" className="relative z-50 ml-[var(--sidebar-width)] border-b border-line bg-surface p-5">
         <p>{error ?? "Три гостьові генерації використано. Увійдіть через Google, щоб продовжити."}</p>
         {offered && <button className="t-strong mr-5 text-accent" onClick={() => void startLogin(offered)}>Увійти через Google і продовжити</button>}
         <button className="t-strong mr-5" onClick={() => { setOffered(null); setError(null); }}>Закрити</button>

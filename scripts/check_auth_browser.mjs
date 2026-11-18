@@ -254,7 +254,29 @@ try {
   await navigate("/create/painting/1/own");
   await editCaption("Preserved through OAuth");
   await evaluate("document.querySelector('select').value = 'Oswald'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
+  await evaluate(`(() => {
+    const save = document.querySelector('[aria-label="Зберегти в «Мої меми»"]');
+    save.focus();
+    save.click();
+  })()`);
+  await until("document.querySelector('dialog[open]')?.textContent.includes('Увійти через Google і зберегти')");
+  assert.equal(state.exchanges, 2, "Opening the save dialog must not start Google login");
+  assert.equal(state.saves, 0, "Opening the save dialog must not create a meme");
+  assert(await evaluate("document.querySelector('dialog').textContent.includes('доступні всім, хто має посилання')"));
+  await click("Продовжити редагування");
+  await until("document.querySelector('dialog[open]') === null");
+  assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Preserved through OAuth");
+  assert.equal(await evaluate("document.activeElement?.getAttribute('aria-label')"), "Зберегти в «Мої меми»",
+    "Cancelling the dialog must return focus to Save");
   await evaluate("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]').click()");
+  await until("document.querySelector('dialog[open]') !== null");
+  await command("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await command("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await until("document.querySelector('dialog[open]') === null");
+  assert.equal(state.exchanges, 2, "Cancel and Escape must not start OAuth");
+  await evaluate("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]').click()");
+  await until("document.querySelector('dialog[open]') !== null");
+  await click("Увійти через Google і зберегти");
   await until("document.body.innerText.includes('Додано до колекції')");
   assert.equal(state.saves, 1, "Save after Google callback happens exactly once");
   assert.equal([...state.memes.values()][0].style.blocks[0].text, "Preserved through OAuth");
@@ -284,6 +306,8 @@ try {
   await editCaption("Keep after cancelled login");
   state.cancelNext = true;
   await evaluate("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]').click()");
+  await until("document.querySelector('dialog[open]') !== null");
+  await click("Увійти через Google і зберегти");
   await until("document.body.innerText.includes('Вхід скасовано')");
   await click("Повернутися до чернетки");
   await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Keep after cancelled login'");
