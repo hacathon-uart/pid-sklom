@@ -118,7 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       remove(RESUME);
       if (supabase) {
         const result = await supabase.auth.signInWithOAuth({
-          provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` },
+          provider: "google", options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+            queryParams: { prompt: "select_account" },
+          },
         });
         if (result.error) throw result.error;
       } else {

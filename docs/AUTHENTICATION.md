@@ -10,6 +10,10 @@ and the account/admin safeguards in
 [ADR 0003](adr/0003-portable-render-first-release.md). It does not introduce an
 admin role, an admin user seed or an admin interface.
 
+Every Google sign-in explicitly requests account selection, so a remembered Google
+session does not prevent choosing another account. Signing out of this application
+does not sign the visitor out of Google.
+
 ## Behaviour
 
 | Action | Guest | Signed-in user |

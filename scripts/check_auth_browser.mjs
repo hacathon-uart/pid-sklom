@@ -22,7 +22,7 @@ let origin;
 const userId = "11111111-1111-4111-8111-111111111111";
 const state = { used: 0, calls: 0, exchanges: 0, saves: 0, updates: 0, cancelNext: false,
   holdNextSave: false, releaseSave: null, holdNextArtwork: false, releaseArtwork: null,
-  lastExclude: [], results: new Map(), memes: new Map() };
+  lastExclude: [], authPrompts: [], results: new Map(), memes: new Map() };
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=", "base64");
 const artist = { id: 1, slug: "artist", name: "Artist", birth_year: 1800, death_year: 1900, portrait_url: null };
 const art = (id = 1) => ({
@@ -44,6 +44,7 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify(value));
   };
   if (url.pathname === "/auth/v1/authorize") {
+    state.authPrompts.push(url.searchParams.get("prompt"));
     const query = state.cancelNext ? "error=access_denied" : `code=${randomUUID()}`;
     state.cancelNext = false;
     res.writeHead(302, { Location: `${origin}/auth/callback?${query}` }).end();
@@ -240,6 +241,7 @@ try {
   await until("location.pathname === '/create/result' && document.querySelector('input[maxlength=\"200\"]')?.value === 'fourth'");
   assert.equal(state.calls, 4);
   assert.equal(state.exchanges, 1, "PKCE exchange must survive StrictMode without duplication");
+  assert.deepEqual(state.authPrompts, ["select_account"], "Google login must explicitly request account selection");
   assert.equal(state.used, 3);
   await logout();
   await navigate("/create/painting/1/ai");
@@ -423,6 +425,7 @@ try {
     console.log("PASS: reload restores latest saved and unsaved draft fields without autosaving");
   }
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
+  assert(state.authPrompts.every((prompt) => prompt === "select_account"), "Every Google entry point must request account selection");
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");
 } finally {
   state.releaseSave?.();
