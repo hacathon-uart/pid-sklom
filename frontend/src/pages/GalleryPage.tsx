@@ -117,7 +117,7 @@ function CarouselArrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => 
       type="button"
       onClick={onClick}
       aria-label={dir === "prev" ? "Попередні автори" : "Наступні автори"}
-      className={`flex min-h-11 min-w-11 items-center gap-2 p-2 lg:absolute lg:top-[62px] lg:z-10 lg:-translate-y-1/2 text-accent-soft transition-colors hover:text-accent focus-visible:text-accent ${dir === "prev" ? "lg:-left-12" : "lg:-right-12"}`}
+      className={`flex min-h-11 min-w-11 items-center gap-2 p-2 lg:absolute lg:top-[62px] lg:z-10 lg:-translate-y-1/2 text-accent-soft transition-colors hover:text-accent focus-visible:text-accent ${dir === "prev" ? "lg:-left-6 xl:-left-12" : "lg:-right-6 xl:-right-12"}`}
     >
       <Icon name={dir === "prev" ? "arrowLeft" : "arrowRight"} size={24} />
       <span className="t-small lg:hidden">{dir === "prev" ? "Попередні" : "Наступні"}</span>

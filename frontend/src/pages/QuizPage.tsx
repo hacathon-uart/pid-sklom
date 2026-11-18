@@ -41,7 +41,7 @@ export function QuizPage() {
   return (
     <Page
       title="Вікторина"
-      subtitle="Оберіть залу на плані. Подивіться на картину й пригадайте, хто її написав і як вона називається. Одна помилка завершує гру, а після кожної відповіді — етикетка з історією картини."
+      subtitle="Оберіть залу. Подивіться на картину й пригадайте, хто її написав і як вона називається. Одна помилка завершує гру, а після кожної відповіді — етикетка з історією картини."
     >
       {error ? (
         <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
@@ -49,7 +49,7 @@ export function QuizPage() {
         <Loading />
       ) : (
         <>
-          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] md:gap-10">
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-10">
             <FloorPlan info={info} selected={game} onSelect={setSelected} />
             <HallSign key={game} game={game} info={info} />
           </div>

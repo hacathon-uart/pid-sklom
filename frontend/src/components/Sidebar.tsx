@@ -19,10 +19,10 @@ function NavItem({ item, compact, path }: { item: Destination; compact: boolean;
     <Link
       to={item.to}
       aria-current={selected ? "page" : undefined}
-      className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-control text-center text-[11px] leading-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${compact ? "flex-1 px-0.5 py-1" : "w-16 py-2.5"} ${selected ? "bg-accent-soft text-text" : "hover:bg-surface"}`}
+      className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-control text-center text-[0.6875rem] leading-tight transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${compact ? "flex-[1_0_auto] px-1 py-1" : "w-16 py-2.5"} ${selected ? "bg-accent-soft text-text" : "hover:bg-surface"}`}
     >
       <Icon name={item.icon} size={compact ? 20 : 22} />
-      <span className="min-w-0 break-words">{item.label}</span>
+      <span className="whitespace-nowrap">{item.label}</span>
     </Link>
   );
 }
@@ -39,7 +39,7 @@ export function Sidebar() {
         </Link>
         {items.map((item) => <div key={item.to} className={item.to === "/me" ? "mt-auto" : ""}><NavItem item={item} compact={false} path={path} /></div>)}
       </nav>
-      <nav aria-label="Основна навігація" className="fixed inset-x-0 bottom-0 z-30 flex min-h-[68px] items-start gap-0.5 border-t border-line bg-muted px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_18px_rgba(46,38,32,0.08)] md:hidden">
+      <nav aria-label="Основна навігація" className="fixed inset-x-0 bottom-0 z-30 flex min-h-[4.25rem] items-start gap-0.5 overflow-x-auto border-t border-line bg-muted px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_18px_rgba(46,38,32,0.08)] md:hidden">
         {items.map((item) => <NavItem key={item.to} item={item} compact path={path} />)}
       </nav>
     </>

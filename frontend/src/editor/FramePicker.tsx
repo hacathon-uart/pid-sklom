@@ -18,13 +18,12 @@ export function FramePicker({
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
       {onFrameChange && <>
       <div className="t-label">Рамка</div>
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Рамка">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Рамка">
         {FRAMES.map((f) => (
           <button
             key={f}
             type="button"
-            role="radio"
-            aria-checked={frame === f}
+            aria-pressed={frame === f}
             title={FRAME_LABELS[f]}
             onClick={() => onFrameChange(f)}
             className={`flex min-h-11 min-w-11 flex-col items-center gap-1 rounded-control border p-1.5 text-[11px] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${frame === f ? "border-accent text-accent" : "border-line hover:bg-muted"}`}

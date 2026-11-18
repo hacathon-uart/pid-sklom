@@ -31,7 +31,7 @@
   --sidebar-width: 88px;
   --page-gutter: 16px;
   --app-side-offset: 0px;
-  --app-bottom-clearance: calc(68px + env(safe-area-inset-bottom, 0px));
+  --app-bottom-clearance: calc(4.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {
