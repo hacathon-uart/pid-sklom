@@ -14,8 +14,8 @@ hosted-release runbook is [TELEGRAM_PRODUCTION_HANDOFF.md](TELEGRAM_PRODUCTION_H
   and `/random` with three caption choices. Unknown commands and unsupported
   messages receive a useful Ukrainian response. Group and inline interactions,
   editing, account linking, and saving to My Memes are outside this release.
-- Use a separate BotFather test bot. For this PR it runs locally with polling;
-  hosted webhook acceptance belongs to the later release step. An allowlist of
+- Use a separate BotFather test bot for local polling;
+  hosted webhook acceptance belongs to the restricted production pilot. An allowlist of
   Telegram user IDs limits generation to invited testers. Store IDs in private
   configuration. Other users receive a Ukrainian testing notice before any
   catalogue, AI, image, or rendering work.
@@ -29,8 +29,8 @@ hosted-release runbook is [TELEGRAM_PRODUCTION_HANDOFF.md](TELEGRAM_PRODUCTION_H
 - During testing, occasional duplicate responses or a request to retry after a
   timeout or restart are acceptable. Explain failures and retries clearly; do not
   claim exactly-once delivery. Keep website allowances and ownership rules intact.
-- Public access and its per-Telegram-user usage limit require a separate decision
-  before production enablement. This PR must not accidentally make generation
+- Unrestricted public access and its per-Telegram-user usage limit require a separate
+  decision after the invited production pilot. This PR must not accidentally make generation
   public. Production rollout is separate from a tested PR.
 
 ## Implementation sequence
@@ -65,9 +65,10 @@ hosted-release runbook is [TELEGRAM_PRODUCTION_HANDOFF.md](TELEGRAM_PRODUCTION_H
 
 ## Release boundary
 
-The tested PR does not enable the public bot. Before a later hosted release, agree
-on a public usage policy; verify the real webhook, token configuration, deployed
-revision, readiness, and end-to-end delivery; and approve a disable/rollback path.
+The invited production pilot stays allowlisted. Verify the real webhook, token
+configuration, deployed revision, readiness, and end-to-end delivery using the
+production runbook, including its disable/rollback path. Agree on a public usage
+policy before opening access beyond invited testers.
 Do not use the production bot token for local polling: polling modifies that
 bot's webhook. Do not add paid infrastructure or database migrations without a
 reviewed reason tied to the agreed guarantee.

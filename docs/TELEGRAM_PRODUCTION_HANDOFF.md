@@ -1,6 +1,6 @@
 # Telegram production deployment handoff
 
-Prepared 2026-11-18 from `feat/telegram-bot` at `86a9c34`. This is a release
+Prepared 2026-11-18 from `feat/telegram-bot`. This is a release
 runbook, not a record of a hosted bot deployment. The local polling test bot
 `@pid_sklom_test_bot` is separate from the intended production bot.
 
@@ -36,8 +36,8 @@ link with invited testers after hosted acceptance.
 
 1. Refresh `main` and this branch; resolve drift before opening one PR targeting
    `main`. Review the bot diff and verify no ignored `.env` file, token or private
-   tester record is staged. This branch currently has 11 commits beyond the
-   local `main` snapshot; recheck against the actual remote before publishing.
+   tester record is staged. Recheck the diff against the actual remote before
+   publishing; preserve newer website changes from `main`.
 2. Run the offline backend suite (`cd backend && python -m pytest -q`) and the
    PR checks `backend`, `frontend`, `containers`. The last local run had 164
    passing backend tests. Review and merge the PR only after checks pass.
@@ -55,13 +55,18 @@ link with invited testers after hosted acceptance.
    out or returned 503. Review the factual `story` caption limitation in
    [known issues](KNOWN_ISSUES.md) with the release tester.
 5. Inspect the **existing** `TELEGRAM_WEBHOOK_SECRET` value privately. The
-   current `render.yaml` uses `generateValue: true`; Render's generated base64
+   previous Blueprint used `generateValue: true`; Render's generated base64
    value may contain `+`, `/` or `=`, while `Settings.validate_runtime()` accepts
    only `A-Z`, `a-z`, `0-9`, `_` and `-` (1–256 characters). Set a strong random
-   URL-safe value manually in Render before enabling the token. For future fresh
-   services, change the Blueprint entry to `sync: false` and enter its value in
+   URL-safe value manually in Render before enabling the token:
+
+   ```sh
+   openssl rand -hex 32
+   ```
+
+   The Blueprint now uses `sync: false` for fresh services. Enter the value in
    the service dashboard; updating an existing Blueprint does not prompt for
-   `sync: false` values. Keep the same secret across ordinary deploys.
+   `sync: false` values. Keep an existing valid secret across ordinary deploys.
 
 ## Enable the hosted pilot
 

@@ -34,6 +34,10 @@ This verifies bot update dispatch, restricted access, callback retries, image
 format calls, webhook authentication, lifecycle, and rendering without live
 Telegram or Gemini traffic.
 
+Release-polish verification on the same date: 167 passed, with the same warning.
+Handler admission now uses the same strict allowlist parser as configuration and
+the transport gate, including rejection of empty entries and nonpositive IDs.
+
 ## Separate local test bot
 
 The bot avatar is `assets/telegram-avatar.jpg`, a square JPG of the glass-pane

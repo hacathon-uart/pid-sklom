@@ -10,6 +10,7 @@
 - **Data stores and future admin enrichment:** [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
 - **Telegram bot implementation handoff:** [docs/TELEGRAM_HANDOFF.md](docs/TELEGRAM_HANDOFF.md)
 - **Telegram test and release procedure:** [docs/TELEGRAM_TESTING.md](docs/TELEGRAM_TESTING.md)
+- **Telegram restricted production rollout:** [docs/TELEGRAM_PRODUCTION_HANDOFF.md](docs/TELEGRAM_PRODUCTION_HANDOFF.md)
 - **Decisions:** [portable first release](docs/adr/0003-portable-render-first-release.md),
   [reviewed enrichment](docs/adr/0004-reviewed-enrichment-and-catalogue-authority.md)
 
