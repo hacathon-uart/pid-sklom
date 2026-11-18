@@ -7,6 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import httpx
+from aiogram.exceptions import TelegramAPIError
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -24,38 +25,49 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.ready = False
-    settings.validate_runtime()
-    if settings.auth_mode == "supabase":
-        from app import operations
-
-        operations.remaining("startup")
-        if settings.guest_export_limit_enabled:
-            operations.export_remaining("startup")
-    catalogue = get_repo().catalogue()
-    if not catalogue:
-        raise RuntimeError("No visible artworks loaded; import approved content before deployment")
-    if settings.ai_provider == "llm":
-        from app.ai import get_ai
-        from app.ai.llm import LLMProvider
-
-        provider = get_ai()
-        if not isinstance(provider, LLMProvider):
-            raise RuntimeError("Configured embedding provider was not initialized")
-        index = provider.index
-        if not len(index) or index.matrix.shape[1] != settings.embedding_dim:
-            raise RuntimeError("Missing or incompatible embeddings; run data/scripts/embed_artworks.py")
-        if any(not index.by_artwork.get(item.id, {}).get("situation") for item in catalogue):
-            raise RuntimeError("Visible artworks are missing situation embeddings; finish the embedding import")
-    await webhook.setup_webhook()
-    app.state.ready = True
+    app.state.bot_webhook_ready = False
+    # Invalid configuration still blocks startup. A Telegram transport failure is
+    # reported separately so a temporary bot outage does not take down the website.
     try:
+        settings.validate_runtime()
+        if settings.auth_mode == "supabase":
+            from app import operations
+
+            operations.remaining("startup")
+            if settings.guest_export_limit_enabled:
+                operations.export_remaining("startup")
+        catalogue = get_repo().catalogue()
+        if not catalogue:
+            raise RuntimeError("No visible artworks loaded; import approved content before deployment")
+        if settings.ai_provider == "llm":
+            from app.ai import get_ai
+            from app.ai.llm import LLMProvider
+
+            provider = get_ai()
+            if not isinstance(provider, LLMProvider):
+                raise RuntimeError("Configured embedding provider was not initialized")
+            index = provider.index
+            if not len(index) or index.matrix.shape[1] != settings.embedding_dim:
+                raise RuntimeError("Missing or incompatible embeddings; run data/scripts/embed_artworks.py")
+            if any(not index.by_artwork.get(item.id, {}).get("situation") for item in catalogue):
+                raise RuntimeError("Visible artworks are missing situation embeddings; finish the embedding import")
+        try:
+            app.state.bot_webhook_ready = await webhook.setup_webhook()
+        except TelegramAPIError as error:
+            logging.getLogger(__name__).warning(
+                "Telegram webhook registration failed (%s)", type(error).__name__
+            )
+        app.state.ready = True
         yield
     finally:
         app.state.ready = False
+        app.state.bot_webhook_ready = False
+        await webhook.close_bot()
 
 
 app = FastAPI(title="Під склом API", version="0.1.0", lifespan=lifespan)
 app.state.ready = False
+app.state.bot_webhook_ready = False
 
 
 @app.exception_handler(httpx.HTTPError)
@@ -83,6 +95,7 @@ def health():
         "ai_provider": settings.ai_provider,
         "auth_mode": settings.auth_mode,
         "bot": bool(settings.telegram_bot_token),
+        "bot_webhook_ready": app.state.bot_webhook_ready,
     }
 
 

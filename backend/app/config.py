@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -53,6 +54,17 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = "change-me"
+    telegram_allowed_user_ids: str = ""
+
+    @property
+    def telegram_allowed_ids(self) -> frozenset[int]:
+        """Parse the same tester allowlist for webhook and polling dispatch."""
+        values = self.telegram_allowed_user_ids.split(",")
+        if not self.telegram_allowed_user_ids.strip():
+            return frozenset()
+        if any(not re.fullmatch(r"[0-9]+", value.strip()) or int(value.strip()) <= 0 for value in values):
+            raise RuntimeError("TELEGRAM_ALLOWED_USER_IDS must contain comma-separated positive integers")
+        return frozenset(int(value.strip()) for value in values)
 
     @property
     def cors_origins(self) -> list[str]:
@@ -72,8 +84,13 @@ class Settings(BaseSettings):
             self.auth_mode != "supabase" or len(self.guest_token_secret) < 32
         ):
             raise RuntimeError("Guest limits need real Supabase auth and a GUEST_TOKEN_SECRET of at least 32 characters")
-        if self.telegram_bot_token and self.telegram_webhook_secret in ("", "change-me"):
-            raise RuntimeError("Telegram needs a non-default TELEGRAM_WEBHOOK_SECRET")
+        if self.telegram_bot_token:
+            if self.telegram_webhook_secret == "change-me" or not re.fullmatch(
+                r"[A-Za-z0-9_-]{1,256}", self.telegram_webhook_secret
+            ):
+                raise RuntimeError("Telegram needs a non-default TELEGRAM_WEBHOOK_SECRET (1–256 letters, digits, _ or -)")
+            if not self.telegram_allowed_ids:
+                raise RuntimeError("Telegram needs a nonempty TELEGRAM_ALLOWED_USER_IDS tester allowlist")
         if self.environment == "production":
             if self.auth_mode == "stub" or self.include_unreviewed or self.data_backend != "supabase":
                 raise RuntimeError("Production requires Supabase data, reviewed content and non-stub authentication")
