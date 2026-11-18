@@ -1,4 +1,5 @@
 // Throwaway: three guest-counter designs on the existing editor via ?prototype=guest-allowance&variant=A.
+// Verdict: A, the header ticket; keep it closer to the content. Separate AI/PNG limits, including PNG sharing.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { Icon } from "../components/Icon";
