@@ -37,7 +37,7 @@ export function CreatePhrasePage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={500}
-              placeholder="Що має бути на картині? Наприклад: людина дивиться у вікно, осінь, легкий сум."
+              placeholder={"Що має бути на картині?\nНаприклад: людина дивиться у вікно, осінь, легкий сум."}
             />
           </div>
           <Button type="submit" className="mt-6" disabled={!phrase.trim()}>Знайти картину</Button>

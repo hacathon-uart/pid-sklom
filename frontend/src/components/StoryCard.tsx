@@ -9,8 +9,7 @@ export function StoryCard({ artwork, story }: { artwork: ArtworkSummary; story: 
   const { artist } = artwork;
   return (
     <section className="rounded-story border border-line bg-surface p-8">
-      <div className="t-label">Історія за мемом</div>
-      <header className="mt-6 flex items-center gap-5 border-b border-line pb-6">
+      <header className="flex items-center gap-5 border-b border-line pb-6">
         <Portrait src={artist.portrait_url} name={artist.name} />
         <div>
           <h2 className="t-h2">

@@ -81,6 +81,8 @@ class LocalRepository:
         self.memes_dir = settings.media_dir / "memes"
         self.memes_file = settings.media_dir / "memes.json"
         self.memes: dict[str, dict] = _load(self.memes_file) if self.memes_file.exists() else {}
+        self.quiz_file = settings.media_dir / "quiz_best.json"
+        self.quiz: dict[str, dict[str, int]] = _load(self.quiz_file) if self.quiz_file.exists() else {}
 
     def _set_content(self, artists: list[dict], artworks: list[dict], facts: list[dict]) -> None:
         """Index raw rows (seed JSON or database rows alike); hide unreviewed artworks."""
@@ -269,10 +271,12 @@ class LocalRepository:
             return None
         return self._meme(row), row["user_id"]
 
-    def create_meme(self, user_id: str, data: MemeCreate) -> Meme:
+    def create_meme(self, user_id: str, data: MemeCreate, meme_id: str | None = None) -> Meme:
         if data.artwork_id not in self.artworks:
             raise KeyError(data.artwork_id)
-        meme_id = str(uuid.uuid4())
+        meme_id = meme_id or str(uuid.uuid4())
+        if meme_id in self.memes:
+            return self._meme(self.memes[meme_id])
         row = {
             "id": meme_id,
             "user_id": user_id,
@@ -301,3 +305,18 @@ class LocalRepository:
         self.memes.pop(meme_id, None)
         (self.memes_dir / f"{meme_id}.png").unlink(missing_ok=True)
         self._persist()
+
+    # ---------- quiz best scores ----------
+
+    def quiz_best(self, user_id: str) -> dict[str, int]:
+        return dict(self.quiz.get(user_id, {}))
+
+    def record_quiz_score(self, user_id: str, key: str, score: int) -> tuple[int, bool]:
+        scores = self.quiz.setdefault(user_id, {})
+        previous = scores.get(key)
+        if score <= 0 or (previous is not None and previous >= score):
+            return previous or 0, False  # a scoreless run is not a record
+        scores[key] = score
+        self.quiz_file.parent.mkdir(parents=True, exist_ok=True)
+        self.quiz_file.write_text(json.dumps(self.quiz, ensure_ascii=False, indent=1), "utf-8")
+        return score, True

@@ -9,6 +9,7 @@ import { MemeCard } from "../components/cards";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { RopedOff, Ticket } from "../components/Museum";
 import { Tag } from "../components/Tag";
+import { RecordTickets } from "../quiz/Museum";
 
 export function MyMemesPage() {
   const { user, login, logout } = useAuth();
@@ -22,7 +23,8 @@ export function MyMemesPage() {
   if (!user) {
     return (
       <Page title="Мої меми" subtitle="Увійдіть, щоб зберігати меми і повертатися до них.">
-        <Button onClick={login}>Увійти</Button>
+        <Button onClick={login}>Продовжити через Google</Button>
+        <p className="t-small mt-3 text-text-secondary">Новий акаунт створиться автоматично</p>
       </Page>
     );
   }
@@ -46,6 +48,7 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
         </>
       }
     >
+      <QuizRecords />
       <div className="mb-8 flex gap-2">
         <Tag active={!favorite} onClick={() => setFavorite(false)}>Усі</Tag>
         <Tag active={favorite} onClick={() => setFavorite(true)}>Улюблені</Tag>
@@ -70,4 +73,11 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
       )}
     </Page>
   );
+}
+
+/** Best quiz scores and museum ranks (ADR 0008): one entrance ticket per game (C4). */
+function QuizRecords() {
+  const { data } = useApi(() => api.quiz(), []);
+  if (!data?.best || Object.keys(data.best).length === 0) return null;
+  return <RecordTickets info={data} />;
 }

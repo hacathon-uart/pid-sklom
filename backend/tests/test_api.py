@@ -73,9 +73,14 @@ def test_captions(client, art_id):
     assert not {c["text"] for c in again["captions"]} & {c["text"] for c in body["captions"]}
 
 
-def _png_data_url() -> str:
+def _png_data_url(color="red", metadata=None) -> str:
+    from PIL.PngImagePlugin import PngInfo
+
     buf = io.BytesIO()
-    Image.new("RGB", (4, 4), "red").save(buf, "PNG")
+    info = PngInfo()
+    if metadata:
+        info.add_text("comment", metadata)
+    Image.new("RGB", (4, 4), color).save(buf, "PNG", pnginfo=info)
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
@@ -133,6 +138,7 @@ def test_cors_allows_only_configured_origins(client):
         {"data_backend": "supabase"},
         {"ai_provider": "llm"},
         {"auth_mode": "supabase"},
+        {"guest_export_limit_enabled": True},
         {"telegram_bot_token": "configured"},
         {"environment": "production"},
         {
@@ -355,6 +361,215 @@ def test_captions_prompt_sensitive_and_no_copy(client, art_id, monkeypatch):
     client.post(f"/api/artworks/{art_id}/captions", json={})
     assert "чутлива" in seen["prompt"] and "втрата" in seen["prompt"]
     assert "Не копіюй" in seen["prompt"]
+
+
+def test_guest_allowance_http_seam(client, monkeypatch):
+    from app import operations
+    from app.api import create as endpoints, guest
+    from app.config import Settings
+    from uuid import uuid4
+
+    settings = Settings(_env_file=None, guest_limit_enabled=True, guest_token_secret="test" * 10)
+    for module in (operations, endpoints, guest):
+        monkeypatch.setattr(module, "get_settings", lambda: settings)
+    state = {"count": 0}
+    complete = {}
+    seen = []
+
+    def rpc(name, values):
+        if name == "operation_remaining":
+            return 3 - state["count"]
+        request_id = values["p_request_id"]
+        if name == "operation_begin":
+            if request_id in complete:
+                return {"status": "complete", "response": complete[request_id]}
+            if state["count"] == 3:
+                return {"status": "limited"}
+            return {"status": "started", "lease": "lease"}
+        if values["p_success"]:
+            state["count"] += 1
+            complete[request_id] = values["p_response"]
+        return True
+
+    monkeypatch.setattr(operations, "rpc", rpc)
+    original = endpoints.create.suggest_captions
+
+    async def counted(*args):
+        seen.append(args)
+        return await original(*args)
+
+    monkeypatch.setattr(endpoints.create, "suggest_captions", counted)
+    token = client.post("/api/guest").json()["token"]
+    headers = {"X-Guest-Token": token, "Idempotency-Key": str(uuid4())}
+    response = client.post("/api/artworks/1/captions", headers=headers, json={})
+    assert response.status_code == 201 and response.headers["X-Guest-Remaining"] == "2"
+    assert client.post("/api/artworks/1/captions", headers=headers, json={}).json() == response.json()
+    assert len(seen) == 1
+    failed = client.post("/api/artworks/999999/captions", headers={
+        **headers, "Idempotency-Key": str(uuid4()),
+    }, json={})
+    assert failed.status_code == 404 and state["count"] == 1
+    for _ in range(2):
+        assert client.post("/api/matches", headers={
+            **headers, "Idempotency-Key": str(uuid4()),
+        }, json={"phrase": "ранок"}).status_code == 201
+    before = len(seen)
+    blocked = client.post("/api/artworks/1/captions", headers={
+        **headers, "Idempotency-Key": str(uuid4()),
+    }, json={})
+    assert blocked.status_code == 403 and blocked.json()["detail"]["code"] == "guest_limit_exceeded"
+    assert len(seen) == before
+    assert client.get("/api/artworks").status_code == 200
+    assert client.post("/api/artworks/1/captions", json={}).status_code == 401
+
+
+def test_real_account_save_replay_and_public_ownership(client, monkeypatch):
+    from app import auth, operations
+    from app.api import memes
+    from app.config import Settings
+    from uuid import uuid4
+
+    settings = Settings(_env_file=None, auth_mode="supabase")
+    monkeypatch.setattr(memes, "get_settings", lambda: settings)
+    monkeypatch.setattr(auth, "_user_from_token", lambda token: auth.User(id=token))
+    records = {}
+
+    def begin(actor, request_id, kind, payload, limited):
+        assert actor == "user:owner" and kind == "save" and "image_data_url" not in payload
+        return {"status": "complete", "response": records[request_id]} if request_id in records else {
+            "status": "started", "lease": "lease", "request_id": request_id,
+        }
+
+    def finish(operation, response, success=True):
+        if success:
+            records[operation["request_id"]] = response
+
+    monkeypatch.setattr(operations, "begin", begin)
+    monkeypatch.setattr(operations, "finish", finish)
+    headers = {"Authorization": "Bearer owner", "Idempotency-Key": str(uuid4())}
+    body = {"artwork_id": 1, "style": {"blocks": [{"text": "Збережено"}]}, "image_data_url": _png_data_url()}
+    first = client.post("/api/memes", headers=headers, json=body)
+    again = client.post("/api/memes", headers=headers, json=body)
+    assert first.status_code == 201 and first.json() == again.json()
+    meme_id = first.json()["id"]
+    assert first.json()["can_edit"]
+    assert not client.get(f"/api/memes/{meme_id}").json()["can_edit"]
+    assert client.get(f"/api/memes/{meme_id}", headers=headers).json()["can_edit"]
+    other = {"Authorization": "Bearer other"}
+    assert not client.get(f"/api/memes/{meme_id}", headers=other).json()["can_edit"]
+    assert client.patch(f"/api/memes/{meme_id}", headers=other, json={"is_favorite": True}).status_code == 404
+    assert client.delete(f"/api/memes/{meme_id}", headers=other).status_code == 404
+    assert client.delete(f"/api/memes/{meme_id}", headers=headers).status_code == 204
+    assert client.get(f"/api/memes/{meme_id}").status_code == 404
+
+
+def test_png_rejects_spoofed_content_and_storage_oversize(client):
+    for image in ("data:image/png;base64,%%", "data:image/png;base64,aGVsbG8=",
+                  "data:image/png;base64," + "A" * (7 * 1024 * 1024)):
+        response = client.post("/api/memes", headers=AUTH, json={
+            "artwork_id": 1, "style": {"blocks": [{"text": "PNG"}]}, "image_data_url": image,
+        })
+        assert response.status_code == 422
+
+
+def test_distinct_exports_are_independent_replayable_and_cancel_safe(client, monkeypatch):
+    from uuid import uuid4
+
+    from app import operations
+    from app.api import exports, guest
+    from app.config import Settings
+
+    settings = Settings(
+        _env_file=None, guest_limit_enabled=True, guest_export_limit_enabled=True,
+        guest_token_secret="test" * 10,
+    )
+    for module in (operations, exports, guest):
+        monkeypatch.setattr(module, "get_settings", lambda: settings)
+    records = {}
+
+    def rpc(name, values):
+        actor = values["p_actor"]
+        if name == "operation_remaining":
+            return 3
+        if name == "export_remaining":
+            return 3 - sum(key[0] == actor and record["state"] != "failed" for key, record in records.items())
+        key = (actor, values["p_request_id"])
+        if name == "operation_begin":
+            assert values["p_kind"] == "export" and values["p_limited"]
+            old = records.get(key)
+            if old and old["state"] == "complete":
+                return {"status": "complete", "response": old["response"]}
+            if old and old["state"] == "pending":
+                return {"status": "pending"}
+            if rpc("export_remaining", {"p_actor": actor}) == 0:
+                return {"status": "limited"}
+            records[key] = {"state": "pending", "lease": str(uuid4())}
+            return {"status": "started", "lease": records[key]["lease"]}
+        record = records.get(key)
+        if not record or record["state"] != "pending" or record["lease"] != values["p_lease"]:
+            return False
+        record.update(state="complete" if values["p_success"] else "failed", response=values["p_response"])
+        return True
+
+    monkeypatch.setattr(operations, "rpc", rpc)
+    headers = {"X-Guest-Token": client.post("/api/guest").json()["token"], "Origin": "http://localhost:5173"}
+
+    def authorize(color="red", metadata=None, artwork_id=1):
+        return client.post("/api/exports", headers=headers, json={
+            "artwork_id": artwork_id, "image_data_url": _png_data_url(color, metadata),
+        })
+
+    def finish(receipt, success=True, custom_headers=None):
+        return client.post("/api/exports/finish", headers=custom_headers or headers, json={
+            "fingerprint": receipt["fingerprint"], "lease": receipt["lease"], "success": success,
+        })
+
+    assert client.post("/api/exports", json={"artwork_id": 1, "image_data_url": _png_data_url()}).status_code == 401
+    assert client.post("/api/exports", headers=headers, json={"artwork_id": 1, "image_data_url": "not PNG"}).status_code == 422
+    assert client.post("/api/exports", headers=headers, json={"artwork_id": 0, "image_data_url": _png_data_url()}).status_code == 422
+    assert not records
+    first = authorize()
+    assert first.status_code == 200 and first.headers["X-Guest-Exports-Remaining"] == "2"
+    assert "X-Guest-Exports-Remaining" in first.headers["Access-Control-Expose-Headers"]
+    first = first.json()
+    assert finish({**first, "lease": str(uuid4())}).status_code == 503
+    assert finish(first, False).json()["remaining"] == 3
+    retry = authorize().json()
+    assert retry["lease"] != first["lease"]
+    assert finish(first).status_code == 503
+    assert finish(retry).json()["remaining"] == 2
+    repeated = authorize(metadata="Different container metadata, same visible composition").json()
+    assert repeated["fingerprint"] == first["fingerprint"] and repeated["lease"] is None
+    assert repeated["remaining"] == 2 and len(records) == 1
+    for color, artwork_id, remaining in (("red", 2, 1), ("blue", 1, 0)):
+        receipt = authorize(color, artwork_id=artwork_id).json()
+        assert receipt["remaining"] == remaining
+        assert finish(receipt).json()["remaining"] == remaining
+    assert client.post("/api/guest", headers=headers).json()["remaining"] == 3
+    assert client.post("/api/guest", headers=headers).json()["exports_remaining"] == 0
+    blocked = authorize("yellow")
+    assert blocked.status_code == 403 and blocked.json()["detail"]["code"] == "guest_export_limit_exceeded"
+    assert authorize().json()["lease"] is None
+    assert client.post("/api/exports", headers=AUTH, json={"artwork_id": 1, "image_data_url": _png_data_url("yellow")}).json() == {
+        "enabled": False, "remaining": None,
+    }
+    other = {"X-Guest-Token": client.post("/api/guest").json()["token"]}
+    assert finish(retry, custom_headers=other).status_code == 503
+    assert client.post("/api/guest", headers=other).json()["exports_remaining"] == 3
+
+
+def test_export_fingerprint_rejects_unbounded_decode(client, monkeypatch):
+    from app import operations, png
+    from app.api import exports
+    from app.config import Settings
+
+    settings = Settings(_env_file=None, guest_export_limit_enabled=True, guest_token_secret="test" * 10)
+    for module in (operations, exports):
+        monkeypatch.setattr(module, "get_settings", lambda: settings)
+    monkeypatch.setattr(png, "MAX_EXPORT_PIXELS", 8)
+    response = client.post("/api/exports", headers={"X-Guest-Token": operations.issue_guest()},
+                           json={"artwork_id": 1, "image_data_url": _png_data_url()})
+    assert response.status_code == 422
 
 
 def test_story_artist_fact_about_this_artwork_first_then_rotates(tmp_path):

@@ -358,19 +358,19 @@ Important details behind these tasks:
   not atomically; schedule it outside a live demo and verify completeness.
   Large requested REST `limit` values do not override the project's row cap;
   verify pagination/completeness before increasing the catalogue.
-- **Bot go/no-go:** [`webhook.py`](../backend/app/bot/webhook.py) currently sets
-  `drop_pending_updates=True` on startup and processes updates before acknowledging
-  them. Bot callback state is process-local. These deserve explicit restart/retry
-  checks; if they require technical bot changes beyond the agreed scope, defer bot
-  deployment rather than silently accepting message loss.
+- **Bot go/no-go:** Ordinary webhook registration and local polling preserve
+  pending updates. Bot callback state remains process-local and expires after ten
+  minutes; webhook processing occurs before acknowledgement, so a retry can repeat
+  a partially delivered response. Follow [Telegram testing](TELEGRAM_TESTING.md)
+  before any hosted enablement and choose a public usage policy first.
 - **Upload contract mismatch:** [`api/memes.py`](../backend/app/api/memes.py) accepts
   an approximately 6 MB PNG via an 8 MiB data URL, but
   [`schema.sql`](../data/schema.sql) caps the bucket file size at 5 MiB. Align
   application validation, decoded size and Storage limits; return a useful error.
   Base64 also increases transfer and memory use. Direct signed uploads can wait.
-- **Storage consistency:** PNG upload precedes row insertion, and deletion currently
-  ignores the Storage response in `SupabaseRepository.delete_meme`. Plan compensation
-  or retryable cleanup so failed saves/deletes do not consume storage indefinitely.
+- **Storage consistency:** PNG upload precedes row insertion. The auth release checks
+  Storage deletion and compensates known insert failures; ambiguous transport results
+  retain stable object paths for retry. Monitor failed saves/deletes and Storage growth.
 - **Liveness is not readiness.** `/api/health` reports switches; Render uses
   `/api/ready` after startup loads content/vectors. Readiness does not call Gemini,
   check all image URLs or continuously monitor external dependencies.
@@ -385,21 +385,27 @@ into this document or into the repository.
 
 | Where | Variables / settings | Notes |
 | --- | --- | --- |
-| Static site, build-time | `VITE_API_URL=https://<api>.onrender.com`, `VITE_AUTH_MODE=disabled` | Changes require rebuilding. Fake browser login is dev-only; keep production accounts disabled. Never expose service/AI/bot credentials through `VITE_*`. |
-| API, runtime | `ENVIRONMENT=production`, `DATA_BACKEND=supabase`, `INCLUDE_UNREVIEWED=false`, `AUTH_MODE=disabled` | Production rejects local data, fake auth and unreviewed content; account operations return `403`. Google login remains deferred. |
+| Static site, build-time | `VITE_API_URL=https://<api>.onrender.com`, `VITE_AUTH_MODE=supabase`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Changes require rebuilding. The Supabase key must be public/publishable or anon; never expose service/AI/bot credentials through `VITE_*`. |
+| API, runtime | `ENVIRONMENT=production`, `DATA_BACKEND=supabase`, `INCLUDE_UNREVIEWED=false`, `AUTH_MODE=supabase`, `GUEST_LIMIT_ENABLED=true`, `GUEST_EXPORT_LIMIT_ENABLED=true` as the final desired state | Production rejects local data, fake auth and unreviewed content. Keep the **runtime** export flag false until migration 0002 is applied and the compatible frontend is live; infrastructure auto-sync is disabled. See [ADR 0007](adr/0007-distinct-guest-png-exports.md). |
 | API, runtime | `PUBLIC_BASE_URL=https://<api>.onrender.com`, `FRONTEND_ORIGINS=https://<site>.onrender.com` | Exact origins; no paths or trailing slash in CORS origins. |
-| API, secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`; JWT config when real auth is enabled | Current JWT code only supports legacy HS256. Verify service-key header compatibility with the actual Supabase key type. Never use a service key as an admin-browser credential. |
+| API, secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, stable `GUEST_TOKEN_SECRET`; `SUPABASE_JWT_ALGORITHM` | Google-account implementation supports configured ES256/RS256 JWKS or explicit legacy HS256 with its JWT secret. Follow the [auth rollout](AUTHENTICATION.md). Never use a service key as an admin-browser credential. |
 | API, matching | `AI_PROVIDER=llm`, `AI_API_KEY`, `MATCH_MODE=embeddings`, `EMBEDDING_MODEL`, `EMBEDDING_DIM=768`, `EMBEDDING_TIMEOUT_S`, `AI_TIMEOUT_S` | Gemini embeddings are implemented. Model/dimension must match uploaded vectors and the fixed schema dimension. `AI_PROVIDER=stub` is an explicit fallback-only deployment option. |
 | API, captions / later hybrid | `AI_MODEL`, `AI_TIMEOUT_S` and ranking settings in `config.py` | PR #6 implements Gemini captions with fallback using the existing key. Hybrid reranking remains unfinished. Model defaults to `gemini-3.1-flash-lite`; generated history is unverified (KNOWN_ISSUES.md). |
-| API, bot | `TELEGRAM_BOT_TOKEN`, generated `TELEGRAM_WEBHOOK_SECRET` | Keep bot off until its webhook and error paths have been verified. |
+| API, bot | `TELEGRAM_BOT_TOKEN`, manually generated URL-safe `TELEGRAM_WEBHOOK_SECRET`, private `TELEGRAM_ALLOWED_USER_IDS` | An enabled bot requires a nonempty tester allowlist. Webhook registration uses the secret path and Telegram secret-token header; `/api/health.bot_webhook_ready` reports registration. Follow the [restricted production pilot runbook](TELEGRAM_PRODUCTION_HANDOFF.md); unrestricted public access needs a separate usage policy. |
 | Internal endpoints, when introduced | Trusted admin identity/role configuration, exact mechanism to be chosen with implementation | Server-side authorization is mandatory; user-controlled profile fields and a visible login alone do not establish admin rights. |
-| Supabase / Google, later | Site URL, redirect allowlist and Google OAuth settings | Deferred user-login implementation must configure these before enabling saved-account flows. |
+| Supabase / Google | Site URL, explicit `/auth/callback` redirect allowlist and Google OAuth settings | Google redirects to Supabase's provider callback; Supabase returns to the frontend. Real-provider acceptance is required before enablement. |
 | Render | Docker API with repository-root build context; static frontend with `rootDir: frontend`, build `npm ci && npm run build`, publish `dist`, rewrite `/*` to `/index.html` | Frontend Dockerfile is a portable alternative, not a second paid service. `frontend/vercel.json` does not configure Render. |
 
 Keep schema/data import separate from ordinary web service startup. Use the existing
 manual SQL/import steps for this iteration, recording what was applied. Do not
 replay destructive schema changes or content imports on each container boot.
 Introduce versioned migrations before schema changes have multiple deployed consumers.
+
+Quizzes ([ADR 0008](adr/0008-art-quizzes.md)) need no flag: they read the
+published catalogue and work as soon as the code is deployed. Apply
+`data/migrations/0003_quiz_best_scores.sql` once to keep signed-in best scores;
+until then the games still work and scores are simply not shown. Optionally set
+`QUIZ_TOKEN_SECRET`; without it run tokens are signed with `GUEST_TOKEN_SECRET`.
 Choose nearby supported Render/Supabase regions to reduce round-trip time.
 
 ## Iterations and release gates

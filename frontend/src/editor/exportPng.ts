@@ -19,11 +19,28 @@ export function downloadDataUrl(dataUrl: string, filename = "pidsklom-meme.png")
   a.click();
 }
 
-/** Web Share API with file (mobile), falls back to copying the link. TODO(B, US-16). */
+export async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Не вдалося завантажити зображення мему");
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Не вдалося підготувати PNG"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+export class ShareGestureRequired extends Error {}
+
+/** Web Share API with file (mobile), with a download or explicit-link fallback. */
 export async function shareMeme(dataUrl: string, url?: string) {
   const blob = await (await fetch(dataUrl)).blob();
   const file = new File([blob], "pidsklom-meme.png", { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.userActivation?.isActive === false) {
+      throw new ShareGestureRequired("PNG готовий. Натисніть «Поділитися» ще раз, щоб відкрити меню.");
+    }
     await navigator.share({ files: [file], title: "Під склом" });
   } else if (url) {
     await navigator.clipboard.writeText(url);

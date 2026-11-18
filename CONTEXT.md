@@ -32,6 +32,30 @@ does not become a verified fact without review.
 A visitor's caption and visual treatment applied to an artwork, distinct from the
 original artwork and its meme profile.
 
+**Generation**:
+One successful phrase match or batch of suggested captions. Alternatives within
+one result are not additional generations. Manual editing is not a generation.
+
+**Guest allowance**:
+Two independent initial allowances without an account: three generations, shared
+across matching and caption suggestions, and three distinct PNG exports.
+Neither renews daily. Repeating an unchanged export does not use another slot.
+
+**PNG export**:
+A prepared meme image downloaded or shared as a file. Changing the artwork,
+caption, layout, styling or included frame produces a distinct composition.
+Sharing an existing public link is not a PNG export.
+
+**Save intent**:
+A visitor's request to add a particular meme to their collection. Continuing or
+retrying that request must not create additional saved memes.
+
+**Quiz run**:
+One play of a quiz game, from the first question until a wrong answer, the end of
+the eligible artworks or the guest cap. Runs are not stored; only a signed-in
+visitor's best score per game (and per «Назва картини» scope) is kept.
+_Avoid_: Round, except for one three-pair step of «Пари»
+
 **Enrichment run**:
 A staged effort to collect and prepare an artist's artworks, images, descriptions
 and matching material for review. Completing a run does not itself approve publication.

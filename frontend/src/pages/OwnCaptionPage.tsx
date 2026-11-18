@@ -7,16 +7,16 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
 
 export function OwnCaptionPage() {
   const artworkId = Number(useParams().artworkId);
   const navigate = useNavigate();
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const draft = useMemeDraft("Ваш підпис тут", "top");
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { draft, stageRef, error: saveError, savedId, justSaved, save } =
+    useMemeEditor(artworkId, { initialText: "Ваш підпис тут", position: "top" });
 
   const back = (
     <Link to={`/create/painting?artwork=${artworkId}`} className="t-strong flex items-center gap-2 text-accent">
@@ -31,9 +31,9 @@ export function OwnCaptionPage() {
   return (
     <Page
       title="Свій підпис"
-      subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею."
+      subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею. Чернетка залишиться в цій вкладці, якщо повернетеся до вибору картини."
       back={back}
-      actions={<Button variant="soft" onClick={() => navigate(-1)}>Скасувати</Button>}
+      actions={<Button variant="soft" onClick={() => navigate(`/create/painting?artwork=${artworkId}`)}>До вибору картини</Button>}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
@@ -42,7 +42,7 @@ export function OwnCaptionPage() {
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
-        onSave={() => toggle(draft.style)}
+        onSave={save}
         savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}

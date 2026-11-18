@@ -8,19 +8,19 @@ import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
 import { describeStyle } from "../editor/model";
-import { MemeWorkspace, SaveStatus, useSaveMeme } from "../editor/MemeWorkspace";
-import { useMemeDraft } from "../editor/useMemeDraft";
+import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { useMemeEditor } from "../editor/useMemeEditor";
+import { pending, RESUME, useTabState } from "../auth/workflow";
 
 export function AiCaptionsPage() {
   const artworkId = Number(useParams().artworkId);
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
-  const [captions, setCaptions] = useState<CaptionOption[]>([]);
-  const [seen, setSeen] = useState<string[]>([]);
+  const [captions, setCaptions] = useTabState<CaptionOption[]>("captions", []);
+  const [seen, setSeen] = useTabState<string[]>("seen", []);
   const [loadingCaptions, setLoadingCaptions] = useState(false);
   const [captionsError, setCaptionsError] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState(false);
-  const draft = useMemeDraft("");
-  const { stageRef, error: saveError, savedId, justSaved, toggle } = useSaveMeme((style, png) => api.createMeme(artworkId, style, png));
+  const { draft, stageRef, error: saveError, savedId, justSaved, save } = useMemeEditor(artworkId);
 
   const loadCaptions = async (exclude: string[]) => {
     setLoadingCaptions(true);
@@ -28,7 +28,7 @@ export function AiCaptionsPage() {
     try {
       const res = await api.captions(artworkId, exclude);
       setCaptions(res.captions);
-      setSeen((s) => [...s, ...res.captions.map((c) => c.text)]);
+      setSeen((s) => [...new Set([...s, ...res.captions.map((c) => c.text)])]);
       if (res.captions[0]) draft.setText(res.captions[0].text);
     } catch (e) {
       setCaptionsError((e as Error).message);
@@ -38,7 +38,7 @@ export function AiCaptionsPage() {
   };
 
   useEffect(() => {
-    loadCaptions([]);
+    if (!captions.length || pending(RESUME)?.kind === "generation") void loadCaptions([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artworkId]);
 
@@ -60,7 +60,7 @@ export function AiCaptionsPage() {
       back={back}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={() => toggle(draft.style)}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={save}
         savedId={savedId} stageRef={stageRef}>
         <div className="mb-3 flex items-center justify-between">
           <div className="t-label">Підписи від ШІ</div>

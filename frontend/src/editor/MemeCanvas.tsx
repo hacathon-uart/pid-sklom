@@ -25,12 +25,15 @@ interface Props {
   stageRef?: RefObject<Konva.Stage | null>;
 }
 
+const WATERMARK_FONT = '"Cormorant Garamond"';
+
 export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelect, onBackgroundClick, onMove, stageRef }: Props) {
   // crossOrigin="anonymous" is REQUIRED, otherwise PNG export throws (tainted canvas).
-  const [image] = useImage(imageUrl, "anonymous");
+  const [image, imageStatus] = useImage(imageUrl, "anonymous");
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(560);
-  const [, setFontsReady] = useState(0);
+  const [fontsReady, setFontsReady] = useState("");
+  const [fontError, setFontError] = useState(false);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -43,9 +46,15 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   // Konva measures text once; re-render after web fonts finish loading.
   const fontsKey = blocks.map((b) => b.font).join();
   useEffect(() => {
-    Promise.all(blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`))).then(() =>
-      setFontsReady((n) => n + 1),
-    );
+    let active = true;
+    setFontError(false);
+    Promise.all([
+      ...blocks.map((b) => document.fonts.load(`${fontWeight(b.font)} 40px "${b.font}"`)),
+      document.fonts.load(`italic 600 40px ${WATERMARK_FONT}`, "Під склом"),
+    ])
+      .then(() => { if (active) setFontsReady(fontsKey); })
+      .catch(() => { if (active) setFontError(true); });
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontsKey]);
 
@@ -55,6 +64,8 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   return (
     <div ref={wrapRef} className="w-full">
       <Stage
+        exportReady={Boolean(image) && fontsReady === fontsKey && !fontError}
+        exportError={imageStatus === "failed" || fontError}
         width={width}
         height={height}
         ref={stageRef}
@@ -109,14 +120,14 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
             name="watermark"
             visible={false}
             text="Під склом"
-            fontFamily="Oswald"
-            fontStyle="600"
-            fontSize={12 * scale}
-            fill="#FFFFFF"
-            stroke="#000000"
-            strokeWidth={0.5}
-            x={width - 80 * scale}
-            y={height - 20 * scale}
+            fontFamily="Cormorant Garamond" // same face as the «Під склом» title
+            fontStyle="italic 600"
+            fontSize={18 * scale}
+            fill={blocks[0]?.color ?? "#FFFFFF"} // single colour, same as the caption
+            width={140 * scale}
+            align="right"
+            x={width - 148 * scale}
+            y={height - 26 * scale}
           />
         </Layer>
       </Stage>

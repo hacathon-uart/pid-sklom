@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api/client";
 import { GENRE_LABELS, type ArtworkSummary, type Genre } from "../api/types";
 import { useApi } from "../api/useApi";
-import { Artwork } from "../components/Artwork";
 import { Button } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
@@ -63,7 +62,7 @@ export function ChoosePaintingPage() {
       {selected && (
         <div className="fixed inset-x-0 bottom-6 pl-[var(--sidebar-width)]">
           <div className="mx-auto flex max-w-[1150px] items-center gap-5 rounded-story border border-accent bg-surface p-4 shadow-lg">
-            <Artwork src={selected.thumb_url} className="w-14" aspect="4/5" />
+            <img src={selected.thumb_url} alt="" className="h-24 w-20 shrink-0 rounded-control object-cover" />
             <div>
               <div className="t-label">Обрано</div>
               <div className="t-strong">{selected.title}{selected.year ? `, ${selected.year}` : ""}</div>

@@ -1,5 +1,5 @@
 import { createBrowserRouter, Link, RouterProvider } from "react-router";
-import { AuthProvider } from "./auth/AuthContext";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { authEnabled } from "./auth/supabase";
 import { Layout, Page } from "./components/Layout";
 import { AiCaptionsPage } from "./pages/AiCaptionsPage";
@@ -14,6 +14,14 @@ import { MemeViewPage } from "./pages/MemeViewPage";
 import { MyMemesPage } from "./pages/MyMemesPage";
 import { OwnCaptionPage } from "./pages/OwnCaptionPage";
 import { PhraseResultPage } from "./pages/PhraseResultPage";
+import { QuizPage } from "./pages/QuizPage";
+import { QuizPlayPage } from "./pages/QuizPlayPage";
+import type { ReactNode } from "react";
+
+function AccountOnly({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  return user ? children : <MyMemesPage />;
+}
 
 // Screen numbers match docs/design/README.md
 const router = createBrowserRouter([
@@ -29,14 +37,16 @@ const router = createBrowserRouter([
       ...(authEnabled
         ? [
             { path: "/me", element: <MyMemesPage /> }, // 4
-            { path: "/me/memes/:memeId", element: <MemeViewPage /> }, // 4b
-            { path: "/me/memes/:memeId/edit", element: <EditMemePage /> },
+            { path: "/me/memes/:memeId", element: <AccountOnly><MemeViewPage /></AccountOnly> }, // 4b
+            { path: "/me/memes/:memeId/edit", element: <AccountOnly><EditMemePage /></AccountOnly> },
           ]
         : [{ path: "/me/*", element: <MyMemesPage /> }]),
       { path: "/m/:memeId", element: <MemeViewPage isPublic /> }, // share link (US-16)
       { path: "/gallery", element: <GalleryPage /> }, // 5
       { path: "/artists", element: <ArtistsPage /> }, // not designed
       { path: "/artists/:slug", element: <ArtistPage /> }, // 5b
+      { path: "/quiz", element: <QuizPage /> }, // ADR 0008
+      { path: "/quiz/:game", element: <QuizPlayPage /> },
       {
         path: "*",
         element: (

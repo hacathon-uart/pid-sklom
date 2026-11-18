@@ -184,3 +184,82 @@ class Meme(BaseModel):
     image_url: str | None = None
     is_favorite: bool = False
     created_at: datetime
+    can_edit: bool = False
+
+
+# ---------- Quizzes (ADR 0008) ----------
+
+QuizGame = Literal["who", "pairs", "titles"]  # «Хто автор?», «Пари», «Назва картини»
+QuizEnd = Literal["mistake", "complete", "guest_limit"]
+
+
+class QuizScope(BaseModel):
+    """«Назва картини» can be played for the whole catalogue (`all`) or for one artist (slug)."""
+
+    key: str
+    name: str
+    artworks: int
+
+
+class QuizInfo(BaseModel):
+    games: list[QuizGame]  # games the published catalogue can fill right now
+    title_scopes: list[QuizScope]
+    artworks: int  # published artworks: the base of a visitor's museum rank (percent of the collection)
+    limited: bool  # true = the caller plays the short guest version
+    guest_limits: dict[QuizGame, int]
+    best: dict[str, int] | None = None  # signed-in only: "who" | "pairs" | "titles:<scope>" -> best score
+
+
+class QuizOption(BaseModel):
+    key: str  # opaque within one question
+    label: str
+
+
+class QuizImage(BaseModel):
+    key: str
+    image_url: str
+
+
+class QuizQuestion(BaseModel):
+    """No artwork ids, titles or artists of the shown paintings: only images and answer options."""
+
+    images: list[QuizImage]  # one painting, or three in «Пари»
+    options: list[QuizOption]  # artists or titles
+
+
+class QuizStart(BaseModel):
+    game: QuizGame
+    scope: str = "all"
+
+
+class QuizAnswer(BaseModel):
+    token: str = Field(max_length=20000)
+    # «Хто автор?» / «Назва картини»: {"answer": "<option key>"}; «Пари»: {"<image key>": "<option key>"}
+    answer: dict[str, str]
+
+
+class QuizReveal(BaseModel):
+    """What the painting was, shown after every answer."""
+
+    image_key: str
+    correct: bool
+    chosen: str | None  # option key the visitor picked for this painting
+    right: str  # option key of the right answer
+    artwork: ArtworkSummary
+    fact: str = ""
+
+
+class QuizRun(BaseModel):
+    token: str | None  # None once the run is over
+    score: int
+    limit: int | None  # guest cap for this game, or None
+    question: QuizQuestion | None  # the next question (None when finished)
+
+
+class QuizResult(BaseModel):
+    correct: bool
+    reveals: list[QuizReveal]
+    run: QuizRun
+    finished: QuizEnd | None = None
+    best: int | None = None  # signed-in only, after the run ends
+    new_record: bool = False

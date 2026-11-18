@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
-import type { Frame, Meme } from "../api/types";
+import type { Frame } from "../api/types";
 import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
 import { Button, IconButton } from "../components/Button";
@@ -10,20 +10,23 @@ import { years } from "../components/cards";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { Portrait } from "../components/Portrait";
-import { downloadDataUrl, framePng } from "../editor/exportPng";
+import { framePng, urlToDataUrl } from "../editor/exportPng";
 import { FramePicker } from "../editor/FramePicker";
+import { forgetSaved, useTabState } from "../auth/workflow";
+import { useMemeExport } from "../editor/useMemeExport";
 
 export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const { memeId = "" } = useParams();
   const navigate = useNavigate();
   const meme = useApi(() => api.meme(memeId), [memeId]);
-  // Bookmark: un-saving deletes the meme on the server but keeps showing it here until the user leaves.
-  // undefined = still the loaded meme; null = un-saved; string = id of the (re-)saved meme.
-  const [liveId, setLiveId] = useState<string | null | undefined>(undefined);
-  const [pngCache, setPngCache] = useState<string | null>(null); // image kept in the browser while un-saved
   const [actionError, setActionError] = useState<string | null>(null);
   const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
-  const [withFrame, setWithFrame] = useState(true);
+  const [withFrame, setWithFrame] = useTabState(`export-frame:meme:${memeId}`, true);
+  const exporting = useMemeExport(`meme:${memeId}`, meme.data?.artwork.id ?? 0, async () => {
+    const src = meme.data?.image_url;
+    if (!src) throw new Error("Для цього мему ще немає PNG");
+    return withFrame ? framePng(src, meme.data?.style.frame ?? "gold") : urlToDataUrl(src);
+  }, () => Boolean(meme.data?.image_url));
   const artworkId = meme.data?.artwork.id;
   const artistSlug = meme.data?.artwork.artist.slug;
   const detail = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
@@ -40,45 +43,29 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
 
   const m = meme.data;
   const a = m.artwork;
-  const currentId = liveId === undefined ? m.id : liveId;
-  const saved = currentId !== null;
   const toggleFavorite = async () => {
-    if (!currentId) return;
-    setJustLiked(!m.is_favorite);
-    meme.setData(await api.updateMeme(currentId, { is_favorite: !m.is_favorite }));
+    try {
+      setActionError(null);
+      setJustLiked(!m.is_favorite);
+      meme.setData(await api.updateMeme(m.id, { is_favorite: !m.is_favorite }));
+    } catch (failure) { setActionError((failure as Error).message); }
   };
-  const canEdit = !isPublic && saved;
+  const canEdit = !isPublic && m.can_edit;
   const frame: Frame = m.style.frame ?? "gold";
   const changeFrame = async (f: Frame) => {
     const style = { ...m.style, frame: f };
-    meme.setData({ ...m, style }); // show it at once
-    if (currentId) meme.setData(await api.updateMeme(currentId, { style }));
-  };
-  const download = async () => {
-    const src = (!saved && pngCache) || m.image_url;
-    if (!src) return;
     try {
-      downloadDataUrl(withFrame ? await framePng(src, frame) : await urlToDataUrl(src));
-    } catch (e) {
-      setActionError((e as Error).message);
-    }
+      setActionError(null);
+      meme.setData(await api.updateMeme(m.id, { style }));
+    } catch (failure) { setActionError((failure as Error).message); }
   };
   const toggleSaved = async () => {
+    if (!window.confirm("Видалити мем і PNG? Посилання перестане працювати. Завантажені копії залишаться в одержувачів.")) return;
     setActionError(null);
     try {
-      if (currentId) {
-        // The server deletes the PNG with the meme, so keep a copy first (used to display it and to re-save).
-        const png = m.image_url ? await urlToDataUrl(m.image_url) : null;
-        await api.deleteMeme(currentId);
-        setPngCache(png);
-        setLiveId(null);
-      } else {
-        const created: Meme = await api.createMeme(a.id, m.style, pngCache ?? undefined);
-        setPngCache(null);
-        meme.setData(created);
-        setLiveId(created.id);
-        window.history.replaceState(null, "", `/me/memes/${created.id}`); // keep the URL valid without reloading
-      }
+      await api.deleteMeme(m.id);
+      forgetSaved(m.id);
+      navigate("/me", { replace: true });
     } catch (e) {
       setActionError((e as Error).message);
     }
@@ -100,34 +87,36 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             tabIndex={canEdit ? 0 : undefined}
             aria-label={canEdit ? "Редагувати підпис" : undefined}
             title={canEdit ? "Натисніть, щоб змінити підпис" : undefined}
-            onClick={canEdit ? () => currentId && navigate(`/me/memes/${currentId}/edit`) : undefined}
-            onKeyDown={canEdit ? (e) => e.key === "Enter" && currentId && navigate(`/me/memes/${currentId}/edit`) : undefined}
+            onClick={canEdit ? () => navigate(`/me/memes/${m.id}/edit`) : undefined}
+            onKeyDown={canEdit ? (e) => e.key === "Enter" && navigate(`/me/memes/${m.id}/edit`) : undefined}
             className={canEdit ? "cursor-pointer" : undefined}
           >
             <Artwork
-              src={(!saved && pngCache) || m.image_url || a.image_url}
+              src={m.image_url || a.image_url}
               alt={m.caption}
               frame={frame}
               size="lg"
               // The crack marks favourites only in the «Мої меми» grid; here the meme stays clear.
               // Pressing ♥ plays the crack once and it fades away.
-              crack={saved && m.is_favorite && justLiked ? "fleeting" : null}
+              crack={m.is_favorite && justLiked ? "fleeting" : null}
             />
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <IconButton icon="download" label="Завантажити" onClick={download} />
-            <IconButton icon="share" label="Поділитися" onClick={share} />
-            {!isPublic && (
+            {canEdit && (
               <>
-                <IconButton icon="bookmark" label={saved ? "Видалити з «Моїх мемів»" : "Зберегти в «Мої меми»"} active={saved} onClick={toggleSaved} />
-                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={saved && m.is_favorite} disabled={!saved} onClick={toggleFavorite} />
+                <IconButton icon="bookmark" label="Прибрати з «Моїх мемів»" active aria-pressed onClick={toggleSaved} />
+                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} onClick={toggleFavorite} />
               </>
             )}
+            <IconButton icon="download" label="Завантажити" disabled={exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
+            <IconButton icon="share" label="Поділитися" onClick={share} />
           </div>
           <div className="mt-5">
-            <FramePicker frame={frame} onFrameChange={isPublic ? undefined : changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
+            <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
           </div>
           {actionError && <ErrorMessage error={actionError} />}
+          {exporting.error && <ErrorMessage error={exporting.error} />}
+          {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
           {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
           {isPublic && <ArtworkCardLink id={a.id} />}
         </div>
@@ -179,16 +168,4 @@ function ArtworkCardLink({ id }: { id: number }) {
       <Button>Зробити свій мем з цієї картини</Button>
     </Link>
   );
-}
-
-async function urlToDataUrl(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Не вдалося завантажити зображення мему");
-  const blob = await res.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }

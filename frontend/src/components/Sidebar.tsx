@@ -28,6 +28,7 @@ export function Sidebar() {
       <NavItem to="/" icon="home" label="Головна" end />
       <NavItem to="/create" icon="pencil" label="Створити" />
       <NavItem to="/gallery" icon="image" label="Галерея" />
+      <NavItem to="/quiz" icon="quiz" label="Вікторина" />
       {authEnabled && <div className="mt-auto">
         <NavItem to="/me" icon="user" label="Профіль" />
       </div>}
