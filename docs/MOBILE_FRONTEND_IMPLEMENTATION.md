@@ -1,8 +1,9 @@
 # Responsive frontend: implementation sequence
 
-Status: **Ready to implement on `herman/mobile-front`**. This is the execution
+Status: **Implementation baseline complete; release QA pending.** This is the execution
 plan for [the product plan](MOBILE_FRONTEND_PLAN.md) and [ADR 0009](adr/0009-one-responsive-frontend.md).
 It does not change the agreed product or route contracts.
+Progress and remaining gates: [implementation handoff](MOBILE_FRONTEND_HANDOFF.md).
 
 ## Rules for the implementation
 
@@ -206,11 +207,11 @@ record persistence work; desktop quiz remains intact.
 - **Journeys:** run the full creation, editor/export, gallery/account/public
   link, and three quiz games on real iOS Safari and Android Chrome as well as
   desktop Chrome. Check virtual keyboard, safe area, native share, and downloads.
-- **Automation:** add a small browser smoke harness for route navigation,
-  overflow, draft preservation, and unchanged-export identity before the
-  release gate. The current frontend has only `typecheck`/`build`; run both
-  for each implementation slice. Do not treat build success as proof of
-  mobile interaction quality.
+- **Automation:** `frontend/scripts/mobile-smoke.mjs` checks representative
+  route widths, navigation, painting selection, initial quiz answers, and
+  unchanged-export identity. Extend it for draft preservation and full
+  journeys before the release gate. Run `typecheck`/`build` for each slice.
+  Do not treat build success as proof of mobile interaction quality.
 
 Commit each step or coherent substep independently. Review one phone screen and
 its desktop counterpart together. Release the responsive frontend only after

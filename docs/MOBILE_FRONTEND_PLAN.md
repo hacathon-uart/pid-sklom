@@ -1,9 +1,10 @@
 # Mobile frontend: product and delivery plan
 
-Status: **Plan approved for responsive web scope; implementation pending.**
+Status: **Responsive implementation on `herman/mobile-front`; release QA pending.**
 Decision: [ADR 0009](adr/0009-one-responsive-frontend.md).
 Desktop visual reference: [design README and Figma](design/README.md).
 Execution sequence: [responsive frontend implementation](MOBILE_FRONTEND_IMPLEMENTATION.md).
+Current state: [implementation handoff](MOBILE_FRONTEND_HANDOFF.md).
 
 ## Product outcome
 
