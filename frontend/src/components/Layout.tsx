@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Outlet } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { GuestAllowance } from "../auth/GuestAllowance";
@@ -8,7 +8,9 @@ export function Layout() {
     <div className="min-h-screen pl-[var(--app-side-offset)] pb-[var(--app-bottom-clearance)]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-control focus:bg-surface focus:px-4 focus:py-3 focus:outline-2 focus:outline-accent">До вмісту</a>
       <Sidebar />
-      <Outlet />
+      <Suspense fallback={<main id="main-content" className="mx-auto max-w-[1280px] px-[var(--page-gutter)] py-7"><Loading text="Завантажуємо сторінку…" /></main>}>
+        <Outlet />
+      </Suspense>
     </div>
   );
 }

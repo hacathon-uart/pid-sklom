@@ -1,22 +1,25 @@
 import { createBrowserRouter, Link, RouterProvider } from "react-router";
+import { lazy } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { authEnabled } from "./auth/supabase";
 import { Layout, Page } from "./components/Layout";
-import { AiCaptionsPage } from "./pages/AiCaptionsPage";
-import { ArtistPage } from "./pages/ArtistPage";
-import { ArtistsPage } from "./pages/ArtistsPage";
-import { ChoosePaintingPage } from "./pages/ChoosePaintingPage";
-import { CreatePhrasePage } from "./pages/CreatePhrasePage";
-import { EditMemePage } from "./pages/EditMemePage";
-import { GalleryPage } from "./pages/GalleryPage";
-import { HomePage } from "./pages/HomePage";
-import { MemeViewPage } from "./pages/MemeViewPage";
-import { MyMemesPage } from "./pages/MyMemesPage";
-import { OwnCaptionPage } from "./pages/OwnCaptionPage";
-import { PhraseResultPage } from "./pages/PhraseResultPage";
-import { QuizPage } from "./pages/QuizPage";
-import { QuizPlayPage } from "./pages/QuizPlayPage";
 import type { ReactNode } from "react";
+
+// Route components load on first visit. The home shell does not need Konva or quiz code.
+const AiCaptionsPage = lazy(() => import("./pages/AiCaptionsPage").then((m) => ({ default: m.AiCaptionsPage })));
+const ArtistPage = lazy(() => import("./pages/ArtistPage").then((m) => ({ default: m.ArtistPage })));
+const ArtistsPage = lazy(() => import("./pages/ArtistsPage").then((m) => ({ default: m.ArtistsPage })));
+const ChoosePaintingPage = lazy(() => import("./pages/ChoosePaintingPage").then((m) => ({ default: m.ChoosePaintingPage })));
+const CreatePhrasePage = lazy(() => import("./pages/CreatePhrasePage").then((m) => ({ default: m.CreatePhrasePage })));
+const EditMemePage = lazy(() => import("./pages/EditMemePage").then((m) => ({ default: m.EditMemePage })));
+const GalleryPage = lazy(() => import("./pages/GalleryPage").then((m) => ({ default: m.GalleryPage })));
+const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
+const MemeViewPage = lazy(() => import("./pages/MemeViewPage").then((m) => ({ default: m.MemeViewPage })));
+const MyMemesPage = lazy(() => import("./pages/MyMemesPage").then((m) => ({ default: m.MyMemesPage })));
+const OwnCaptionPage = lazy(() => import("./pages/OwnCaptionPage").then((m) => ({ default: m.OwnCaptionPage })));
+const PhraseResultPage = lazy(() => import("./pages/PhraseResultPage").then((m) => ({ default: m.PhraseResultPage })));
+const QuizPage = lazy(() => import("./pages/QuizPage").then((m) => ({ default: m.QuizPage })));
+const QuizPlayPage = lazy(() => import("./pages/QuizPlayPage").then((m) => ({ default: m.QuizPlayPage })));
 
 function AccountOnly({ children }: { children: ReactNode }) {
   const { user } = useAuth();
