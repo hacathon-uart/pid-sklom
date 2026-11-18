@@ -257,20 +257,44 @@ def check(raw: dict, source: dict, artist_id: int, work_ids: set[int]) -> tuple[
     }, None
 
 
-async def ask(source: dict, artist: dict, works: list[dict], settings: Settings, model: str, n: int) -> list[dict]:
-    listing = "\n".join(f"{w['id']}: {w['title_uk']}, {w.get('year') or 'рік невідомий'}" for w in works)
-    prompt = PROMPT.format(artist=artist["name_uk"], artworks=listing, source_url=source["url"],
-                           text=source["text"][:MAX_SOURCE_CHARS], n=n, kinds=KINDS)
-    for attempt in range(6):
+GEMINI_TIMEOUT_S = 600  # thinking models (e.g. gemini-3.8-flash) can take minutes on a long answer
+
+
+async def call_gemini(prompt: str, *, system: str, settings: Settings, model: str, temperature: float,
+                      timeout: float = GEMINI_TIMEOUT_S):
+    """generate_json with patience: waits out HTTP 429, retries timeouts and 5xx a couple of times."""
+    timeouts = server_errors = 0
+    for attempt in range(8):
+        started = time.monotonic()
         try:
-            data = await generate_json(prompt, system=SYSTEM, api_key=settings.ai_api_key, model=model,
-                                       timeout=120, temperature=0.3)
-            return data.get("facts", []) if isinstance(data, dict) else []
+            return await generate_json(prompt, system=system, api_key=settings.ai_api_key, model=model,
+                                       timeout=timeout, temperature=temperature)
         except RateLimited:
             wait = 20 * (attempt + 1)
             print(f"    ліміт Gemini, чекаю {wait} с…")
             await asyncio.sleep(wait)
+        except httpx.TimeoutException:
+            timeouts += 1
+            if timeouts > 2:
+                raise RuntimeError(f"Gemini не відповів за {timeout:.0f} с тричі поспіль. "
+                                   "Спробуй --timeout більше або швидшу модель через --model.") from None
+            print(f"    Gemini не відповів за {time.monotonic() - started:.0f} с, пробую ще раз…")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code < 500 or server_errors >= 3:
+                raise RuntimeError(f"Gemini повернув {e.response.status_code}: {e.response.text[:300]}") from None
+            server_errors += 1
+            print(f"    Gemini перевантажений ({e.response.status_code}), чекаю 15 с…")
+            await asyncio.sleep(15)
     raise RuntimeError("Gemini rate limit did not clear")
+
+
+async def ask(source: dict, artist: dict, works: list[dict], settings: Settings, model: str, n: int,
+              timeout: float = GEMINI_TIMEOUT_S) -> list[dict]:
+    listing = "\n".join(f"{w['id']}: {w['title_uk']}, {w.get('year') or 'рік невідомий'}" for w in works)
+    prompt = PROMPT.format(artist=artist["name_uk"], artworks=listing, source_url=source["url"],
+                           text=source["text"][:MAX_SOURCE_CHARS], n=n, kinds=KINDS)
+    data = await call_gemini(prompt, system=SYSTEM, settings=settings, model=model, temperature=0.3, timeout=timeout)
+    return data.get("facts", []) if isinstance(data, dict) else []
 
 
 def load_json(path: Path, default):
@@ -312,7 +336,8 @@ def cmd_extract(args) -> int:
     added = dropped = 0
     for s in sources:
         print(f"→ {s['label']}")
-        raw_facts = asyncio.run(ask(s, artist, works, settings, model, args.per_source))
+        print("    чекаю відповідь Gemini…")
+        raw_facts = asyncio.run(ask(s, artist, works, settings, model, args.per_source, args.timeout))
         for raw in raw_facts:
             draft, reason = check(raw, s, artist["id"], work_ids)
             if reason:
@@ -416,6 +441,7 @@ def main() -> int:
     e.add_argument("--text-url", help="адреса, звідки взято --text-file")
     e.add_argument("--per-source", type=int, default=5, help="скільки фактів просити з одного джерела")
     e.add_argument("--model", help="модель Gemini (за замовчуванням AI_MODEL)")
+    e.add_argument("--timeout", type=float, default=GEMINI_TIMEOUT_S, help="скільки секунд чекати на Gemini")
     e.add_argument("--dry-run", action="store_true", help="лише показати знайдені джерела")
     sub.add_parser("report", help="цифри для валідації")
     i = sub.add_parser("import", help="approved-факти -> data/seed/facts.json")
