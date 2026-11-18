@@ -71,9 +71,26 @@ Telegram or Gemini traffic.
    Inspect Ukrainian glyphs (`ґ є і ї ʼ`), long text, portrait and landscape
    images, watermark, compression, and source attribution.
 
-The local test bot was **not** exercised during the code pass because no test
-token or tester IDs were configured. Do not mark live acceptance complete from
-the offline suite.
+### Local acceptance on 2026-11-18
+
+- A separate test bot polled Telegram locally with one invited tester. The tester
+  confirmed the phrase flow delivered the artwork story and original PNG, and
+  `/random` delivered its painting preview and the selected meme as photo and
+  original PNG. Bot logs showed handled updates without delivery errors.
+- With local seed data and stub AI, both flows completed with placeholder or
+  seed imagery as configured. A local HTTP image fetch succeeded for each path.
+- A bounded real-data pass loaded 13 approved Supabase artworks and 108 compatible
+  vectors. A phrase used Gemini embedding matching, fetched an approved artwork,
+  and completed in about four seconds. The tester confirmed delivery.
+- A real-catalogue `/random` preview and caption callback both completed and the
+  tester confirmed delivery. Captions came from the reviewed fallback path:
+  the local ignored `.env` has an empty `AI_MODEL`, yielding a 404 from the
+  caption endpoint. A one-off retry with the application's default model received
+  a Gemini 503. Real Gemini caption generation is therefore **not yet verified**;
+  the fallback behavior worked. The local bot was restored to seed data and stub
+  AI after this pass to avoid ongoing provider use.
+
+Hosted webhook delivery and a public usage policy remain separate release gates.
 
 ### Inviting another tester
 

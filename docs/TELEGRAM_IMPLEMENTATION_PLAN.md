@@ -1,9 +1,11 @@
 # Telegram bot implementation plan
 
-Status: first implementation pass completed on 2026-11-18; offline backend suite
-passes (162 tests). Separate BotFather test-bot acceptance and hosted release are
-still pending. See [TELEGRAM_TESTING.md](TELEGRAM_TESTING.md) for test evidence and
-instructions, and [TELEGRAM_HANDOFF.md](TELEGRAM_HANDOFF.md) for the starting code map.
+Status: first implementation pass and local test-bot acceptance completed on
+2026-11-18; offline backend suite passes (162 tests). Hosted webhook acceptance
+and public release are still pending. Real Gemini caption generation needs a
+follow-up check after the provider returns a successful response. See
+[TELEGRAM_TESTING.md](TELEGRAM_TESTING.md) for evidence and instructions, and
+[TELEGRAM_HANDOFF.md](TELEGRAM_HANDOFF.md) for the starting code map.
 
 ## Agreed first release
 
