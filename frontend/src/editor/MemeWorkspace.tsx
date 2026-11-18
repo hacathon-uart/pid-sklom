@@ -107,16 +107,14 @@ export function MemeWorkspace({
   // including the icon row and the empty space around it.
   useEffect(() => {
     if (!editing) return;
-    const close = (e: MouseEvent | TouchEvent) => {
+    // Listen for `click`, not `mousedown`: closing the editor collapses the controls and can shift the
+    // layout, which would swallow the click on the button the user is pressing (e.g. «Зберегти»).
+    const close = (e: MouseEvent) => {
       const t = e.target as Node;
       if (!canvasZone.current?.contains(t) && !controlsZone.current?.contains(t)) onEditingChange(false);
     };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("touchstart", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("touchstart", close);
-    };
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
   }, [editing, onEditingChange]);
 
   return (
