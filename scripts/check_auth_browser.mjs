@@ -209,7 +209,7 @@ try {
     await navigate("/me");
     await until("document.body.innerText.includes('Вийти')");
     await click("Вийти");
-    await until("location.pathname === '/' && document.body.innerText.includes('Зареєструватися')");
+    await until("location.pathname === '/' && document.body.innerText.includes('Продовжити через Google') && document.body.innerText.includes('Новий акаунт створиться автоматично')");
   };
   const editCaption = async (text) => {
     await until("document.querySelector('input[maxlength=\"200\"]') !== null");
@@ -424,6 +424,13 @@ try {
     assert.equal(saved.caption, "Unsaved existing-meme edit");
     console.log("PASS: reload restores latest saved and unsaved draft fields without autosaving");
   }
+  const savesBeforeLogin = state.saves;
+  await logout();
+  await navigate("/me");
+  await until("document.body.innerText.includes('Продовжити через Google') && document.body.innerText.includes('Новий акаунт створиться автоматично')");
+  await click("Продовжити через Google");
+  await until("location.pathname === '/me' && document.body.innerText.includes('Вийти')");
+  assert.equal(state.saves, savesBeforeLogin, "Ordinary sign-in must not replay a cancelled or unrelated save");
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   assert(state.authPrompts.every((prompt) => prompt === "select_account"), "Every Google entry point must request account selection");
   console.log("PASS: guest quota, PKCE callback, automatic generation/save, draft restoration, reload, logout, cancellation and confirmed deletion");

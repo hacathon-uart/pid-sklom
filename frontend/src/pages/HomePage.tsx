@@ -58,11 +58,10 @@ export function HomePage() {
               {user.name}
             </Link>
           ) : (
-            <>
-              {/* TODO(B, T22): login dialog is not designed yet */}
-              <Button variant="soft" onClick={login}>Увійти</Button>
-              <Button variant="secondary" onClick={login}>Зареєструватися</Button>
-            </>
+            <div className="flex flex-col items-end gap-2">
+              <Button variant="secondary" onClick={login}>Продовжити через Google</Button>
+              <p className="t-small text-text-secondary">Новий акаунт створиться автоматично</p>
+            </div>
           )}
         </div>}
 
