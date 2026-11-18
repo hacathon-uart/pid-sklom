@@ -25,6 +25,16 @@ def client(tmp_path_factory):
 AUTH = {"Authorization": "Bearer test-user"}
 
 
+@pytest.fixture(scope="module")
+def art_id(client):
+    """A real catalogue painting with meme situations. Not a fixed id: placeholder rows such as
+    id 1 disappear from the seed once their artist gets real paintings (import_profiles.py)."""
+    from app.data import get_repo
+
+    repo = get_repo()
+    return next(c.id for c in repo.catalogue() if repo.situations(c.id) and not c.is_sensitive)
+
+
 def test_health(client):
     assert client.get("/api/health").json()["status"] == "ok"
     assert client.get("/api/ready").json()["status"] == "ready"
@@ -56,10 +66,10 @@ def test_match(client):
     assert client.post("/api/matches", json={"phrase": ""}).status_code == 422
 
 
-def test_captions(client):
-    body = client.post("/api/artworks/1/captions", json={}).json()
+def test_captions(client, art_id):
+    body = client.post(f"/api/artworks/{art_id}/captions", json={}).json()
     assert len(body["captions"]) == 3
-    again = client.post("/api/artworks/1/captions", json={"exclude": [c["text"] for c in body["captions"]]}).json()
+    again = client.post(f"/api/artworks/{art_id}/captions", json={"exclude": [c["text"] for c in body["captions"]]}).json()
     assert not {c["text"] for c in again["captions"]} & {c["text"] for c in body["captions"]}
 
 
@@ -74,11 +84,11 @@ def _png_data_url(color="red", metadata=None) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-def test_memes_crud(client):
+def test_memes_crud(client, art_id):
     assert client.get("/api/memes").status_code == 401
     style = {"blocks": [{"text": "Привіт ґєії"}]}
     created = client.post("/api/memes", headers=AUTH,
-                          json={"artwork_id": 1, "style": style, "image_data_url": _png_data_url()})
+                          json={"artwork_id": art_id, "style": style, "image_data_url": _png_data_url()})
     assert created.status_code == 201
     meme = created.json()
     assert meme["caption"] == "Привіт ґєії" and meme["image_url"]
@@ -293,7 +303,7 @@ def _llm_provider(monkeypatch):
     return provider
 
 
-def test_captions_gemini(client, monkeypatch):
+def test_captions_gemini(client, art_id, monkeypatch):
     from app.ai import gemini
 
     _llm_provider(monkeypatch)
@@ -305,14 +315,14 @@ def test_captions_gemini(client, monkeypatch):
                              {"text": "Скіп", "kind": "story"}, {"text": "Три", "kind": "story"}]}
 
     monkeypatch.setattr(gemini, "generate_json", fake)
-    body = client.post("/api/artworks/1/captions", json={"exclude": ["скіп"]}).json()
+    body = client.post(f"/api/artworks/{art_id}/captions", json={"exclude": ["скіп"]}).json()
     assert body["source"] == "ai"
     assert [c["text"] for c in body["captions"]] == ["Один", "Два", "Три"]
     assert [c["kind"] for c in body["captions"]] == ["work", "work", "story"]  # bad kind replaced by its position (1 -> work)
     assert "скіп" in seen["prompt"]  # exclude list reaches the prompt
 
 
-def test_captions_gemini_unreachable_uses_meme_situations(client, monkeypatch):
+def test_captions_gemini_unreachable_uses_meme_situations(client, art_id, monkeypatch):
     import httpx
 
     from app.ai import gemini
@@ -324,20 +334,20 @@ def test_captions_gemini_unreachable_uses_meme_situations(client, monkeypatch):
         raise httpx.ConnectError("no network")
 
     monkeypatch.setattr(gemini, "generate_json", down)
-    situations = get_repo().situations(1)
+    situations = get_repo().situations(art_id)
     assert situations
-    body = client.post("/api/artworks/1/captions", json={}).json()
+    body = client.post(f"/api/artworks/{art_id}/captions", json={}).json()
     assert body["source"] == "fallback"
     assert body["captions"][0]["text"] == situations[0][:1].upper() + situations[0][1:]
 
 
-def test_captions_prompt_sensitive_and_no_copy(client, monkeypatch):
+def test_captions_prompt_sensitive_and_no_copy(client, art_id, monkeypatch):
     from app.ai import gemini
     from app.data import get_repo
 
     _llm_provider(monkeypatch)
     repo = get_repo()
-    item = next(c for c in repo.catalogue() if c.id == 1)
+    item = next(c for c in repo.catalogue() if c.id == art_id)
     monkeypatch.setattr(item, "is_sensitive", True)
     monkeypatch.setattr(item, "do_not_use_for", ["втрата"])
     monkeypatch.setattr(type(repo), "catalogue", lambda self: [item])
@@ -348,7 +358,7 @@ def test_captions_prompt_sensitive_and_no_copy(client, monkeypatch):
         return {"captions": [{"text": "Тихий вечір", "kind": "everyday"}]}
 
     monkeypatch.setattr(gemini, "generate_json", fake)
-    client.post("/api/artworks/1/captions", json={})
+    client.post(f"/api/artworks/{art_id}/captions", json={})
     assert "чутлива" in seen["prompt"] and "втрата" in seen["prompt"]
     assert "Не копіюй" in seen["prompt"]
 
