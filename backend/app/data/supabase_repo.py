@@ -143,3 +143,22 @@ class SupabaseRepository(LocalRepository):
     def delete_meme(self, meme_id: str) -> None:
         self._delete_png(meme_id)
         self.http.delete(f"{self.base}/rest/v1/memes", params={"id": f"eq.{meme_id}"}).raise_for_status()
+
+    # ---------- quiz best scores (data/migrations/0003_quiz_best_scores.sql) ----------
+
+    def quiz_best(self, user_id: str) -> dict[str, int]:
+        r = self.http.get(
+            f"{self.base}/rest/v1/quiz_best_scores",
+            params={"select": "quiz_key,best_score", "user_id": f"eq.{user_id}"},
+        )
+        r.raise_for_status()
+        return {row["quiz_key"]: row["best_score"] for row in r.json()}
+
+    def record_quiz_score(self, user_id: str, key: str, score: int) -> tuple[int, bool]:
+        r = self.http.post(
+            f"{self.base}/rest/v1/rpc/quiz_record_score",
+            json={"p_user_id": user_id, "p_quiz_key": key, "p_score": score},
+        )
+        r.raise_for_status()
+        row = r.json()
+        return row["best_score"], row["new_record"]

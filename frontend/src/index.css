@@ -106,12 +106,105 @@ body {
 
 /* ---- Entrance ticket (D5) ---- */
 .ticket {
-  display: inline-grid; grid-template-columns: auto auto; background: #F1E3C4; color: #3B2A0E; border-radius: 4px;
+  display: inline-grid; grid-template-columns: auto auto; background: var(--ticket-bg, #F1E3C4); color: var(--ticket-fg, #3B2A0E); border-radius: 4px;
   -webkit-mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
           mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
 }
 .ticket > div { padding: 10px 20px; }
-.ticket > div + div { border-left: 2px dashed rgba(59,42,14,.35); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
+.ticket > div + div { border-left: 2px dashed color-mix(in srgb, currentColor 45%, transparent); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
+
+/* ======================================================================
+ * Quiz (ADR 0008, quiz direction board): floor plan V3, catalogue cards Q3,
+ * curator's labels P1, certificate R1; records: catalogue card A3, cloakroom tags B1, tickets C4.
+ * Components live in quiz/Museum.tsx and pages/Quiz*.tsx.
+ * ====================================================================== */
+
+/* ---- Floor plan (V3) ---- */
+.plan-room { cursor: pointer; outline: none; }
+.plan-room .room-fill { transition: fill-opacity .25s ease; }
+.plan-room:hover .room-fill, .plan-room:focus-visible .room-fill { fill-opacity: .3; }
+.plan-room[aria-pressed="true"] .room-fill { fill-opacity: .42; }
+.plan-room:focus-visible .room-edge { stroke: var(--color-accent); stroke-width: 4; }
+.plan-room.closed { cursor: default; }
+
+/* ---- Catalogue card (Q3) ---- */
+.catalogue-card {
+  position: relative; display: flex; width: 100%; align-items: center; gap: 14px; text-align: left;
+  padding: 14px 18px 14px 16px; background: #FFFDF8; color: #2E2620; border: 1px solid #D8CDB9;
+  font-family: var(--font-type); font-size: 17px; line-height: 1.3;
+  background-image: linear-gradient(transparent 12px, #E9C9C9 12px, #E9C9C9 13px, transparent 13px);
+  box-shadow: 0 2px 0 #EFE6D8, 0 4px 0 #E6DDCF; transition: transform .15s ease, opacity .25s ease;
+}
+.catalogue-card:not(:disabled):hover { transform: translateY(-3px); }
+.catalogue-card .card-no { flex: none; width: 22px; color: #A33; font-weight: 700; }
+.catalogue-card .card-hole {
+  position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%;
+  background: var(--color-bg); box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
+}
+.catalogue-card.faded { opacity: .45; }
+.catalogue-card.struck .card-text { text-decoration: line-through; text-decoration-color: #7B1E2A; }
+.stamp {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%) rotate(-9deg);
+  border: 2.5px solid currentColor; padding: 2px 8px; font: 700 12px var(--font-ui); letter-spacing: .14em;
+  animation: stamp-in .25s ease-out both;
+}
+.stamp-right { color: #2B6A3E; }
+.stamp-wrong { color: #7B1E2A; }
+@keyframes stamp-in { from { opacity: 0; transform: translateY(-50%) rotate(-9deg) scale(1.6); } to { opacity: 1; transform: translateY(-50%) rotate(-9deg) scale(1); } }
+
+/* ---- Curator's labels on hooks (P1) ---- */
+.label-hook { width: 2px; height: 14px; margin: 0 auto; background: #8a6a2c; }
+.label-tray { background: #2E2620; color: #EFE6D8; }
+
+/* ---- Catalogue record card (A3): dotted leaders between key and value ---- */
+.record-card { display: block; font-size: 15px; cursor: default; padding: 26px 20px 16px; }
+.record-card .leader-row span, .record-card .leader-row b { white-space: nowrap; } /* a label and its value never wrap: the dotted leader absorbs the slack */
+.record-card .leader-row { display: flex; align-items: baseline; gap: 8px; }
+.record-card .leader-row + .leader-row { margin-top: 6px; }
+.record-card .leader-row i { flex: 1; min-width: 16px; border-bottom: 1.5px dotted #B9A98F; transform: translateY(-4px); }
+.record-card .leader-row b { font-weight: 700; }
+
+/* ---- Cloakroom tag / номерок (B1): the number sits high; old-style digits hang below the line, so the label has its own clear band ---- */
+.cloak-tag {
+  position: relative; width: 78px; height: 112px;
+  border-radius: 39px 39px 32px 32px; background: #2E2620; color: #F3E7D3;
+  box-shadow: inset 0 0 0 3px rgba(243,231,211,.35), 0 6px 12px -6px rgba(0,0,0,.5);
+}
+.cloak-tag::before {
+  content: ""; position: absolute; top: 10px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%;
+  background: var(--color-bg); box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+}
+.cloak-tag b { position: absolute; top: 28px; left: 0; right: 0; text-align: center; font-family: var(--font-heading); font-size: 46px; font-weight: 600; line-height: 1; }
+.cloak-tag small { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .8; }
+.cloak-burgundy { background: #5E1F25; }
+
+/* ---- Certificate (R1): paper, ornamental frame, medallion, ink stamp ---- */
+.certificate {
+  position: relative; color: #2E2620; overflow: visible;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,255,255,.9), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, rgba(201,176,143,.16), transparent 70%),
+    #FFFDF8;
+  box-shadow: 0 0 0 7px #FFFDF8, 0 0 0 8px var(--color-accent-soft), 0 0 0 13px #FFFDF8, 0 0 0 14px var(--color-accent-soft), 0 26px 44px -20px rgba(46,38,32,.55);
+}
+.certificate::before { /* inner hairline frame, set in from the corners' flourishes */
+  content: ""; position: absolute; inset: 14px; border: 1px solid rgba(139,107,74,.35); pointer-events: none;
+}
+.cert-corner { position: absolute; width: 56px; height: 56px; color: var(--color-accent); }
+.cert-tl { top: 14px; left: 14px; }
+.cert-tr { top: 14px; right: 14px; transform: scaleX(-1); }
+.cert-bl { bottom: 14px; left: 14px; transform: scaleY(-1); }
+.cert-br { bottom: 14px; right: 14px; transform: scale(-1); }
+.medallion {
+  position: relative; display: grid; place-items: center; width: 168px; height: 168px; margin-inline: auto; border-radius: 50%;
+  border: 1.5px solid var(--color-accent-soft); box-shadow: 0 0 0 6px #FFFDF8, 0 0 0 7px var(--color-accent-soft);
+  background: radial-gradient(circle at 50% 35%, #fff, #FAF4E8);
+}
+.ink-stamp { position: absolute; right: 52px; bottom: 44px; width: 150px; height: 150px; mix-blend-mode: multiply; opacity: .95; pointer-events: none; }
+.temp-stamp {
+  position: absolute; left: 44px; top: 56px; transform: rotate(-12deg); color: #8E2230; border: 3px double #8E2230;
+  padding: 3px 10px; font: 700 13px var(--font-ui); letter-spacing: .18em; opacity: .85; mix-blend-mode: multiply;
+}
 
 /* ---- Author carousel: short slide-in after pressing an arrow ---- */
 .slide-next { animation: slide-next .28s ease-out; }
@@ -124,4 +217,6 @@ body {
   .glass::after { transition: none; }
   .crack-animate, .crack-fleeting { animation: none; }
   .wall { transition: none; }
+  .catalogue-card, .plan-room .room-fill { transition: none; }
+  .stamp { animation: none; }
 }

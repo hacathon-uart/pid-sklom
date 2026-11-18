@@ -400,6 +400,12 @@ Keep schema/data import separate from ordinary web service startup. Use the exis
 manual SQL/import steps for this iteration, recording what was applied. Do not
 replay destructive schema changes or content imports on each container boot.
 Introduce versioned migrations before schema changes have multiple deployed consumers.
+
+Quizzes ([ADR 0008](adr/0008-art-quizzes.md)) need no flag: they read the
+published catalogue and work as soon as the code is deployed. Apply
+`data/migrations/0003_quiz_best_scores.sql` once to keep signed-in best scores;
+until then the games still work and scores are simply not shown. Optionally set
+`QUIZ_TOKEN_SECRET`; without it run tokens are signed with `GUEST_TOKEN_SECRET`.
 Choose nearby supported Render/Supabase regions to reduce round-trip time.
 
 ## Iterations and release gates

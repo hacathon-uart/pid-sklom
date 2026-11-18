@@ -14,6 +14,8 @@ import { MemeViewPage } from "./pages/MemeViewPage";
 import { MyMemesPage } from "./pages/MyMemesPage";
 import { OwnCaptionPage } from "./pages/OwnCaptionPage";
 import { PhraseResultPage } from "./pages/PhraseResultPage";
+import { QuizPage } from "./pages/QuizPage";
+import { QuizPlayPage } from "./pages/QuizPlayPage";
 import type { ReactNode } from "react";
 
 function AccountOnly({ children }: { children: ReactNode }) {
@@ -43,6 +45,8 @@ const router = createBrowserRouter([
       { path: "/gallery", element: <GalleryPage /> }, // 5
       { path: "/artists", element: <ArtistsPage /> }, // not designed
       { path: "/artists/:slug", element: <ArtistPage /> }, // 5b
+      { path: "/quiz", element: <QuizPage /> }, // ADR 0008
+      { path: "/quiz/:game", element: <QuizPlayPage /> },
       {
         path: "*",
         element: (
