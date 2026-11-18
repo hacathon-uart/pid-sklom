@@ -50,7 +50,7 @@ export function GuestAllowance() {
     <details ref={ticket} className="relative shrink-0 self-start text-left">
       <summary
         aria-label={`Гостьовий квиток. Залишилось: ШІ ${count(generations)}, PNG ${count(exports)}`}
-        className="flex cursor-pointer list-none items-center gap-3 rounded-control border border-line bg-muted px-4 py-2.5 text-left marker:content-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control border border-line bg-muted px-4 py-2.5 text-left marker:content-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
       >
         <Icon name="bookmark" size={26} />
         <span className="border-l border-dashed border-accent-soft pl-3">
@@ -64,7 +64,8 @@ export function GuestAllowance() {
         </span>
         <Icon name="chevronDown" size={13} />
       </summary>
-      <div className="absolute left-0 top-full z-40 mt-3 w-80 max-w-[calc(100vw_-_8rem)] rounded-card border border-line bg-surface p-5 shadow-lg">
+      <div className="fixed inset-x-4 bottom-[calc(var(--app-bottom-clearance)+8px)] z-40 max-h-[calc(100dvh-var(--app-bottom-clearance)-32px)] overflow-y-auto rounded-card border border-line bg-surface p-5 shadow-lg md:absolute md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-3 md:w-80 md:max-h-[min(80dvh,600px)]">
+        <button type="button" className="t-small float-right rounded-control px-2 py-1 text-accent focus-visible:outline-2 focus-visible:outline-accent" onClick={() => { if (ticket.current) ticket.current.open = false; ticket.current?.querySelector("summary")?.focus(); }}>Закрити</button>
         <p className="t-label">Ваш гостьовий квиток</p>
         <p className="mt-2 font-heading text-[28px] leading-tight">Спробуйте, створіть, заберіть.</p>
         {error ? <div role="alert" className="t-small mt-4">

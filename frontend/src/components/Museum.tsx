@@ -41,11 +41,11 @@ export function WallLabel({ who, what, inv, invRight = false, className = "" }: 
 }
 
 /**
- * Full-bleed coloured hall wall by genre (W6). Must sit directly inside <Page> (cancels its px-16).
+ * Full-bleed coloured hall wall by genre (W6). Must sit directly inside <Page>.
  * null = «Усі» → the light hall.
  */
 export function Wall({ genre, children, className = "" }: { genre: Genre | null; children: ReactNode; className?: string }) {
-  return <div className={`wall wall-${genre ?? "everyday"} -mx-16 px-16 py-14 ${className}`}>{children}</div>;
+  return <div className={`wall wall-${genre ?? "everyday"} page-bleed py-14 ${className}`}>{children}</div>;
 }
 
 /** Velvet rope on brass posts (D3): section divider and empty states. */

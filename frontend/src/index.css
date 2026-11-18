@@ -22,6 +22,20 @@ body {
   font-family: var(--font-ui);
 }
 
+html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + 16px); }
+
+.page-bleed {
+  margin-inline: calc(-1 * var(--page-gutter));
+  padding-inline: var(--page-gutter);
+}
+
+@media (max-width: 767px) {
+  .t-logo { font-size: clamp(48px, 15vw, 80px); }
+  .t-h1 { font-size: clamp(36px, 10vw, 48px); }
+  .t-h2 { font-size: 30px; }
+  .t-quote { font-size: 21px; }
+}
+
 /* ======================================================================
  * Museum visuals (direction board, Nov 2026): frames, glass, crack, walls,
  * wall labels, cameo portraits, entrance ticket. Components live in
@@ -213,6 +227,7 @@ body {
 @keyframes slide-prev { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-pulse { animation: none; }
   .slide-next, .slide-prev { animation: none; }
   .glass::after { transition: none; }
   .crack-animate, .crack-fleeting { animation: none; }

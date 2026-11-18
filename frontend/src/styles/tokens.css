@@ -29,4 +29,19 @@
 
 :root {
   --sidebar-width: 88px;
+  --page-gutter: 16px;
+  --app-side-offset: 0px;
+  --app-bottom-clearance: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 32px;
+    --app-side-offset: var(--sidebar-width);
+    --app-bottom-clearance: 0px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root { --page-gutter: 64px; }
 }
