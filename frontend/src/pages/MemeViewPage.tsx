@@ -1,5 +1,5 @@
 /** Screen 4b · Профіль — перегляд мему (US-08, US-16). Also used as the public share page /m/:id. */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
 import type { Frame } from "../api/types";
@@ -19,6 +19,10 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const { memeId = "" } = useParams();
   const navigate = useNavigate();
   const meme = useApi(() => api.meme(memeId), [memeId]);
+  const mutationLock = useRef(false);
+  const [updating, setUpdating] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
   const [withFrame, setWithFrame] = useTabState(`export-frame:meme:${memeId}`, true);
@@ -32,35 +36,46 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const detail = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
   const artist = useApi(() => (artistSlug ? api.artist(artistSlug) : Promise.resolve(null)), [artistSlug]);
 
-  const back = !isPublic && (
-    <Link to="/me" className="t-strong flex items-center gap-2 text-accent">
-      <Icon name="arrowLeft" size={18} /> Мої меми
+  const back = (
+    <Link to={isPublic ? "/gallery" : "/me"} className="t-strong flex min-h-11 items-center gap-2 text-accent">
+      <Icon name="arrowLeft" size={18} /> {isPublic ? "Галерея" : "Мої меми"}
     </Link>
   );
 
-  if (meme.loading) return <Page title="Мій мем" back={back}><Loading /></Page>;
-  if (meme.error || !meme.data) return <Page title="Мій мем" back={back}><ErrorMessage error={meme.error ?? "Помилка"} /></Page>;
+  if (meme.loading) return <Page title={isPublic ? "Мем" : "Мій мем"} back={back}><Loading /></Page>;
+  if (meme.error || !meme.data) return <Page title={isPublic ? "Мем" : "Мій мем"} back={back}><ErrorMessage error={meme.error ?? "Помилка"} onRetry={meme.reload} /></Page>;
 
   const m = meme.data;
   const a = m.artwork;
   const toggleFavorite = async () => {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setUpdating(true);
     try {
       setActionError(null);
       setJustLiked(!m.is_favorite);
       meme.setData(await api.updateMeme(m.id, { is_favorite: !m.is_favorite }));
     } catch (failure) { setActionError((failure as Error).message); }
+    finally { mutationLock.current = false; setUpdating(false); }
   };
   const canEdit = !isPublic && m.can_edit;
   const frame: Frame = m.style.frame ?? "gold";
   const changeFrame = async (f: Frame) => {
+    if (mutationLock.current) return;
+    mutationLock.current = true;
+    setUpdating(true);
     const style = { ...m.style, frame: f };
     try {
       setActionError(null);
       meme.setData(await api.updateMeme(m.id, { style }));
     } catch (failure) { setActionError((failure as Error).message); }
+    finally { mutationLock.current = false; setUpdating(false); }
   };
   const toggleSaved = async () => {
+    if (mutationLock.current) return;
     if (!window.confirm("Видалити мем і PNG? Посилання перестане працювати. Завантажені копії залишаться в одержувачів.")) return;
+    mutationLock.current = true;
+    setUpdating(true);
     setActionError(null);
     try {
       await api.deleteMeme(m.id);
@@ -68,19 +83,26 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
       navigate("/me", { replace: true });
     } catch (e) {
       setActionError((e as Error).message);
-    }
+    } finally { mutationLock.current = false; setUpdating(false); }
   };
   const share = async () => {
-    // TODO(B, US-16): public link with preview image (OG tags need server-side rendering or a backend route)
-    await navigator.clipboard.writeText(`${window.location.origin}/m/${m.id}`);
-    alert("Посилання скопійовано");
+    setShareNotice(null);
+    setActionError(null);
+    setSharing(true);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/m/${m.id}`);
+      setShareNotice("Посилання скопійовано");
+    } catch {
+      setActionError("Не вдалося скопіювати посилання. Спробуйте ще раз або скопіюйте його нижче.");
+      setShareNotice(`${window.location.origin}/m/${m.id}`);
+    } finally { setSharing(false); }
   };
   const savedOn = new Date(m.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <Page title={isPublic ? "Мем" : "Мій мем"} subtitle={`Збережено ${savedOn}`} back={back}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
-        <div>
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+        <div className="min-w-0 [overflow-wrap:anywhere]">
           {/* The caption is part of the PNG, so the whole picture is the click target for editing. */}
           <div
             role={canEdit ? "button" : undefined}
@@ -88,7 +110,12 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             aria-label={canEdit ? "Редагувати підпис" : undefined}
             title={canEdit ? "Натисніть, щоб змінити підпис" : undefined}
             onClick={canEdit ? () => navigate(`/me/memes/${m.id}/edit`) : undefined}
-            onKeyDown={canEdit ? (e) => e.key === "Enter" && navigate(`/me/memes/${m.id}/edit`) : undefined}
+            onKeyDown={canEdit ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate(`/me/memes/${m.id}/edit`);
+              }
+            } : undefined}
             className={canEdit ? "cursor-pointer" : undefined}
           >
             <Artwork
@@ -101,35 +128,43 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
               crack={m.is_favorite && justLiked ? "fleeting" : null}
             />
           </div>
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             {canEdit && (
               <>
-                <IconButton icon="bookmark" label="Прибрати з «Моїх мемів»" active aria-pressed onClick={toggleSaved} />
-                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} onClick={toggleFavorite} />
+                <IconButton icon="bookmark" label="Прибрати з «Моїх мемів»" active aria-pressed disabled={updating} onClick={toggleSaved} />
+                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} aria-pressed={m.is_favorite} disabled={updating} onClick={toggleFavorite} />
               </>
             )}
-            <IconButton icon="download" label="Завантажити" disabled={exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
-            <IconButton icon="share" label="Поділитися" onClick={share} />
+            <IconButton icon="download" label="Завантажити" disabled={updating || exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
+            <Button variant="secondary" className="min-h-11 whitespace-normal" disabled={sharing} onClick={share}>{sharing ? "Копіюємо…" : "Поділитися посиланням"}</Button>
           </div>
-          <div className="mt-5">
+          <div className="mt-4 flex flex-wrap gap-3">
+            {canEdit && <Link to={`/me/memes/${m.id}/edit`} className="t-strong inline-flex min-h-11 items-center text-accent">Редагувати підпис →</Link>}
+            <a href="#meme-story" className="t-strong inline-flex min-h-11 items-center text-accent">Про картину ↓</a>
+          </div>
+          <fieldset disabled={updating} className="mt-5 min-w-0 border-0 p-0 [&_label]:min-h-11 [&_[role=radiogroup]]:flex-wrap">
+            <legend className="sr-only">Рамка та завантаження</legend>
             <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
-          </div>
+          </fieldset>
+          {shareNotice && <p role="status" className="t-small mt-3 break-words select-text">{shareNotice}</p>}
           {actionError && <ErrorMessage error={actionError} />}
           {exporting.error && <ErrorMessage error={exporting.error} />}
           {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
           {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
           {isPublic && <ArtworkCardLink id={a.id} />}
         </div>
-        <div>
-          <div className="flex items-center gap-5">
+        <section id="meme-story" tabIndex={-1} aria-label="Про картину та автора" className="min-w-0 scroll-mt-6 [overflow-wrap:anywhere]">
+          <div className="flex items-center gap-4 md:gap-5">
             <Portrait src={a.artist.portrait_url} name={a.artist.name} />
-            <div>
-              <h2 className="t-h2">{a.artist.name}</h2>
+            <div className="min-w-0 [overflow-wrap:anywhere]">
+              <h2 className="t-h2 text-3xl md:text-4xl">{a.artist.name}</h2>
               <div className="t-small text-text-secondary">
                 {years(a.artist)} · «{a.title}»{a.year ? `, ${a.year}` : ""}
               </div>
             </div>
           </div>
+          {detail.loading && <Loading text="Завантаження історії…" />}
+          {detail.error && <ErrorMessage error={detail.error} onRetry={detail.reload} />}
           {detail.data && (
             <>
               <h3 className="t-h3 mt-8">Про картину</h3>
@@ -145,17 +180,17 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
           {artist.data && (
             <section className="mt-12">
               <div className="t-label mb-4">Ще від цього автора</div>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 {artist.data.artworks.filter((w) => w.id !== a.id).slice(0, 4).map((w) => (
                   <Link key={w.id} to={`/create/painting?artwork=${w.id}`}>
                     <Artwork src={w.thumb_url} alt={w.title} aspect="4/5" />
                   </Link>
                 ))}
               </div>
-              <Link to={`/artists/${a.artist.slug}`} className="t-strong mt-4 inline-block text-accent">Сторінка автора →</Link>
+              <Link to={`/artists/${a.artist.slug}`} className="t-strong mt-4 inline-flex min-h-11 items-center text-accent">Сторінка автора →</Link>
             </section>
           )}
-        </div>
+        </section>
 
       </div>
     </Page>
@@ -164,8 +199,8 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
 
 function ArtworkCardLink({ id }: { id: number }) {
   return (
-    <Link to={`/create/painting?artwork=${id}`} className="mt-4 inline-block">
-      <Button>Зробити свій мем з цієї картини</Button>
+    <Link to={`/create/painting?artwork=${id}`} className="t-strong mt-4 flex min-h-11 items-center justify-center rounded-control bg-accent px-4 py-3 text-center text-white sm:inline-flex">
+      Зробити свій мем з цієї картини
     </Link>
   );
 }
