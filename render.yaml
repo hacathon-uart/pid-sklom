@@ -1,6 +1,6 @@
 # Review paid compute and region before applying. This file does not create resources by itself.
 # Enter sync: false values in Render; never commit credentials.
-# Services inherit the Blueprint branch; select the reviewed release branch when creating it.
+# Production services inherit main from the Blueprint; keep infrastructure auto-sync disabled.
 services:
   - type: web
     name: pidsklom-api

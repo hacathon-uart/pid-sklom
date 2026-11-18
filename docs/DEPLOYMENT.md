@@ -1,6 +1,6 @@
 # Render deployment readiness and TBD map
 
-Updated on 2026-11-17 against upstream `main` revision `c1f7e57`.
+Updated on 2026-11-17 against upstream `main` revision `203d4be`.
 The agreed direction is recorded in [ADR 0003](adr/0003-portable-render-first-release.md);
 this document records the first deployment and the work still required.
 The website and Docker API are deployed on Render; the verified release checkpoint
@@ -39,8 +39,9 @@ configuration and disposable application disks make a hosting change easier, but
 Supabase Auth/Storage and embedding models still require explicit migration work.
 See the [current/future data-store map](DATA_MODEL.md).
 
-**Release scope:** public browsing and existing matching/editor flows, with own or
-prewritten captions. Defer Google user login, generated captions, hybrid reranking,
+**Initial release scope:** public browsing and existing matching/editor flows, with own or
+prewritten captions. PR #6 subsequently added generated captions; see the current
+checkpoint below. Defer Google user login, hybrid reranking,
 rate limiting, circuit breakers, privacy redesign and the admin/enrichment UI.
 Any internal endpoint must nevertheless have server-side admin authorization before
 exposure. Do not expose fake-auth personal saving as a real account feature;
@@ -48,7 +49,62 @@ keep it unavailable until proper user auth is ready. These are implementation
 requirements. Account disabling and startup/readiness checks are now implemented;
 live provider/content checks have passed for the initial catalogue.
 
-## Hosted release checkpoint (2026-11-17)
+## Main deployment policy and current checkpoint (2026-11-17)
+
+PRs #5 and #6 are merged. Both existing Render services now track `main` and run
+revision `203d4be3762a787d342d874b3f0e38e7ac03364a`; the branch-transition
+deployment completed successfully for both. The Blueprint also tracks `main`,
+with infrastructure auto-sync **disabled**. A follow-up plan reports no changes.
+Hosted readiness, the 13-artwork catalogue, a frontend nested route and exact-origin
+CORS pass. The caption endpoint returns HTTP `201`, `source=ai` and three captions
+for an existing approved artwork. This is a functional check, not a quality/load test.
+
+The deployment path is:
+
+1. Open a PR targeting `main`. GitHub branch protection requires an up-to-date
+   branch and passing GitHub Actions checks `backend`, `frontend` and `containers`.
+   PRs are required, including for administrators; an approving review is optional.
+   Force pushes/deletion are blocked and conversations must be resolved.
+2. Merge the PR. The existing CI workflow runs again on the resulting `main` commit.
+   Both Render services use **After CI Checks Pass** (`checksPass`), not On Commit.
+   Render waits for all detected checks; zero detected checks prevents deployment.
+3. Render rebuilds affected applications according to `render.yaml` build filters.
+   Backend-only changes do not rebuild the frontend; documentation-only changes
+   do not rebuild either. A `render.yaml` or CI workflow change selects both.
+4. Verify the deployed commit and public readiness/UI after deployment. The API
+   uses `/api/ready`; frontend and API deploy independently, not atomically.
+   Keep cross-application changes backward compatible.
+
+**Connection verification still required:** the successful branch-transition
+deploys have trigger `blueprint_sync`. They establish that Render can build `main`,
+not that GitHub events or check results are connected. Confirm a subsequent merge
+produces an automatic deploy of its CI-green commit for each affected service,
+without a manual deployment or Blueprint approval. If it does not, check Render
+Account Settings > Git Deployment Credentials, the Render GitHub app's access to
+this repository, and each service's Settings > Git Credentials. A public Git URL
+alone does not enable automatic deployments.
+
+Application secrets stay in Render. CI runs offline and needs no Supabase, Gemini
+or Render GitHub secrets. Do not add a competing GitHub deployment workflow or
+deploy hook for this native path. Infrastructure changes remain separate: review
+the merged Blueprint using `render ea blueprints plan`, then explicitly approve
+the intended configuration changes. Automatic code deployment does not apply
+new Blueprint settings.
+
+PR #6 adds Gemini text caption generation and reviewed-situation fallback using
+the existing API key and default `AI_MODEL=gemini-3.1-flash-lite`; it adds no
+dependencies, imports or schema migrations. Each caption request can now consume
+a Gemini generation call in addition to the separate embedding matching flow.
+Generated `story` captions can invent history; see [known issues](KNOWN_ISSUES.md)
+and [ADR 0005](adr/0005-caption-generation.md). Accounts and Telegram remain off.
+
+Provider behavior: [automatic deploys and CI](https://render.com/docs/deploys#automatic-deploys),
+[Git provider connection](https://render.com/docs/git-provider).
+
+## Initial hosted release checkpoint (historical, 2026-11-17)
+
+The following records the first deployment before PRs #5/#6 merged; branch and
+revision details here are historical, superseded by the current checkpoint above.
 
 - Website: **https://pidsklom-web-bhw6.onrender.com**
 - API readiness: **https://pidsklom-api-bhw6.onrender.com/api/ready**
@@ -158,10 +214,10 @@ also accepts `PORT`. The frontend container deliberately builds with accounts of
    `EMBEDDING_DIM=768`. Leave `TELEGRAM_BOT_TOKEN` unset. Do not send secrets in chat
    or place service-role credentials in frontend variables.
 4. Validate with `render blueprints validate render.yaml --output json`, then apply
-   the Blueprint from the approved release branch/revision (`herman/deployment`
-   for this first deployment; keep PR #5 unmerged). Both services inherit that
-   branch. After a later merge, explicitly move the Blueprint and services to
-   `main` and verify their selected revisions. Confirm actual service URLs:
+   the Blueprint from `main` after checking CI for the selected revision.
+   Both production services inherit that branch. The first deployment used
+   `herman/deployment` before PR #5 merged; the transition to `main` is complete.
+   Confirm actual service URLs:
    set API `PUBLIC_BASE_URL` and exact `FRONTEND_ORIGINS` accordingly. The Static Site
    reads its build-time `VITE_API_URL` from the API's `PUBLIC_BASE_URL`; rebuild it
    after URL changes. Both services wait for passing CI on future auto-deploys;
@@ -334,7 +390,7 @@ into this document or into the repository.
 | API, runtime | `PUBLIC_BASE_URL=https://<api>.onrender.com`, `FRONTEND_ORIGINS=https://<site>.onrender.com` | Exact origins; no paths or trailing slash in CORS origins. |
 | API, secrets | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`; JWT config when real auth is enabled | Current JWT code only supports legacy HS256. Verify service-key header compatibility with the actual Supabase key type. Never use a service key as an admin-browser credential. |
 | API, matching | `AI_PROVIDER=llm`, `AI_API_KEY`, `MATCH_MODE=embeddings`, `EMBEDDING_MODEL`, `EMBEDDING_DIM=768`, `EMBEDDING_TIMEOUT_S`, `AI_TIMEOUT_S` | Gemini embeddings are implemented. Model/dimension must match uploaded vectors and the fixed schema dimension. `AI_PROVIDER=stub` is an explicit fallback-only deployment option. |
-| API, later hybrid | `AI_MODEL` and ranking settings in `config.py` | Hybrid reranking/generated captions remain unfinished; do not make a working LLM model a first-release dependency. |
+| API, captions / later hybrid | `AI_MODEL`, `AI_TIMEOUT_S` and ranking settings in `config.py` | PR #6 implements Gemini captions with fallback using the existing key. Hybrid reranking remains unfinished. Model defaults to `gemini-3.1-flash-lite`; generated history is unverified (KNOWN_ISSUES.md). |
 | API, bot | `TELEGRAM_BOT_TOKEN`, generated `TELEGRAM_WEBHOOK_SECRET` | Keep bot off until its webhook and error paths have been verified. |
 | Internal endpoints, when introduced | Trusted admin identity/role configuration, exact mechanism to be chosen with implementation | Server-side authorization is mandatory; user-controlled profile fields and a visible login alone do not establish admin rights. |
 | Supabase / Google, later | Site URL, redirect allowlist and Google OAuth settings | Deferred user-login implementation must configure these before enabling saved-account flows. |
