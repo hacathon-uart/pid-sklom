@@ -80,8 +80,8 @@ function FloorPlan({ info, selected, onSelect }: { info: QuizInfo; selected: Qui
   };
 
   return (
-    <div className="min-w-0">
-      <div className="mb-6 grid gap-3 md:hidden" role="group" aria-label="Зали вікторини">
+    <div className="contents min-w-0 md:block">
+      <div className="order-1 grid gap-3 md:hidden" role="group" aria-label="Зали вікторини">
         {GAME_ORDER.map((game) => (
           <button
             key={game}
@@ -96,7 +96,7 @@ function FloorPlan({ info, selected, onSelect }: { info: QuizInfo; selected: Qui
           </button>
         ))}
       </div>
-      <div className="rounded-card border border-line bg-surface p-4 md:p-5">
+      <div className="order-3 rounded-card border border-line bg-surface p-4 md:order-none md:p-5">
         <div className="md:hidden" aria-hidden="true">
           <p className="t-small mb-3 text-text-secondary">План для огляду. Оберіть залу на картці вище.</p>
         </div>
@@ -178,7 +178,7 @@ function HallSign({ game, info }: { game: QuizGame; info: QuizInfo }) {
   const play = () => navigate(`/quiz/${game}${game === "titles" ? `?scope=${encodeURIComponent(scope)}` : ""}`);
 
   return (
-    <section className="min-w-0 rounded-card border border-line bg-surface p-4 md:p-7" aria-live="polite">
+    <section className="order-2 min-w-0 rounded-card border border-line bg-surface p-4 md:order-none md:p-7" aria-live="polite">
       <div className="flex items-start justify-between gap-4">
         <span className="hall-no" aria-hidden>{meta.no}</span>
         <span className="t-label">{meta.level}</span>
