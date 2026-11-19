@@ -1,5 +1,9 @@
 # Telegram production deployment handoff
 
+For the later self-service demo invitation flow, see
+[Telegram demo invitations](TELEGRAM_DEMO_ACCESS.md). This document records the
+earlier ID-only pilot and its original release checklist.
+
 Prepared 2026-11-18 from `feat/telegram-bot`. This is a release
 runbook, not a record of a hosted bot deployment. The local polling test bot
 `@pid_sklom_test_bot` is separate from the intended production bot.

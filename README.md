@@ -15,6 +15,7 @@ The project's original code, documentation, and design assets are **all rights r
 - **Telegram bot implementation handoff:** [docs/TELEGRAM_HANDOFF.md](docs/TELEGRAM_HANDOFF.md)
 - **Telegram test and release procedure:** [docs/TELEGRAM_TESTING.md](docs/TELEGRAM_TESTING.md)
 - **Telegram restricted production rollout:** [docs/TELEGRAM_PRODUCTION_HANDOFF.md](docs/TELEGRAM_PRODUCTION_HANDOFF.md)
+- **Telegram demo invitations and rotation:** [docs/TELEGRAM_DEMO_ACCESS.md](docs/TELEGRAM_DEMO_ACCESS.md)
 - **Decisions:** [portable first release](docs/adr/0003-portable-render-first-release.md),
   [reviewed enrichment](docs/adr/0004-reviewed-enrichment-and-catalogue-authority.md)
 
@@ -57,7 +58,7 @@ fixtures/build/browser and run in frontend CI; no backend or production secrets
 are needed. See [the responsive handoff](docs/MOBILE_FRONTEND_HANDOFF.md) for
 font-fixture limitations and outstanding real-device/visual release gates.
 
-**Telegram bot** (test only): create a separate BotFather test bot and follow the [local Docker Compose and invite procedure](docs/TELEGRAM_TESTING.md). The public bot remains disabled until a separate release.
+**Telegram bot:** follow the [local Docker Compose procedure](docs/TELEGRAM_TESTING.md) for a separate test bot. The hosted bot's [demo invitation flow](docs/TELEGRAM_DEMO_ACCESS.md) is opt-in and requires its database migration and private configuration.
 
 **Placeholder images:** `python data/scripts/make_placeholders.py` regenerates the `stub-*` images in `data/images/` from `data/seed/artworks.json`.
 
