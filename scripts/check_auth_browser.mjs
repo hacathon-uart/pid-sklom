@@ -150,7 +150,8 @@ const server = createServer(async (req, res) => {
     }
     return json(state.results.get(key), 201);
   }
-  if (url.pathname === "/api/memes") return json([...state.memes.values()]);
+  if (url.pathname === "/api/memes") return json([...state.memes.values()].filter((meme) =>
+    url.searchParams.get("favorite") !== "true" || meme.is_favorite));
   if (url.pathname.startsWith("/api/memes/")) {
     const id = url.pathname.split("/").at(-1);
     const meme = state.memes.get(id);
@@ -405,6 +406,9 @@ try {
     await click("Поділитися посиланням");
     await until("window.sharedLinks.length === 1");
     assert(saved.is_favorite, "Sharing an existing saved meme must re-add it to favourites");
+    await navigate("/me");
+    await click("Улюблені");
+    await until(`document.querySelector('a[href="/me/memes/${saved.id}"]') !== null`);
     await logout();
     await navigate(`/m/${saved.id}`);
     await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
