@@ -250,6 +250,13 @@ try {
   await command("Page.addScriptToEvaluateOnNewDocument", { source: `
     window.exportedPNGs = [];
     window.sharedLinks = [];
+    window.memeResponses = 0;
+    const responseJson = Response.prototype.json;
+    Response.prototype.json = async function () {
+      const value = await responseJson.call(this);
+      if (new URL(this.url).pathname.startsWith("/api/memes")) window.memeResponses++;
+      return value;
+    };
     window.openedDialogs = 0;
     const showModal = HTMLDialogElement.prototype.showModal;
     HTMLDialogElement.prototype.showModal = function () {
@@ -387,6 +394,7 @@ try {
     assert.equal(state.saves, 0, "Download must not save the meme");
     await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
     await until("window.sharedLinks.length === 1");
+    await until("document.querySelector('[role=\"status\"] a[target=\"_blank\"]') !== null");
     const saved = [...state.memes.values()][0];
     assert(saved && saved.is_favorite, "Sharing must save and favourite the meme");
     assert.equal(await evaluate("window.sharedLinks[0]"), `${origin}/m/${saved.id}`);
@@ -409,11 +417,64 @@ try {
     await navigate("/me");
     await click("Улюблені");
     await until(`document.querySelector('a[href="/me/memes/${saved.id}"]') !== null`);
+    for (const [returnToSource, failResponse] of [[false, false], [true, false], [false, true]]) {
+      await navigate(`/create/result?q=share-switch-${returnToSource}-${failResponse}`);
+      await until("document.querySelector('[aria-label=\"Поділитися посиланням\"]') !== null");
+      await evaluate("document.fonts.ready");
+      await exportImage();
+      await until("window.exportedPNGs.length === 1");
+      await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
+      await until("window.sharedLinks.length === 1");
+      await click("Інша картина");
+      await until("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]') !== null");
+      assert.equal(await evaluate("document.querySelector('[aria-label=\"Закрити посилання\"]') !== null"), false,
+        "Switching artwork must dismiss the previous artwork's share panel");
+      await exportImage();
+      await until("window.exportedPNGs.length === 2");
+      state.holdNextSave = true;
+      const requestsBeforeShare = state.saveRequests;
+      await evaluate(`(() => {
+        const share = document.querySelector('[aria-label="Поділитися посиланням"]');
+        share.click(); share.click(); share.click();
+      })()`, true);
+      const deadline = Date.now() + 10000;
+      while (!state.releaseSave && Date.now() < deadline) await delay(50);
+      assert(state.releaseSave, "Share creation response must be held");
+      assert.equal(state.saveRequests, requestsBeforeShare + 1, "Rapid Share clicks must create only one request");
+      await click("Інша картина");
+      await until("document.querySelector('[aria-label=\"Зберегти зміни\"]') !== null");
+      if (returnToSource) {
+        await click("Інша картина");
+        await until("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]') !== null");
+      } else {
+        await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
+        await until("window.sharedLinks.length === 2");
+        await until("document.querySelector('[role=\"status\"] a[target=\"_blank\"]') !== null");
+      }
+      const copies = await evaluate("window.sharedLinks.length");
+      const responses = await evaluate("window.memeResponses");
+      const panelUrl = await evaluate("document.querySelector('[role=\"status\"] a[target=\"_blank\"]')?.href ?? null");
+      state.failNextSaveResponse = failResponse;
+      state.releaseSave();
+      state.releaseSave = null;
+      await until(`window.memeResponses >= ${responses + (failResponse ? 1 : 2)}`);
+      await evaluate("new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))");
+      assert.equal(await evaluate("window.sharedLinks.length"), copies,
+        "A stale share response must not copy, including after switching away and back");
+      assert.equal(await evaluate("document.querySelector('[role=\"status\"] a[target=\"_blank\"]')?.href ?? null"), panelUrl,
+        "A stale share response must not replace the current share panel");
+      assert.equal(await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').disabled"), false,
+        "An invalidated share must not leave the current artwork's Share button busy");
+      assert.equal(await evaluate("document.body.innerText.includes('Synthetic save response failure')"), false,
+        "A stale share failure must not replace the current artwork's feedback");
+    }
+    console.log("PASS: artwork switches dismiss old links and ignore delayed share success/failure, including switch-back and rapid clicks");
     await logout();
     await navigate(`/m/${saved.id}`);
     await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
     assert.equal(await evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.includes('Поділитися посиланням'))"), false,
       "Public visitors must not see Share");
+    assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
     console.log("PASS: guest download only; member share saves, favourites, copies and shows public link; public visitor cannot share");
   } else if (process.env.AUTH_BROWSER_CASE === "export-switch") {
     await navigate("/create/result?q=export-switch");

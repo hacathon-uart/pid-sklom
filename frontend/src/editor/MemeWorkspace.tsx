@@ -14,7 +14,7 @@
  * The page owns `stageRef` (from useMemeEditor) so its header «Зберегти» button can export the canvas.
  */
 import type Konva from "konva";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "react-router";
 import type { ArtworkSummary, Story } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -70,6 +70,17 @@ export function MemeWorkspace({
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<{ url: string; copied: boolean } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const shareEpoch = useRef(0);
+  const shareBusy = useRef(false);
+  const shareScope = `${user?.id ?? "guest"}:${route()}:${artwork.id}`;
+  useLayoutEffect(() => {
+    shareEpoch.current += 1;
+    shareBusy.current = false;
+    setShareLink(null);
+    setSharing(false);
+    setWorkspaceError(null);
+    return () => { shareEpoch.current += 1; };
+  }, [shareScope]);
   const canvasZone = useRef<HTMLDivElement>(null);
   const [withFrame, setWithFrame] = useTabState(`export-frame:artwork:${artwork.id}`, true);
 
@@ -94,17 +105,26 @@ export function MemeWorkspace({
     () => Boolean(stageRef.current?.getAttr("exportReady")) && !stageRef.current?.getAttr("exportError"),
   );
   const share = async () => {
-    if (sharing) return;
+    if (shareBusy.current) return;
+    const epoch = shareEpoch.current;
+    shareBusy.current = true;
     setSharing(true);
     setWorkspaceError(null);
     setShareLink(null);
     try {
       const id = await onShare();
-      setShareLink(await copyPublicMemeUrl(id));
+      if (epoch !== shareEpoch.current) return;
+      const link = await copyPublicMemeUrl(id);
+      if (epoch === shareEpoch.current) setShareLink(link);
     } catch (failure) {
-      setWorkspaceError(failure instanceof Error ? failure.message : "Не вдалося створити посилання");
+      if (epoch === shareEpoch.current) {
+        setWorkspaceError(failure instanceof Error ? failure.message : "Не вдалося створити посилання");
+      }
     } finally {
-      setSharing(false);
+      if (epoch === shareEpoch.current) {
+        shareBusy.current = false;
+        setSharing(false);
+      }
     }
   };
   const controlsZone = useRef<HTMLDivElement>(null);
@@ -192,7 +212,12 @@ export function MemeWorkspace({
         {workspaceError && <ErrorMessage error={workspaceError} />}
         {exporting.error && <ErrorMessage error={exporting.error} />}
         {shareLink && <ShareLinkPanel {...shareLink} onCopy={() => {
-          void copyShareUrl(shareLink.url).then((copied) => setShareLink((current) => current?.url === shareLink.url ? { ...current, copied } : current));
+          const epoch = shareEpoch.current;
+          void copyShareUrl(shareLink.url).then((copied) => {
+            if (epoch === shareEpoch.current) {
+              setShareLink((current) => current?.url === shareLink.url ? { ...current, copied } : current);
+            }
+          });
         }} onClose={() => setShareLink(null)} />}
         <div className="mt-5">
           <FramePicker frame={draft.frame} onFrameChange={changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
