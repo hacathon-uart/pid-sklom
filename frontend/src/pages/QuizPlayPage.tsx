@@ -395,7 +395,7 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
         </div>
 
         {/* Footer: spans both columns; the right gap is where the stamp sits */}
-        <div className="mt-8 flex flex-col items-center justify-between gap-6 text-center md:flex-row md:items-end md:gap-4 md:px-4 md:text-left lg:col-span-2 lg:mt-6">
+        <div className="mt-8 flex flex-col items-center justify-between gap-6 text-center md:min-h-[150px] md:flex-row md:items-end md:gap-4 md:px-4 md:text-left lg:col-span-2 lg:mt-6">
           <div>
             <div className="t-caption text-text-secondary">Видано</div>
             <div className="t-strong">{date}</div>

@@ -52,7 +52,7 @@ export function HomePage() {
 
   return (
     <>
-      <main id="main-content">
+      <main id="main-content" tabIndex={-1}>
       <section className="relative flex flex-col items-center px-[var(--page-gutter)] pb-8 pt-5 text-center md:pt-6">
         {authEnabled && <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-start gap-4 text-left md:absolute md:inset-x-8 md:top-6 md:w-auto md:gap-6">
           <GuestAllowance />
@@ -134,7 +134,6 @@ export function HomePage() {
       </main>
 
       <footer className="bg-muted px-[var(--page-gutter)] py-12">
-        {/* TODO(D): real bot handle and GitHub link */}
         <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
@@ -147,10 +146,13 @@ export function HomePage() {
             title="Контакти"
             items={[
               <a key="mail" href={`mailto:${EMAIL}`} className="hover:text-accent">{EMAIL}</a>,
-              "Telegram-бот: @pidsklom_bot",
+              <span key="telegram"><a href="https://t.me/pid_sklom_bot" className="hover:text-accent">Telegram-бот: @pid_sklom_bot</a><span className="t-caption mt-1 block text-text-secondary">Поки що з обмеженим доступом.</span></span>,
             ]}
           />
-          <FooterCol title="Проєкт" items={["Код на GitHub", "Звідки картини і факти"]} />
+          <FooterCol title="Проєкт" items={[
+            <a key="code" href="https://github.com/hacathon-uart/pid-sklom" className="hover:text-accent">Код на GitHub</a>,
+            <Link key="gallery" to="/gallery" className="hover:text-accent">Картини та їхні історії</Link>,
+          ]} />
           <FooterCol title="Команда" items={TEAM} />
         </div>
       </footer>
