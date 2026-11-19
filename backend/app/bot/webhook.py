@@ -2,6 +2,7 @@
 
 import logging
 import secrets
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from aiogram import BaseMiddleware, Bot, Dispatcher
@@ -10,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import ValidationError
 
 from app.bot.commands import setup_commands
+from app.bot import demo_access
 from app.bot.handlers import router as bot_router
 from app.config import get_settings
 
@@ -33,11 +35,35 @@ class TesterAccessMiddleware(BaseMiddleware):
             if callback is not None:
                 await callback.answer("Бот працює лише в приватному чаті")
             return
-        if user.id not in get_settings().telegram_allowed_ids:
-            text = (
-                "Зараз бот доступний лише запрошеним учасникам тестування.\n"
-                f"Твій Telegram ID: {user.id}"
-            )
+        # Let /start reach the enrolment handler; all other work needs admission.
+        if callback is None and message.text and message.text.split(maxsplit=1)[0].split("@")[0] == "/start":
+            return await handler(event, data)
+        try:
+            admitted = await demo_access.allowed(user.id)
+        except Exception as exc:
+            log.warning("Telegram admission failed (%s)", type(exc).__name__)
+            text = "Не вдалося перевірити доступ. Спробуй пізніше."
+            if callback is not None:
+                await callback.answer(text, show_alert=True)
+            else:
+                await message.answer(text)
+            return
+        if not admitted:
+            settings = get_settings()
+            end = settings.telegram_demo_ends_at
+            if (settings.telegram_demo_enabled and end is not None
+                    and end.tzinfo is not None and end <= datetime.now(timezone.utc)):
+                text = "Демо завершилося. Дякуємо за участь!"
+            elif settings.telegram_demo_enabled:
+                text = (
+                    "Бот доступний учасникам демо. Відкрий запрошення або введи /start КОД.\n"
+                    f"Твій Telegram ID: {user.id}"
+                )
+            else:
+                text = (
+                    "Зараз бот доступний лише запрошеним учасникам тестування.\n"
+                    f"Твій Telegram ID: {user.id}"
+                )
             if callback is not None:
                 await callback.answer(text, show_alert=True)
             else:

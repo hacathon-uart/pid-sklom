@@ -1,6 +1,7 @@
 """Telegram transport/configuration tests. No Telegram, catalogue, or AI requests."""
 
 import asyncio
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -57,6 +58,9 @@ def transport(monkeypatch):
     bot.delete_webhook = AsyncMock()
     dispatcher = SimpleNamespace(feed_update=AsyncMock(), start_polling=AsyncMock())
     monkeypatch.setattr(webhook, "get_settings", lambda: config)
+    async def allowed(user_id):
+        return user_id in config.telegram_allowed_ids
+    monkeypatch.setattr(webhook.demo_access, "allowed", allowed)
     monkeypatch.setattr(webhook, "get_bot", lambda: bot)
     monkeypatch.setattr(webhook, "get_dispatcher", lambda: dispatcher)
     app = FastAPI()
@@ -85,6 +89,33 @@ def test_invalid_allowlist(ids):
 def test_allowlist_parsing_and_disabled_configuration():
     assert settings(telegram_allowed_user_ids="42, 73,42").telegram_allowed_ids == {42, 73}
     settings(telegram_bot_token="", telegram_allowed_user_ids="", telegram_webhook_secret="change-me").validate_runtime()
+
+
+def test_demo_configuration_can_replace_tester_allowlist():
+    settings(
+        telegram_allowed_user_ids="", data_backend="supabase",
+        supabase_url="https://example.supabase.co", supabase_service_key="test-service-key",
+        telegram_demo_invite_code="A" * 32, telegram_demo_event_id="demo-1",
+        telegram_demo_ends_at="2099-01-01T18:00:00+02:00",
+    ).validate_runtime()
+
+
+@pytest.mark.parametrize("override, expected", [
+    ({"telegram_demo_invite_code": "short"}, "TELEGRAM_DEMO_INVITE_CODE"),
+    ({"telegram_demo_event_id": "Bad_ID"}, "TELEGRAM_DEMO_EVENT_ID"),
+    ({"telegram_demo_ends_at": "2099-01-01T18:00:00"}, "TELEGRAM_DEMO_ENDS_AT"),
+    ({"telegram_demo_quota": 0}, "Telegram demo quotas"),
+])
+def test_invalid_demo_configuration_fails_startup(override, expected):
+    values = {
+        "telegram_allowed_user_ids": "", "data_backend": "supabase",
+        "supabase_url": "https://example.supabase.co", "supabase_service_key": "test-service-key",
+        "telegram_demo_invite_code": "A" * 32, "telegram_demo_event_id": "demo-1",
+        "telegram_demo_ends_at": "2099-01-01T18:00:00+02:00",
+        **override,
+    }
+    with pytest.raises(RuntimeError, match=expected):
+        settings(**values).validate_runtime()
 
 
 @pytest.mark.parametrize("path,headers,status", [
@@ -128,13 +159,40 @@ def test_access_gate(transport, callback, user_id, chat_type, allowed):
     update = Update.model_validate(payload(user_id, chat_type, callback), context={"bot": transport.bot})
     handler = AsyncMock()
     asyncio.run(webhook.TesterAccessMiddleware()(handler, update, {}))
-    assert handler.await_count == int(allowed)
-    if user_id == 99:
+    # /start reaches the enrolment handler so a stranger can redeem an invite.
+    assert handler.await_count == int(allowed or (not callback and chat_type == "private"))
+    if user_id == 99 and callback:
         assert transport.bot.session.make_request.await_count == 1
         method = transport.bot.session.make_request.await_args.args[1]
         if not callback:
             assert isinstance(method, SendMessage)
             assert "Telegram ID: 99" in method.text
+
+
+def test_uninvited_phrase_is_rejected_before_handler(transport):
+    body = payload(user_id=99)
+    body["message"]["text"] = "Зроби мем"
+    update = Update.model_validate(body, context={"bot": transport.bot})
+    handler = AsyncMock()
+    asyncio.run(webhook.TesterAccessMiddleware()(handler, update, {}))
+    handler.assert_not_awaited()
+    method = transport.bot.session.make_request.await_args.args[1]
+    assert isinstance(method, SendMessage)
+    assert "Telegram ID: 99" in method.text
+
+
+def test_demo_invitation_notice_for_uninvited_phrase(transport):
+    transport.config.telegram_demo_invite_code = "A" * 32
+    transport.config.telegram_demo_event_id = "demo-1"
+    transport.config.telegram_demo_ends_at = datetime(2099, 1, 1, tzinfo=UTC)
+    body = payload(user_id=99)
+    body["message"]["text"] = "Зроби мем"
+    update = Update.model_validate(body, context={"bot": transport.bot})
+    handler = AsyncMock()
+    asyncio.run(webhook.TesterAccessMiddleware()(handler, update, {}))
+    handler.assert_not_awaited()
+    method = transport.bot.session.make_request.await_args.args[1]
+    assert "/start КОД" in method.text
 
 
 def test_unsupported_updates_are_ignored(transport):
