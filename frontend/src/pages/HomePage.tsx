@@ -113,8 +113,7 @@ export function HomePage() {
 
       <section id="about" className="bg-surface px-[var(--page-gutter)] py-14 md:py-24">
         <div className="mx-auto max-w-[1000px]">
-          <WordWreath />
-          <div className="t-label mt-10">Про проєкт</div>
+          <div className="t-label">Про проєкт</div>
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
           {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
@@ -140,6 +139,9 @@ export function HomePage() {
       </main>
 
       <footer className="bg-muted px-[var(--page-gutter)] py-12">
+        <div className="mx-auto mb-10 max-w-[1000px]">
+          <WordWreath paper="var(--color-muted)" />
+        </div>
         <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
