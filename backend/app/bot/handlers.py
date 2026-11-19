@@ -18,6 +18,7 @@ from aiogram.utils.formatting import Bold, Text, TextLink
 from pydantic import ValidationError
 
 from app.ai.moderation import ModerationError
+from app.bot import demo_access
 from app.config import get_settings
 from app.data import get_repo
 from app.render.meme import fetch_image, render_from_url
@@ -50,6 +51,7 @@ START = (
     "/help — ця підказка. Готовий мем надішлю як фото та оригінальний PNG."
 )
 ACCESS = "Бот поки доступний лише запрошеним тестувальникам. Дякую за інтерес до «Під склом»!"
+DEMO_ACCESS = "Бот доступний учасникам демо. Відкрий запрошення або введи /start КОД."
 PRIVATE = "Напиши мені в особисті повідомлення — бот працює лише в приватних чатах."
 INVALID_PHRASE = "Напиши фразу від 1 до 200 символів."
 UNKNOWN = "Не знаю такої команди. Напиши фразу, надішли /random або переглянь /help."
@@ -64,16 +66,17 @@ RETRY = "Не вдалося завершити надсилання. Натис
 EMPTY = "Зараз немає доступних картин. Спробуй пізніше."
 
 
-def _allowed(user_id: int) -> bool:
+async def _allowed(user_id: int) -> bool:
     try:
-        return user_id in get_settings().telegram_allowed_ids
-    except RuntimeError:
-        log.warning("Telegram access denied: invalid tester allowlist")
+        return await demo_access.allowed(user_id)
+    except Exception as exc:
+        log.warning("Telegram access check failed (%s)", type(exc).__name__)
         return False
 
 
 def _access_notice(user_id: int | None) -> str:
-    return f"{ACCESS}\nТвій Telegram ID: {user_id}" if user_id is not None else ACCESS
+    notice = DEMO_ACCESS if get_settings().telegram_demo_enabled else ACCESS
+    return f"{notice}\nТвій Telegram ID: {user_id}" if user_id is not None else notice
 
 
 async def _notice(message: Message, text: str) -> None:
@@ -88,7 +91,7 @@ async def _admitted(message: Message) -> bool:
     if message.chat.type != "private":
         await _notice(message, PRIVATE)
         return False
-    if message.from_user is None or not _allowed(message.from_user.id):
+    if message.from_user is None or not await _allowed(message.from_user.id):
         await _notice(message, _access_notice(message.from_user.id if message.from_user else None))
         return False
     return True
@@ -209,8 +212,52 @@ def _failure(exc: Exception) -> str:
 @router.message(CommandStart())
 @router.message(Command("help"))
 async def on_start(message: Message):
+    if message.text and message.text.startswith("/start ") and message.from_user and message.chat.type == "private":
+        if await _allowed(message.from_user.id):
+            await _notice(message, START)
+            return
+        code = message.text.split(maxsplit=1)[1].strip()
+        try:
+            result = await demo_access.enroll(message.from_user.id, code)
+        except Exception as exc:
+            log.warning("Telegram enrolment failed (%s)", type(exc).__name__)
+            await _notice(message, "Не вдалося перевірити запрошення. Спробуй пізніше.")
+            return
+        if result == "enrolled":
+            await _notice(message, START)
+        elif result == "closed":
+            await _notice(message, "Демо завершилося. Дякуємо за участь!")
+        else:
+            await _notice(message, "Код запрошення недійсний. Перевір посилання та спробуй ще раз.")
+        return
     if await _admitted(message):
         await _notice(message, START)
+
+
+async def _begin_demo(message: Message) -> bool:
+    try:
+        status = await demo_access.begin(message.from_user.id, f"{message.chat.id}:{message.message_id}")
+    except Exception as exc:
+        log.warning("Telegram demo reservation failed (%s)", type(exc).__name__)
+        await _notice(message, "Ліміт тимчасово недоступний. Спробуй пізніше.")
+        return False
+    if status == "started":
+        return True
+    notices = {
+        "duplicate": "Цей запит уже оброблено. Надішли новий, якщо хочеш ще один мем.",
+        "busy": "Зараз багато запитів або твій попередній запит ще виконується. Спробуй трохи пізніше.",
+        "limited": "Ліміт демо вичерпано. Дякуємо за участь!",
+        "closed": "Демо завершилося. Дякуємо за участь!",
+    }
+    await _notice(message, notices.get(status, "Спробуй пізніше."))
+    return False
+
+
+async def _finish_demo(message: Message, success: bool) -> None:
+    try:
+        await demo_access.finish(message.from_user.id, f"{message.chat.id}:{message.message_id}", success)
+    except Exception as exc:
+        log.warning("Telegram demo reservation release failed (%s)", type(exc).__name__)
 
 
 @router.message(Command("random"))
@@ -221,7 +268,10 @@ async def on_random(message: Message):
     if len(_pending) >= MAX_PENDING:
         await _notice(message, "Зараз багато запитів. Спробуй /random трохи пізніше.")
         return
+    if not await _begin_demo(message):
+        return
     token = None
+    success = False
     try:
         artwork = get_repo().random_artwork()
         if artwork is None:
@@ -252,10 +302,13 @@ async def on_random(message: Message):
         ])
         choices_text, choices_entities = choices.render()
         await message.answer(choices_text, entities=choices_entities, reply_markup=keyboard, parse_mode=None)
+        success = True
     except Exception as exc:
         if token is not None:
             _pending.pop(token, None)
         await _notice(message, _failure(exc))
+    finally:
+        await _finish_demo(message, success)
 
 
 async def _ack(callback: CallbackQuery, text: str | None = None) -> None:
@@ -271,7 +324,7 @@ async def on_caption_chosen(callback: CallbackQuery):
     if not isinstance(message, Message) or message.date.timestamp() <= 0 or message.chat.type != "private":
         await _ack(callback, PRIVATE)
         return
-    if not _allowed(callback.from_user.id):
+    if not await _allowed(callback.from_user.id):
         await _ack(callback, _access_notice(callback.from_user.id))
         return
     _prune_pending()
@@ -326,9 +379,15 @@ async def on_phrase(message: Message):
     except ValidationError:
         await _notice(message, INVALID_PHRASE)
         return
+    if not await _begin_demo(message):
+        return
+    success = False
     try:
         result = await match_phrase(request.phrase)
         png = await render_from_url(result.artwork.image_url, [TextBlock(text=result.caption, position=result.position)])
         await _deliver(message, png, result.artwork, result.story)
+        success = True
     except Exception as exc:
         await _notice(message, _failure(exc))
+    finally:
+        await _finish_demo(message, success)
