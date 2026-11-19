@@ -114,18 +114,39 @@ body {
 .ticket > div + div { border-left: 2px dashed color-mix(in srgb, currentColor 45%, transparent); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
 
 /* ======================================================================
- * Quiz (ADR 0008, quiz direction board): floor plan V3, catalogue cards Q3,
+ * Quiz (ADR 0008, quiz direction board): floor plan V3 and rank ladder, catalogue cards Q3,
  * curator's labels P1, certificate R1; records: catalogue card A3, cloakroom tags B1, tickets C4.
  * Components live in quiz/Museum.tsx and pages/Quiz*.tsx.
  * ====================================================================== */
 
-/* ---- Floor plan (V3) ---- */
+/* ---- Floor plan (V3): a museum leaflet plan; every room is a door into its game ---- */
 .plan-room { cursor: pointer; outline: none; }
-.plan-room .room-fill { transition: fill-opacity .25s ease; }
-.plan-room:hover .room-fill, .plan-room:focus-visible .room-fill { fill-opacity: .3; }
-.plan-room[aria-pressed="true"] .room-fill { fill-opacity: .42; }
-.plan-room:focus-visible .room-edge { stroke: var(--color-accent); stroke-width: 4; }
+.plan-room .room-tint { transition: fill-opacity .25s ease; }
+.plan-room .plaque { transition: transform .2s ease; transform-box: fill-box; }
+.plan-room .plaque-pill { transition: filter .2s ease; }
+.plan-room:hover .room-tint, .plan-room:focus-visible .room-tint { fill-opacity: .22; }
+.plan-room:hover .plaque, .plan-room:focus-visible .plaque { transform: translateY(-4px); }
+.plan-room:hover .plaque-pill, .plan-room:focus-visible .plaque-pill { filter: brightness(1.1); }
+.plan-room:focus-visible .room-edge { stroke-opacity: 1; }
 .plan-room.closed { cursor: default; }
+.you-are-here { animation: you-pulse 2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes you-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(2.6); opacity: 0; } }
+
+/* ---- Rank scale beside the plan: percent · dot on one track · rank name; the track fills up to the best rank ---- */
+.rank-scale { --row: 44px; --pct: 38px; --gap: 12px; }
+.rank-scale::before, .rank-scale::after { /* the track, and its filled part from the bottom */
+  content: ""; position: absolute; left: calc(var(--pct) + var(--gap) + 5px); width: 2px; margin-left: -1px;
+  bottom: calc(var(--row) / 2); background: var(--color-line);
+}
+.rank-scale::before { top: calc(var(--row) / 2); }
+.rank-scale::after { height: calc((100% - var(--row)) * var(--filled)); background: var(--color-accent); }
+.rank-row { position: relative; display: grid; grid-template-columns: var(--pct) 10px 1fr; align-items: center; column-gap: var(--gap); height: var(--row); }
+.rank-pct { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.rank-dot { position: relative; z-index: 1; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--color-accent-soft); background: var(--color-surface); }
+.rank-name { font-size: 14.5px; white-space: nowrap; line-height: 1.2; font-weight: 500; }
+.rank-row.reached .rank-dot { border-color: var(--color-accent); background: var(--color-accent); }
+.rank-row.current .rank-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+.rank-row.current .rank-name { font-weight: 700; color: var(--color-accent); }
 
 /* ---- Catalogue card (Q3) ---- */
 .catalogue-card {
@@ -152,9 +173,19 @@ body {
 .stamp-wrong { color: #7B1E2A; }
 @keyframes stamp-in { from { opacity: 0; transform: translateY(-50%) rotate(-9deg) scale(1.6); } to { opacity: 1; transform: translateY(-50%) rotate(-9deg) scale(1); } }
 
+/* ---- Verdict on a revealed wall label: green and stamped when right, burgundy when wrong ---- */
+.wall-label.verdict { position: relative; }
+.verdict-right { background: #F2F7F1; box-shadow: 0 0 0 2px #2B6A3E, 0 2px 6px rgba(46,38,32,.14); }
+.verdict-wrong { background: #FBF1F1; box-shadow: 0 0 0 2px #7B1E2A, 0 2px 6px rgba(46,38,32,.14); }
+.verdict .stamp { top: auto; bottom: -2px; right: 10px; padding: 1px 6px; font-size: 10.5px; background: inherit; } /* sits in the free right end of the inventory row */
+
 /* ---- Curator's labels on hooks (P1) ---- */
 .label-hook { width: 2px; height: 14px; margin: 0 auto; background: #8a6a2c; }
-.label-tray { background: #2E2620; color: #EFE6D8; }
+.label-tray { background: color-mix(in srgb, var(--color-muted) 60%, transparent); border: 1.5px dashed var(--color-accent-soft); transition: border-color .15s ease, background-color .15s ease; }
+.label-tray.drop-over { border-color: var(--color-accent); background: var(--color-muted); }
+.pair-label { cursor: grab; transition: transform .15s ease, box-shadow .15s ease; }
+.pair-label:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(46,38,32,.18); }
+.pair-label:active { cursor: grabbing; }
 
 /* ---- Catalogue record card (A3): dotted leaders between key and value ---- */
 .record-card { display: block; font-size: 15px; cursor: default; padding: 26px 20px 16px; }
@@ -217,6 +248,7 @@ body {
   .glass::after { transition: none; }
   .crack-animate, .crack-fleeting { animation: none; }
   .wall { transition: none; }
-  .catalogue-card, .plan-room .room-fill { transition: none; }
+  .catalogue-card, .plan-room .room-tint, .plan-room .plaque { transition: none; }
+  .you-are-here { animation: none; }
   .stamp { animation: none; }
 }

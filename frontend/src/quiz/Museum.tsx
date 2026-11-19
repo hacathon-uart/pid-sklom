@@ -9,7 +9,7 @@ import { GAME_ORDER, GAMES } from "./games";
 // ---------- museum rank: a share of the collection, not a raw count ----------
 
 /** The rank ladder, from the first right answer to the whole collection. */
-const RANKS: [number, string][] = [
+export const RANKS: [number, string][] = [
   [1, "Директор музею"],
   [0.9, "Куратор"],
   [0.6, "Науковий співробітник"],
@@ -79,7 +79,7 @@ export function CatalogueRecord({ rows }: { rows: [string, ReactNode][] }) {
 // ---------- C4 · one entrance ticket per game on the profile ----------
 
 /** Wall colours of the three halls, as on the floor plan. */
-const HALL_COLOURS: Record<QuizGame, string> = { who: "#5E1F25", pairs: "#1F3B2D", titles: "#1C2E4A" };
+export const HALL_COLOURS: Record<QuizGame, string> = { who: "#5E1F25", pairs: "#1F3B2D", titles: "#1C2E4A" };
 
 export function RecordTickets({ info }: { info: QuizInfo }) {
   return (
