@@ -248,7 +248,6 @@ try {
   }
   await command("Page.addScriptToEvaluateOnNewDocument", { source: `
     window.exportedPNGs = [];
-    window.sharedPNGs = [];
     window.sharedLinks = [];
     window.openedDialogs = 0;
     const showModal = HTMLDialogElement.prototype.showModal;
@@ -261,13 +260,11 @@ try {
       if (this.download && this.href.startsWith("data:image/png")) { window.exportedPNGs.push(this.href); return; }
       return anchorClick.call(this);
     };
-    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => false });
-    Object.defineProperty(navigator, "share", { configurable: true, value: async ({ files }) => {
-      if (window.cancelNextShare) { window.cancelNextShare = false; throw new DOMException("Cancelled", "AbortError"); }
-      window.sharedPNGs.push(await files[0].text());
-    } });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
-      writeText: async (value) => { window.sharedLinks.push(value); },
+      writeText: async (value) => {
+        if (window.denyCopy) throw new DOMException("Clipboard denied", "NotAllowedError");
+        window.sharedLinks.push(value);
+      },
     } });
   ` });
   const evaluate = async (expression, userGesture = false) => {
@@ -319,10 +316,8 @@ try {
     })()`);
     await delay(100);
   };
-  const exportImage = async (mode = "download", publicView = false) => {
-    const control = publicView && mode === "share"
-      ? `[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Поділитися посиланням')`
-      : `document.querySelector('[aria-label="${mode === "share" ? "Поділитися" : publicView ? "Завантажити" : "Завантажити PNG"}"]')`;
+  const exportImage = async (publicView = false) => {
+    const control = `document.querySelector('[aria-label="${publicView ? "Завантажити" : "Завантажити PNG"}"]')`;
     await until(`(${control}) && !(${control}).disabled`);
     return evaluate(`(${control}).click()`, true);
   };
@@ -374,27 +369,48 @@ try {
     assert.equal(await evaluate("window.openedDialogs"), modals, "Signed-in Save must not open a modal");
     assert.equal(await evaluate("document.querySelector('dialog[open], [role=\"dialog\"]')"), null);
   };
-  const checkSlowNativeShare = async () => {
-    await editCaption("Shared PNG after slow authorization");
-    await evaluate(`Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
-      Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: false } });`);
-    const shared = await evaluate("window.sharedPNGs.length");
-    await exportImage("share");
-    await until("document.querySelector('[role=\"status\"]')?.textContent.includes('PNG готовий')");
-    const reserved = state.exportReservations;
-    assert.equal(await evaluate("window.sharedPNGs.length"), shared);
-    await evaluate(`Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: true } });`);
-    await exportImage("share");
-    await until(`window.sharedPNGs.length === ${shared + 1}`);
-    assert.equal(state.exportReservations, reserved, "A new gesture reuses the already-prepared PNG reservation");
-  };
-  if (process.env.AUTH_BROWSER_CASE === "share-gesture") {
+  if (process.env.AUTH_BROWSER_CASE === "share-link") {
     await navigate("/create/painting/1/own");
-    await editCaption("Prepared share");
+    await editCaption("Link-only sharing");
+    assert.equal(await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]')"), null,
+      "Guests must not see Share in the editor");
+    assert.equal(await evaluate("document.querySelector('[aria-label=\"Завантажити PNG\"]') !== null"), true);
+    await navigate("/me");
+    await click("Продовжити через Google");
+    await until("location.pathname === '/me' && document.body.innerText.includes('Вийти')");
+    await navigate("/create/painting/1/own");
+    await editCaption("Link-only sharing");
     await evaluate("document.fonts.ready");
-    await delay(200);
-    await checkSlowNativeShare();
-    console.log("PASS: delayed native sharing reuses its prepared PNG and reservation");
+    await exportImage();
+    await until("window.exportedPNGs.length === 1");
+    assert.equal(state.saves, 0, "Download must not save the meme");
+    await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
+    await until("window.sharedLinks.length === 1");
+    const saved = [...state.memes.values()][0];
+    assert(saved && saved.is_favorite, "Sharing must save and favourite the meme");
+    assert.equal(await evaluate("window.sharedLinks[0]"), `${origin}/m/${saved.id}`);
+    assert(await evaluate("[...document.querySelectorAll('[role=\"status\"]')].some((item) => item.textContent.includes('Посилання скопійовано') && item.textContent.includes('Мем додано до «Улюблених»'))"));
+    await editCaption("Updated through sharing");
+    await evaluate("window.denyCopy = true; document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
+    await until("[...document.querySelectorAll('[role=\"status\"]')].some((item) => item.textContent.includes('Браузер не дозволив копіювання'))");
+    assert.equal(saved.caption, "Updated through sharing", "Sharing an edited meme must publish the current draft");
+    assert.equal(state.saves, 1, "Sharing an edit must reuse the saved meme");
+    assert(await evaluate(`document.querySelector('[href="${origin}/m/${saved.id}"]') !== null`));
+    await evaluate("window.denyCopy = false; [...document.querySelectorAll('button')].find((item) => item.textContent === 'Копіювати посилання').click()", true);
+    await until("window.sharedLinks.length === 2");
+    await navigate(`/me/memes/${saved.id}`);
+    await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
+    await evaluate("document.querySelector('[aria-label=\"Прибрати з улюблених\"]').click()", true);
+    await until("document.querySelector('[aria-label^=\"Додати до улюблених\"]') !== null");
+    await click("Поділитися посиланням");
+    await until("window.sharedLinks.length === 1");
+    assert(saved.is_favorite, "Sharing an existing saved meme must re-add it to favourites");
+    await logout();
+    await navigate(`/m/${saved.id}`);
+    await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
+    assert.equal(await evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.includes('Поділитися посиланням'))"), false,
+      "Public visitors must not see Share");
+    console.log("PASS: guest download only; member share saves, favourites, copies and shows public link; public visitor cannot share");
   } else if (process.env.AUTH_BROWSER_CASE === "export-switch") {
     await navigate("/create/result?q=export-switch");
     await until("document.querySelector('[aria-label=\"Завантажити PNG\"]') !== null");
@@ -673,33 +689,27 @@ try {
   assert.equal(state.exportReservations, 1);
   await exportImage();
   await until("window.exportedPNGs.length === 2");
-  await exportImage("share");
+  await exportImage();
   await until("window.exportedPNGs.length === 3");
-  assert.equal(state.exportReservations, 1, "Repeated downloads and file-sharing fallback reuse one export");
-  await editCaption("Cancelled native share");
-  await evaluate(`Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true }); window.cancelNextShare = true;`);
-  await exportImage("share");
-  const cancelledDeadline = Date.now() + 10000;
-  while (state.exportCancellations === 0 && Date.now() < cancelledDeadline) await delay(50);
-  assert.equal(state.exportCancellations, 1, "Native share cancellation releases its reservation");
-  assert.equal(exportsRemaining(), 2);
-  await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 2/3')");
-  await checkSlowNativeShare();
+  assert.equal(state.exportReservations, 1, "Repeated downloads reuse one export");
+  assert.equal(await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]')"), null);
+  await editCaption("Second distinct composition");
+  await exportImage();
   await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 1/3')");
   await editCaption("Third distinct composition");
   await exportImage();
-  await until("window.exportedPNGs.length === 4");
+  await until("window.exportedPNGs.length === 5");
   await until("document.querySelector('summary')?.getAttribute('aria-label').includes('PNG 0/3')");
   await editCaption("First unique PNG");
   await exportImage();
-  await until("window.exportedPNGs.length === 5");
+  await until("window.exportedPNGs.length === 6");
   assert.equal(exportsRemaining(), 0, "An unchanged PNG stays free after exhaustion");
   await editCaption("Fourth PNG requires Google");
   await evaluate("document.querySelector('input[type=\"checkbox\"]').click()");
   const exchangesBeforeExport = state.exchanges;
   await exportImage();
   await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Три унікальні PNG')");
-  assert.equal(await evaluate("window.exportedPNGs.length"), 5, "Blocked fourth export must not dispatch a download");
+  assert.equal(await evaluate("window.exportedPNGs.length"), 6, "Blocked fourth export must not dispatch a download");
   assert.equal(state.exchanges, exchangesBeforeExport, "Blocked export needs explicit Google consent");
   await click("Закрити");
   const publicId = [...state.memes.keys()][0];
@@ -707,15 +717,12 @@ try {
   await until("document.querySelector('[aria-label=\"Завантажити\"]') !== null");
   assert.equal(await evaluate("document.querySelector('[aria-label^=\"Додати до улюблених\"]')"), null,
     "A public guest cannot favourite someone else's saved meme");
-  await exportImage("download", true);
+  await exportImage(true);
   await until("document.querySelector('[role=\"alert\"]')?.textContent.includes('Три унікальні PNG')");
   assert.equal(await evaluate("window.exportedPNGs.length"), 0, "Public saved-PNG downloads use the same export gate");
   await click("Закрити");
-  const reservationsBeforeLink = state.exportReservations;
-  await exportImage("share", true);
-  await until("window.sharedLinks.length === 1");
-  assert.equal(state.exportReservations, reservationsBeforeLink, "Sharing a public link is not a PNG export");
-  console.log("PASS: independent distinct PNG quota, replay after exhaustion, sharing/cancellation, slow native-share gesture and public-download gate");
+  assert.equal(await evaluate("[...document.querySelectorAll('button')].some((button) => button.textContent.includes('Поділитися посиланням'))"), false);
+  console.log("PASS: independent distinct PNG download quota, replay after exhaustion, and public-download gate");
   await navigate("/me");
   await until("document.body.innerText.includes('Продовжити через Google') && document.body.innerText.includes('Новий акаунт створиться автоматично')");
   await click("Продовжити через Google");

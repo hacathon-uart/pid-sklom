@@ -42,9 +42,10 @@ across matching and caption suggestions, and three distinct PNG exports.
 Neither renews daily. Repeating an unchanged export does not use another slot.
 
 **PNG export**:
-A prepared meme image downloaded or shared as a file. Changing the artwork,
+A prepared meme image downloaded as a file. Changing the artwork,
 caption, layout, styling or included frame produces a distinct composition.
-Sharing an existing public link is not a PNG export.
+Sharing an existing public link is not a PNG export and is available only to
+the signed-in meme owner in the application UI.
 
 **Save intent**:
 A visitor's request to add a particular meme to their collection. Continuing or
