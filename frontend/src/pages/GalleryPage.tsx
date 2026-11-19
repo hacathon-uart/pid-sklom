@@ -12,6 +12,7 @@ import { ArtworkCard, AuthorCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
+import { MemeHall } from "../components/MemeHall";
 import { PaintingViewer } from "../components/PaintingViewer";
 import { HallTitle, RopedOff, VelvetRope, Wall } from "../components/Museum";
 import { Tag } from "../components/Tag";
@@ -81,10 +82,12 @@ export function GalleryPage() {
         )}
       </section>
 
+      <MemeHall n={2} />
+
       {/* Each genre is its own hall with its own wall colour (W6). */}
       <Wall genre={genre} className="max-md:py-8 -mb-8 mt-10 pb-12 md:-mb-12 md:mt-16 md:pb-20">
         <div className="mb-6 flex flex-col items-start gap-6 lg:mb-10 lg:flex-row lg:items-end lg:justify-between">
-          <HallTitle n={2}>Картини</HallTitle>
+          <HallTitle n={3}>Картини</HallTitle>
           <div className="flex flex-wrap gap-2">
             <Tag className="min-h-11" active={genre === null} onClick={() => setGenre(null)}>Усі</Tag>
             {(Object.keys(GENRE_LABELS) as Genre[]).map((g) => (
