@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api/client";
 import { GENRE_LABELS, type ArtworkSummary, type Genre } from "../api/types";
-import { useApi } from "../api/useApi";
+import { useArtworkCatalogue } from "../api/useArtworkCatalogue";
+import { ArtworkPagination } from "../components/ArtworkPagination";
 import { Button } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
@@ -15,8 +16,7 @@ import { Tag } from "../components/Tag";
 export function ChoosePaintingPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [q, setQ] = useState("");
-  const [genre, setGenre] = useState<Genre | null>(null);
+  const { query: q, genre, page, result: catalogue, setQuery: setQ, setGenre, setPage } = useArtworkCatalogue();
   const [selected, setSelected] = useState<ArtworkSummary | null>(null);
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState<string | null>(null);
@@ -27,8 +27,11 @@ export function ChoosePaintingPage() {
   const selectionEpoch = useRef(0);
   const ownFirst = params.get("mode") === "own";
   const preselectedId = params.get("artwork");
-  // TODO(B): debounce search; pagination when the catalogue grows past ~50
-  const { data, error, loading, reload } = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
+  const { data, error, loading, reload } = catalogue;
+  const changePage = (next: number) => {
+    setPage(next);
+    document.getElementById("picker-artworks")?.focus();
+  };
 
   useEffect(() => {
     const epoch = ++selectionEpoch.current;
@@ -125,6 +128,7 @@ export function ChoosePaintingPage() {
         </div>
       )}
 
+      <div id="picker-artworks" role="region" tabIndex={-1} aria-label="Картини для вибору" className="scroll-mt-6 focus:outline-none">
       {loading ? (
         <Loading />
       ) : error ? (
@@ -138,6 +142,8 @@ export function ChoosePaintingPage() {
           ))}
         </div>
       )}
+      {!loading && !error && data && <ArtworkPagination page={page} total={data.total} onPageChange={changePage} />}
+      </div>
 
       <div className="mt-16 flex justify-center">
         <VelvetRope />

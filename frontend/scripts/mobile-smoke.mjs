@@ -39,7 +39,7 @@ await runBrowserCheck({
     const visit = async (path, selector = "h1") => { await navigate(path); await ready(selector); };
     const layout = async (label) => {
       const state = await evaluate(`(() => {
-        const nav = [...document.querySelectorAll('nav')].filter(n => n.getClientRects().length);
+        const nav = [...document.querySelectorAll('nav[aria-label="Основна навігація"]')].filter(n => n.getClientRects().length);
         const clipped = [...document.querySelectorAll('button,a,input,select,summary')].filter(e => {
           if (!e.getClientRects().length) return false;
           const r = e.getBoundingClientRect();
@@ -145,6 +145,47 @@ await runBrowserCheck({
       assert.equal(await firstVisibleAuthor(), expected, `${width}: carousel advances by visible column group`);
     }
     fixtures.state.override = null;
+
+    fixtures.state.catalogueCount = 53;
+    for (const [width, route, region] of [
+      [390, "/gallery", "#gallery-artworks"],
+      [1440, "/create/painting?mode=own", "#picker-artworks"],
+    ]) {
+      await setWidth(width);
+      await visit(route, `${region} button:has(img)`);
+      const firstArtwork = () => evaluate(`document.querySelector(${JSON.stringify(`${region} button img`)})?.alt`);
+      assert((await firstArtwork()).startsWith("Картина 1:"), `${route}: first page starts at artwork 1`);
+      await click("Наступна →");
+      await until(`document.querySelector(${JSON.stringify(`${region} button img`)})?.alt.startsWith('Картина 21:')`);
+      assert(await evaluate("document.body.innerText.includes('Картини 21–40 із 53 · Сторінка 2 з 3')"));
+      await click("Наступна →");
+      await until(`document.querySelector(${JSON.stringify(`${region} button img`)})?.alt.startsWith('Картина 41:')`);
+      assert.equal(await evaluate("new URLSearchParams(location.search).get('page')"), "3", `${route}: page is addressable`);
+      assert.equal(await evaluate(`document.querySelectorAll(${JSON.stringify(`${region} button:has(img)`)}).length`), 13);
+      await layout(`${width} ${route} last catalogue page`);
+      if (route === "/gallery") {
+        await evaluate("history.back()");
+        await until(`new URLSearchParams(location.search).get('page') === '2' && document.querySelector(${JSON.stringify(`${region} button img`)})?.alt.startsWith('Картина 21:')`);
+        await evaluate("history.forward()");
+        await until(`new URLSearchParams(location.search).get('page') === '3' && document.querySelector(${JSON.stringify(`${region} button img`)})?.alt.startsWith('Картина 41:')`);
+      } else {
+        assert.equal(await evaluate("new URLSearchParams(location.search).get('mode')"), "own", "Picker mode survives page changes");
+        await evaluate(`document.querySelector(${JSON.stringify(`${region} button:has(img)`)}).click()`);
+        await until("document.body.innerText.includes('Картина 41:') && document.body.innerText.includes('Згенерувати підпис')");
+        await layout("Selected artwork from last catalogue page");
+      }
+      if (route === "/gallery") {
+        await input("input[placeholder='Автор, картина або настрій']", "нічогонемає");
+        await until("document.body.innerText.includes('У цьому залі такої картини немає')");
+      } else {
+        await click("Пейзаж");
+        await until(`document.querySelector(${JSON.stringify(`${region} button img`)})?.alt.startsWith('Картина 2:')`);
+      }
+      assert.equal(await evaluate("new URLSearchParams(location.search).has('page')"), false, `${route}: filter returns to page one`);
+      assert.equal(await evaluate("document.querySelector('nav[aria-label=\"Сторінки картин\"]')"), null, `${route}: filter resets pagination`);
+      await layout(`${width} ${route} filtered catalogue`);
+    }
+    fixtures.state.catalogueCount = 3;
 
     await setWidth(390);
     fixtures.state.empty = true;

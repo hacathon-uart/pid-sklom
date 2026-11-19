@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 export function createMobileFixtures() {
   let origin;
   const state = {
-    override: null, empty: false, failCatalogue: false,
+    override: null, empty: false, failCatalogue: false, catalogueCount: 3,
     runs: new Map(), best: {}, answers: 0,
   };
   const artist = {
@@ -52,7 +52,7 @@ export function createMobileFixtures() {
     const { req, res, url, body, json } = context;
     if (state.override && await state.override(context)) return true;
     const signedIn = Boolean(req.headers.authorization?.startsWith("Bearer ey"));
-    if (/^\/fixture-[1234]\.svg$/.test(url.pathname)) {
+    if (/^\/fixture-\d+\.svg$/.test(url.pathname)) {
       const landscape = url.pathname.includes("-2");
       res.writeHead(200, { "Content-Type": "image/svg+xml" });
       res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="${landscape ? 640 : 320}" height="${landscape ? 320 : 480}" viewBox="0 0 640 480"><rect width="640" height="480" fill="#c9b08f"/><path d="M0 400L240 50L640 480H0" fill="#5e1f25"/></svg>`);
@@ -80,8 +80,12 @@ export function createMobileFixtures() {
     });
     if (url.pathname === "/api/artworks") {
       if (state.failCatalogue) return json({ detail: "Не вдалося завантажити колекцію" }, 503);
-      const items = state.empty || url.searchParams.get("q") === "нічогонемає" ? [] : [art(), art(2), art(3)];
-      return json({ items: url.searchParams.get("random") ? items.slice(1, 2) : items, total: items.length });
+      const ids = state.empty || url.searchParams.get("q") === "нічогонемає"
+        ? [] : Array.from({ length: state.catalogueCount }, (_, index) => index + 1)
+          .filter((id) => !url.searchParams.get("genre") || art(id).genre === url.searchParams.get("genre"));
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      return json({ items: (url.searchParams.get("random") ? ids.slice(1, 2) : ids.slice(offset, offset + limit)).map(art), total: ids.length });
     }
     const detail = url.pathname.match(/^\/api\/artworks\/([123])$/);
     if (detail) return json({

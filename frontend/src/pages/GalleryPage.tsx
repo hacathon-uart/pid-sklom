@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router";
 import { api } from "../api/client";
 import { GENRE_LABELS, type Genre } from "../api/types";
 import { useApi } from "../api/useApi";
+import { useArtworkCatalogue } from "../api/useArtworkCatalogue";
+import { ArtworkPagination } from "../components/ArtworkPagination";
 import { ArtworkCard, AuthorCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
 import { Icon } from "../components/Icon";
@@ -14,11 +16,13 @@ import { Tag } from "../components/Tag";
 
 export function GalleryPage() {
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
-  const [genre, setGenre] = useState<Genre | null>(null);
+  const { query: q, genre, page, result: artworks, setQuery: setQ, setGenre, setPage } = useArtworkCatalogue();
   const artists = useApi(() => api.artists(), []);
-  const artworks = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
   const allCount = useApi(() => api.artworks({ limit: 1 }), []);
+  const changePage = (next: number) => {
+    setPage(next);
+    document.getElementById("gallery-artworks")?.focus();
+  };
 
   // Match the visible columns: preserve the desktop three-author carousel step.
   const [authorStart, setAuthorStart] = useState(0);
@@ -85,6 +89,7 @@ export function GalleryPage() {
             ))}
           </div>
         </div>
+        <div id="gallery-artworks" role="region" tabIndex={-1} aria-label="Картини галереї" className="scroll-mt-6 focus:outline-none">
         {artworks.loading ? (
           <Loading />
         ) : artworks.error ? (
@@ -99,6 +104,10 @@ export function GalleryPage() {
             ))}
           </div>
         )}
+        {!artworks.loading && !artworks.error && artworks.data && (
+          <ArtworkPagination page={page} total={artworks.data.total} onPageChange={changePage} />
+        )}
+        </div>
         {/* The empty state already shows a rope, so the closing one only follows real results. */}
         {artworks.data && artworks.data.items.length > 0 && (
           <div className="mt-12 flex flex-col items-center gap-2">
