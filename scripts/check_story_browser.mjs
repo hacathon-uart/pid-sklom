@@ -120,6 +120,7 @@ await runBrowserCheck({
 
     // A -> B -> A cannot be protected by artwork ID alone.
     await pick(1);
+    await until(`${panel}?.textContent.includes('Історія 1')`);
     hold("/api/artworks/2");
     await pick(2);
     const staleSameArtwork = await held("/api/artworks/2");
@@ -136,6 +137,7 @@ await runBrowserCheck({
     assert(await evaluate(`${panel}.textContent.includes('найновіша') && !${panel}.querySelector('[role="alert"]')`));
 
     await pick(1);
+    await until(`${panel}?.textContent.includes('Історія 1')`);
     fail("/api/artworks/2");
     await pick(2);
     await until(`${panel}?.querySelector('[role="alert"]')`);
