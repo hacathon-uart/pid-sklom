@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -56,6 +57,16 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = "change-me"
     telegram_allowed_user_ids: str = ""
+    telegram_demo_invite_code: str = ""
+    telegram_demo_event_id: str = ""
+    telegram_demo_ends_at: datetime | None = None
+    telegram_demo_quota: int = 5
+    telegram_demo_global_quota: int = 200
+    telegram_demo_max_concurrent: int = 4
+
+    @property
+    def telegram_demo_enabled(self) -> bool:
+        return bool(self.telegram_demo_invite_code)
 
     @property
     def telegram_allowed_ids(self) -> frozenset[int]:
@@ -90,8 +101,22 @@ class Settings(BaseSettings):
                 r"[A-Za-z0-9_-]{1,256}", self.telegram_webhook_secret
             ):
                 raise RuntimeError("Telegram needs a non-default TELEGRAM_WEBHOOK_SECRET (1–256 letters, digits, _ or -)")
-            if not self.telegram_allowed_ids:
-                raise RuntimeError("Telegram needs a nonempty TELEGRAM_ALLOWED_USER_IDS tester allowlist")
+            if not self.telegram_allowed_ids and not self.telegram_demo_enabled:
+                raise RuntimeError("Telegram needs TELEGRAM_ALLOWED_USER_IDS or TELEGRAM_DEMO_INVITE_CODE")
+            if self.telegram_demo_enabled:
+                if self.data_backend != "supabase" or not (self.supabase_url and self.supabase_service_key):
+                    raise RuntimeError("Telegram demo access needs Supabase persistence")
+                if not re.fullmatch(r"[A-Za-z0-9_-]{20,64}", self.telegram_demo_invite_code):
+                    raise RuntimeError("TELEGRAM_DEMO_INVITE_CODE must be 20–64 URL-safe characters")
+                if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", self.telegram_demo_event_id) or len(self.telegram_demo_event_id) > 64:
+                    raise RuntimeError("TELEGRAM_DEMO_EVENT_ID must be a lowercase hyphenated identifier")
+                if (self.telegram_demo_ends_at is None or self.telegram_demo_ends_at.tzinfo is None
+                        or self.telegram_demo_ends_at.utcoffset() is None):
+                    raise RuntimeError("TELEGRAM_DEMO_ENDS_AT must include a timezone")
+                if not 1 <= self.telegram_demo_quota <= 100 or not 1 <= self.telegram_demo_global_quota <= 100000:
+                    raise RuntimeError("Telegram demo quotas must be positive and within configured bounds")
+                if not 1 <= self.telegram_demo_max_concurrent <= 100:
+                    raise RuntimeError("TELEGRAM_DEMO_MAX_CONCURRENT must be between 1 and 100")
         if self.environment == "production":
             if self.auth_mode == "stub" or self.include_unreviewed or self.data_backend != "supabase":
                 raise RuntimeError("Production requires Supabase data, reviewed content and non-stub authentication")

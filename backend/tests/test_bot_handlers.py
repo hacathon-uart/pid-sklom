@@ -118,6 +118,15 @@ def bot(monkeypatch):
     h._pending.clear()
     config = Settings(_env_file=None, telegram_allowed_user_ids="11, 22")
     monkeypatch.setattr(h, "get_settings", lambda: config)
+    async def allowed(user_id):
+        try:
+            return user_id in h.get_settings().telegram_allowed_ids
+        except RuntimeError:
+            return False
+    monkeypatch.setattr(h.demo_access, "allowed", allowed)
+    monkeypatch.setattr(h.demo_access, "enroll", AsyncMock(return_value="invalid"))
+    monkeypatch.setattr(h.demo_access, "begin", AsyncMock(return_value="started"))
+    monkeypatch.setattr(h.demo_access, "finish", AsyncMock())
     image = io.BytesIO()
     Image.new("RGB", (32, 32), "white").save(image, format="PNG")
     png = image.getvalue()
@@ -179,6 +188,32 @@ def assert_no_generation(bot):
 async def test_help_dispatch(bot, command):
     await bot.message(command)
     assert bot.transport.of(SendMessage)[-1].text == h.START
+    assert_no_generation(bot)
+
+
+@offline
+async def test_invite_start_enrolls_before_generation(bot):
+    bot.transport.calls.clear()
+    h.demo_access.enroll.return_value = "enrolled"
+    await bot.message("/start valid-demo-code", user=999)
+    h.demo_access.enroll.assert_awaited_once_with(999, "valid-demo-code")
+    assert bot.transport.of(SendMessage)[-1].text == h.START
+    assert_no_generation(bot)
+
+
+@offline
+async def test_invalid_invite_does_not_generate(bot):
+    await bot.message("/start wrong-code", user=999)
+    assert "недійсний" in bot.transport.of(SendMessage)[-1].text
+    assert_no_generation(bot)
+
+
+@offline
+async def test_demo_quota_rejected_before_generation(bot):
+    h.demo_access.begin.return_value = "limited"
+    await bot.message("коли дедлайн завтра")
+    assert "Ліміт демо" in bot.transport.of(SendMessage)[-1].text
+    h.demo_access.finish.assert_not_awaited()
     assert_no_generation(bot)
 
 
