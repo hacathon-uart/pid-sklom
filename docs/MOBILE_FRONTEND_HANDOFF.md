@@ -110,6 +110,18 @@ screenshots as production design approval).
 
 ## Assessment and remaining work
 
+### Desktop regression review (2026-11-19)
+
+The production build, desktop and 390 px account/draft/Save/share/export runners,
+story race runner, accessibility runner, and the 14-route responsive smoke suite
+pass against isolated loopback fixtures. The smoke suite now asserts that the
+selected-artwork panel keeps its desktop single-row arrangement and that the
+gallery carousel advances three authors at 1440 px (one at phone width). Both
+had shifted during the responsive implementation and were restored. At 1440 px,
+the original 88 px rail, 64 px page gutter, and core two-column editor/quiz
+layouts are retained. This is functional and geometry evidence, not a pixel-for-
+pixel approval of production fonts and artwork.
+
 | Priority | Status | Work and release evidence needed |
 |---|---|---|
 | Regression gate | **Passing locally** | Complete desktop and 390 px account/draft/Save/share/export runners; isolated story-race and accessibility checks; expanded mobile journeys. Hosted CI must still run on the final published candidate. |
