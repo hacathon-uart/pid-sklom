@@ -19,7 +19,8 @@ const RING = { cx: 300, cy: 106, rx: 262, ry: 74 };
 
 type Node = { x: number; y: number; px: number; py: number };
 
-export function WordWreath() {
+/** `paper` is the colour behind the wreath: blossoms and leaves are filled with it, so they hide the wire behind them. */
+export function WordWreath({ paper = "#FCFAF6" }: { paper?: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [soundOn, setSoundOn] = useState(false);
@@ -217,7 +218,7 @@ export function WordWreath() {
     <div className="relative">
       <div ref={wrapRef} className="relative mx-auto w-full" role="img" aria-label={`Вінок, з якого звисають слова: ${WORDS.join(", ").toLowerCase()}`}>
         <canvas ref={canvasRef} className="absolute inset-0 block w-full touch-pan-y" />
-        <Wreath />
+        <Wreath paper={paper} />
       </div>
       <button
         type="button"
@@ -238,7 +239,7 @@ export function WordWreath() {
  * leaves, clover heads and two bows. Shapes are filled with the page colour, so the front ones hide the wire
  * behind them; every line is drawn twice, a little offset, and broken up by a graphite-grain filter.
  */
-function Wreath() {
+function Wreath({ paper }: { paper: string }) {
   const items = useMemo(() => {
     type Kind = "blossom" | "bud" | "leaf" | "clover" | "bow";
     type Item = { kind: Kind; x: number; y: number; rot: number; s: number; depth: number; flip: boolean };
@@ -271,7 +272,7 @@ function Wreath() {
           <feComposite in="drawn" in2="mask" operator="in" />
         </filter>
       </defs>
-      <g filter="url(#ww-pencil)" fill="#FCFAF6" stroke="#2c2724" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <g filter="url(#ww-pencil)" style={{ fill: paper }} stroke="#2c2724" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         {/* the wire, sketched in three passes */}
         <path d={ring} fill="none" />
         <path d={ring} fill="none" transform="translate(1.4 -1) rotate(0.5 300 106)" opacity=".55" />

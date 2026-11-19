@@ -6,7 +6,7 @@ export const GAMES: Record<QuizGame, {
   no: string;
   title: string;
   level: string;
-  text: string;
+  text: string; // the rule, one short line on the lobby card
   prompt: string;
   guestNote: (limit: number) => string;
   guestShort: (limit: number) => string; // the same, short enough for a one-line catalogue card
@@ -15,7 +15,7 @@ export const GAMES: Record<QuizGame, {
     no: "I",
     title: "Хто автор?",
     level: "Легко",
-    text: "Картина й чотири художники. Вгадуйте, доки не помилитесь або доки не впізнаєте всю колекцію.",
+    text: "Подивіться на картину й оберіть її автора з чотирьох.",
     prompt: "Хто написав цю картину?",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "картина", "картини", "картин")}`,
     guestShort: (n) => `${n} ${plural(n, "картина", "картини", "картин")}`,
@@ -24,7 +24,7 @@ export const GAMES: Record<QuizGame, {
     no: "II",
     title: "Пари",
     level: "Середньо",
-    text: "Три картини і три художники. З’єднайте кожну картину з її автором — без жодної помилки.",
+    text: "З’єднайте три картини з їхніми авторами.",
     prompt: "З’єднайте картини з їхніми авторами",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "раунд", "раунди", "раундів")} по 3 пари`,
     guestShort: (n) => `${n} ${plural(n, "раунд", "раунди", "раундів")}`,
@@ -33,7 +33,7 @@ export const GAMES: Record<QuizGame, {
     no: "III",
     title: "Назва картини",
     level: "Складно",
-    text: "Найважче: згадайте, як називається картина. Грайте за всією колекцією або за одним автором.",
+    text: "Подивіться на картину й оберіть її справжню назву.",
     prompt: "Як називається ця картина?",
     guestNote: (n) => `Гостьова версія: ${n} ${plural(n, "картина", "картини", "картин")} з усієї колекції`,
     guestShort: (n) => `${n} ${plural(n, "картина", "картини", "картин")}`,

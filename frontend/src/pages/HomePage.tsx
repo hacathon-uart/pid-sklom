@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { LogoMark } from "../components/Museum";
+import { MemeDemo } from "../components/MemeDemo";
 import { MuseumWall } from "../components/MuseumWall";
 import { WordWreath } from "../components/WordWreath";
 import { Tag } from "../components/Tag";
@@ -56,7 +57,7 @@ export function HomePage() {
     <>
       <main id="main-content" tabIndex={-1}>
       <MuseumWall>
-        <LogoMark size={52} className="text-accent" />
+        <LogoMark size={84} className="text-[#2E2620] [filter:drop-shadow(0_1px_0_rgba(255,255,255,.7))_drop-shadow(0_4px_14px_rgba(250,245,236,.95))]" />
         <h1 className="t-logo mt-3 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
         <p className="t-quote mt-3 text-[#5a4a3c] md:!text-[1.9rem]">Мистецтво крізь жарти</p>
         <a href="#start" className="t-small mt-10 flex flex-col items-center gap-1 rounded-control px-3 py-2 text-[#5a4a3c] hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
@@ -76,6 +77,9 @@ export function HomePage() {
           )}
           </div>
         </div>}
+
+        <h2 className="t-h2 mt-16 mb-6 md:mt-20 md:mb-8">Фраза чи картина — і мем готовий</h2>
+        <MemeDemo />
 
         <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему – оберіть свій!</h2>
 
@@ -113,8 +117,7 @@ export function HomePage() {
 
       <section id="about" className="bg-surface px-[var(--page-gutter)] py-14 md:py-24">
         <div className="mx-auto max-w-[1000px]">
-          <WordWreath />
-          <div className="t-label mt-10">Про проєкт</div>
+          <div className="t-label">Про проєкт</div>
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
           {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
@@ -140,6 +143,9 @@ export function HomePage() {
       </main>
 
       <footer className="bg-muted px-[var(--page-gutter)] py-12">
+        <div className="mx-auto mb-10 max-w-[1000px]">
+          <WordWreath paper="var(--color-muted)" />
+        </div>
         <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">

@@ -6,9 +6,9 @@ import type { Genre } from "../api/types";
 export function LogoMark({ size = 40, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeLinecap="round" className={className} aria-hidden>
-      <rect x="20" y="12" width="60" height="76" strokeWidth={size < 48 ? 6 : 3.4} />
-      <path d="M34 62 60 30" strokeWidth={size < 48 ? 7 : 4} />
-      {size >= 48 && <path d="M44 70 66 43" strokeWidth="2" />}
+      <rect x="20" y="12" width="60" height="76" strokeWidth={size < 48 ? 6 : 5} />
+      <path d="M34 62 60 30" strokeWidth={size < 48 ? 7 : 6} />
+      {size >= 48 && <path d="M44 70 66 43" strokeWidth="3" />}
     </svg>
   );
 }

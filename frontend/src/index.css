@@ -80,6 +80,85 @@ html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + var(--picker-pa
 }
 .frame:hover .glass::after, a:focus-visible .glass::after, button:focus-visible .glass::after { transform: translateX(120%); }
 
+/* ---- Loupe: a small paper disc, like a wall label, laid over the picture. ---- */
+.loupe {
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
+  color: var(--color-text, #2E2620); background: rgba(252, 250, 246, .92);
+  box-shadow: 0 0 0 1px rgba(46, 38, 32, .18), 0 2px 6px rgba(46, 38, 32, .22);
+  transition: background-color .2s ease, color .2s ease, transform .2s ease;
+}
+.loupe-sm { width: 28px; height: 28px; }
+button.loupe::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; } /* 44px tap target */
+.loupe:hover, .group:hover .loupe, .group:focus-visible .loupe {
+  background: #FCFAF6; color: var(--color-accent, #8B6B4A); transform: scale(1.06);
+}
+
+/* ---- Landing demo (MemeDemo): an exhibit under a picture lamp that makes memes by itself. ---- */
+.demo-stage { position: absolute; inset: 0; overflow: hidden; background: #2E2620; }
+.demo-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: filter .35s ease, opacity .35s ease; }
+.demo-stage.is-flicking .demo-img { filter: blur(7px) saturate(.6) brightness(.75); }
+.demo-stage.is-searching .demo-img { filter: blur(2px) saturate(.8); }
+.demo-caption {
+  position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 14px; text-align: center; text-transform: uppercase;
+  font: 600 clamp(1.25rem, 5.5vw, 1.75rem)/1.06 var(--font-meme); color: #fff; overflow-wrap: anywhere; text-wrap: balance;
+  text-shadow: 2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 1.5px 1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px -1.5px 0 #000;
+}
+.demo-caption.is-stamped { animation: caption-land .38s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes caption-land { from { opacity: 0; transform: scale(1.6) rotate(-3deg); } to { opacity: 1; transform: none; } }
+
+/* Brass-free picture lamp: a dark bronze bar on a short arm, and the light it throws. */
+.picture-lamp {
+  position: absolute; top: 0; left: 50%; width: 46%; height: 11px; transform: translateX(-50%); border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(#5A4D40, #2E2620); box-shadow: 0 3px 6px rgba(46, 38, 32, .35);
+}
+.picture-lamp::before { /* arm down to the frame */
+  content: ""; position: absolute; top: 9px; left: 50%; width: 4px; height: 28px; transform: translateX(-50%);
+  background: linear-gradient(90deg, #2E2620, #5A4D40, #2E2620); border-radius: 2px;
+}
+.picture-lamp::after { /* light cone on the wall */
+  content: ""; position: absolute; top: 8px; left: -45%; right: -45%; height: 120px; pointer-events: none;
+  background: radial-gradient(ellipse 50% 100% at 50% 0%, rgba(255, 222, 150, .85), rgba(255, 222, 150, .25) 45%, transparent 75%);
+  opacity: 0; transition: opacity .5s ease;
+}
+.picture-lamp.is-lit::after { opacity: 1; }
+.lamp-glow { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.lamp-glow::before, .lamp-glow::after { content: ""; position: absolute; inset: 0; transition: opacity .6s ease; }
+.lamp-glow::before { background: rgba(28, 20, 12, .32); } /* lamp off: the painting waits in the dusk */
+.lamp-glow::after {  /* lamp on: warm light from above */
+  mix-blend-mode: soft-light; opacity: 0;
+  background: radial-gradient(ellipse 80% 65% at 50% -5%, rgba(255, 240, 205, 1), rgba(255, 225, 170, .35) 55%, transparent 80%);
+}
+.lamp-glow.is-lit::before { opacity: 0; }
+.lamp-glow.is-lit::after { opacity: 1; }
+
+.demo-typed { min-height: 2.6em; font: italic 600 clamp(1.6rem, 4.5vw, 2.1rem)/1.2 var(--font-heading); color: #2E2620; }
+.demo-caret { display: inline-block; width: 2px; height: .95em; margin-left: 3px; vertical-align: -.1em; background: var(--color-accent); animation: caret-blink 1s steps(1) infinite; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+.demo-found { animation: found-in .45s ease both; }
+@keyframes found-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---- Meme hall (MemeHall): hover / tap lands the caption on the glass, the label tells the truth. ---- */
+.hit .frame { transition: transform .25s ease, box-shadow .25s ease; }
+.hit-caption {
+  position: absolute; z-index: 1; left: 8px; right: 8px; bottom: 12px; text-align: center; text-transform: uppercase;
+  font: 600 clamp(1.1rem, 2.1vw, 1.5rem)/1.06 var(--font-meme); color: #fff; overflow-wrap: anywhere; text-wrap: balance;
+  text-shadow: 2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 1.5px 1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px -1.5px 0 #000;
+  opacity: 0; transform: scale(1.5) rotate(-3deg); transition: opacity .2s ease, transform .3s cubic-bezier(.2, 1.6, .4, 1);
+}
+.hit-what { display: grid; }
+.hit-what > * { grid-area: 1 / 1; transition: opacity .25s ease, transform .25s ease; }
+.hit-meaning { opacity: 0; transform: translateY(4px); color: var(--color-accent); }
+.hit.is-open .hit-caption, .hit:focus-visible .hit-caption { opacity: 1; transform: none; }
+.hit.is-open .hit-title, .hit:focus-visible .hit-title { opacity: 0; transform: translateY(-4px); }
+.hit.is-open .hit-meaning, .hit:focus-visible .hit-meaning { opacity: 1; transform: none; }
+.hit.is-open .frame { transform: translateY(-4px); }
+@media (hover: hover) {
+  .hit:hover .hit-caption { opacity: 1; transform: none; }
+  .hit:hover .hit-title { opacity: 0; transform: translateY(-4px); }
+  .hit:hover .hit-meaning { opacity: 1; transform: none; }
+  .hit:hover .frame { transform: translateY(-4px); }
+}
+
 /* ---- Cracked glass (G3): on save in the editor, and on favourite memes. ---- */
 .crack { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
 .crack path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -113,6 +192,7 @@ html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + var(--picker-pa
 .wall-landscape  { --wall: #1F3B2D; --wall-text: #EFE6D2; --wall-text-2: #C4CDB8; --spot: rgba(255,232,190,.2); }
 .wall-everyday   { --wall: #EFE6D6; }
 .wall-avantgarde { --wall: #1C2E4A; --wall-text: #EAE3D6; --wall-text-2: #BCC4D2; --spot: rgba(255,236,205,.2); }
+.wall-memes      { --wall: #2A231D; --wall-text: #F3EBDD; --wall-text-2: #C9B8A3; --spot: rgba(255,226,170,.16); }
 
 /* ---- Hall number (D2) ---- */
 .hall-no { font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: .9; color: var(--color-accent); }
@@ -128,18 +208,40 @@ html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + var(--picker-pa
 .ticket > div + div { border-left: 2px dashed color-mix(in srgb, currentColor 45%, transparent); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 600; font-size: 24px; }
 
 /* ======================================================================
- * Quiz (ADR 0008, quiz direction board): floor plan V3, catalogue cards Q3,
+ * Quiz (ADR 0008, quiz direction board): floor plan V3 and rank ladder, catalogue cards Q3,
  * curator's labels P1, certificate R1; records: catalogue card A3, cloakroom tags B1, tickets C4.
  * Components live in quiz/Museum.tsx and pages/Quiz*.tsx.
  * ====================================================================== */
 
-/* ---- Floor plan (V3) ---- */
+/* ---- Floor plan (V3): a museum leaflet plan; every room is a door into its game ---- */
 .plan-room { cursor: pointer; outline: none; }
-.plan-room .room-fill { transition: fill-opacity .25s ease; }
-.plan-room:hover .room-fill, .plan-room:focus-visible .room-fill { fill-opacity: .3; }
-.plan-room[aria-pressed="true"] .room-fill { fill-opacity: .42; }
-.plan-room:focus-visible .room-edge { stroke: var(--color-accent); stroke-width: 4; }
+.plan-room .room-tint { transition: fill-opacity .25s ease; }
+.plan-room .plaque { transition: transform .2s ease; transform-box: fill-box; }
+.plan-room .plaque-pill { transition: filter .2s ease; }
+.plan-room:hover .room-tint, .plan-room:focus-visible .room-tint { fill-opacity: .22; }
+.plan-room:hover .plaque, .plan-room:focus-visible .plaque { transform: translateY(-4px); }
+.plan-room:hover .plaque-pill, .plan-room:focus-visible .plaque-pill { filter: brightness(1.1); }
+.plan-room:focus-visible .room-edge { stroke-opacity: 1; }
+.plan-room:focus-visible { outline: 3px solid var(--color-accent); outline-offset: -3px; }
 .plan-room.closed { cursor: default; }
+.you-are-here { animation: you-pulse 2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes you-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(2.6); opacity: 0; } }
+
+/* ---- Rank scale beside the plan: percent · dot on one track · rank name; the track fills up to the best rank ---- */
+.rank-scale { --row: 2.75rem; --pct: 2.5rem; --gap: 12px; }
+.rank-scale::before, .rank-scale::after { /* the track, and its filled part from the bottom */
+  content: ""; position: absolute; left: calc(var(--pct) + var(--gap) + 5px); width: 2px; margin-left: -1px;
+  bottom: calc(var(--row) / 2); background: var(--color-line);
+}
+.rank-scale::before { top: calc(var(--row) / 2); }
+.rank-scale::after { height: calc((100% - var(--row)) * var(--filled)); background: var(--color-accent); }
+.rank-row { position: relative; display: grid; grid-template-columns: var(--pct) 10px 1fr; align-items: center; column-gap: var(--gap); height: var(--row); }
+.rank-pct { text-align: right; font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.rank-dot { position: relative; z-index: 1; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--color-accent-soft); background: var(--color-surface); }
+.rank-name { font-size: 0.906rem; overflow-wrap: anywhere; line-height: 1.2; font-weight: 500; }
+.rank-row.reached .rank-dot { border-color: var(--color-accent); background: var(--color-accent); }
+.rank-row.current .rank-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+.rank-row.current .rank-name { font-weight: 700; color: var(--color-accent); }
 
 /* ---- Catalogue card (Q3) ---- */
 .catalogue-card {
@@ -166,9 +268,22 @@ html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + var(--picker-pa
 .stamp-wrong { color: #7B1E2A; }
 @keyframes stamp-in { from { opacity: 0; transform: translateY(-50%) rotate(-9deg) scale(1.6); } to { opacity: 1; transform: translateY(-50%) rotate(-9deg) scale(1); } }
 
+/* ---- Verdict on a revealed wall label: green and stamped when right, burgundy when wrong ---- */
+.wall-label.verdict { position: relative; overflow: hidden; } /* the stamp lands from 1.6× scale: keep it inside the label, never past a phone screen */
+.verdict-right { background: #F2F7F1; box-shadow: 0 0 0 2px #2B6A3E, 0 2px 6px rgba(46,38,32,.14); }
+.verdict-wrong { background: #FBF1F1; box-shadow: 0 0 0 2px #7B1E2A, 0 2px 6px rgba(46,38,32,.14); }
+.verdict .stamp { top: auto; bottom: 2px; right: 10px; padding: 1px 6px; font-size: 10.5px; background: inherit; } /* sits in the free right end of the inventory row */
+
 /* ---- Curator's labels on hooks (P1) ---- */
 .label-hook { width: 2px; height: 14px; margin: 0 auto; background: #8a6a2c; }
-.label-tray { background: #2E2620; color: #EFE6D8; }
+.label-tray { background: color-mix(in srgb, var(--color-muted) 60%, transparent); border: 1.5px dashed var(--color-accent-soft); transition: border-color .15s ease, background-color .15s ease; }
+.label-tray.drop-over { border-color: var(--color-accent); background: var(--color-muted); }
+/* «Пари» paintings: full width on phones; from a tablet up sized by the screen height, so a round fits a laptop screen */
+.pairs-painting { width: 100%; }
+@media (min-width: 768px) { .pairs-painting { width: min(100%, calc((100vh - 460px) * 0.8)); min-width: 180px; } }
+.pair-label { cursor: grab; transition: transform .15s ease, box-shadow .15s ease; }
+.pair-label:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(46,38,32,.18); }
+.pair-label:active { cursor: grabbing; }
 
 /* ---- Catalogue record card (A3): dotted leaders between key and value ---- */
 .record-card { display: block; font-size: 15px; cursor: default; padding: 26px 20px 16px; }
@@ -232,6 +347,11 @@ html { scroll-padding-bottom: calc(var(--app-bottom-clearance) + var(--picker-pa
   .glass::after { transition: none; }
   .crack-animate, .crack-fleeting { animation: none; }
   .wall { transition: none; }
-  .catalogue-card, .plan-room .room-fill { transition: none; }
+  .catalogue-card, .plan-room .room-tint, .plan-room .plaque { transition: none; }
+  .you-are-here { animation: none; }
   .stamp { animation: none; }
+  .loupe { transition: none; }
+  .hit .frame, .hit-caption, .hit-what > * { transition: none; }
+  .demo-img, .picture-lamp::after, .lamp-glow::before, .lamp-glow::after { transition: none; }
+  .demo-caption.is-stamped, .demo-caret, .demo-found { animation: none; }
 }

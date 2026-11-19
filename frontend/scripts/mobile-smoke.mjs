@@ -207,19 +207,19 @@ await runBrowserCheck({
       await visit(`/quiz/${game}`, game === "pairs" ? "button[aria-label='Картина 1']" : "button.catalogue-card");
       for (let round = 0; round < rounds; round++) {
         if (game === "pairs") {
-          await until("document.querySelector('button[aria-label=\"Картина 1\"]:not(:disabled)') && !document.querySelector('button[aria-label^=\"Зняти\"]')");
+          await until("document.querySelector('button[aria-label=\"Картина 1\"]:not(:disabled)') && !document.querySelector('[aria-label^=\"Зняти\"]')");
           for (let i = 0; i < 3; i++) {
             await evaluate(`document.querySelector('button[aria-label="Картина ${i + 1}"]').click()`);
             await until(`document.querySelector('button[aria-label="Картина ${i + 1}"]').getAttribute('aria-pressed') === 'true'`);
             await evaluate(`(() => {
               const groups = [...document.querySelectorAll('.label-tray')].filter(e => e.getClientRects().length);
-              const options = groups.flatMap(g => [...g.querySelectorAll('button')]).filter(b => b.getClientRects().length && !b.disabled && b.querySelector('.wl-who'));
+              const options = groups.flatMap(g => [...g.querySelectorAll('[role=button]')]).filter(b => b.getClientRects().length && b.querySelector('.wl-who'));
               if (!options[0]) throw new Error('No available curator label');
               options[0].click();
             })()`);
-            await until(`document.querySelectorAll('button[aria-label^="Зняти"]').length === ${i + 1}`);
+            await until(`document.querySelectorAll('[aria-label^="Зняти"]').length === ${i + 1}`);
           }
-          await click("Перевірити");
+          // no «check» button: the third hung label submits the round
         } else {
           await until("document.querySelector('button.catalogue-card:not(:disabled)')");
           await evaluate("document.querySelector('button.catalogue-card:not(:disabled)').click()");
@@ -241,7 +241,7 @@ await runBrowserCheck({
       }
       await certificateClearance();
       if (!signedIn) {
-        assert(await evaluate("document.body.innerText.includes('Далі — лише для відвідувачів з акаунтом.')"), "Guest run stops at its allowance");
+        assert(await evaluate("document.body.innerText.includes('Жодної помилки!') && !!document.querySelector('.temp-stamp')"), "Guest run stops at its allowance");
         for (const width of [320, 390, 1440]) {
           await setWidth(width);
           await evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))");

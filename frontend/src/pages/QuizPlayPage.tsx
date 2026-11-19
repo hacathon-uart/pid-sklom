@@ -1,5 +1,5 @@
 /** One quiz run (ADR 0008): question → answer → reveal with the painting's story → next, until the run ends. */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type DragEvent, type ReactNode } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError } from "../api/client";
 import type { QuizGame, QuizQuestion, QuizResult, QuizReveal, QuizRun } from "../api/types";
@@ -16,6 +16,15 @@ import { CertificateCrest, CertificateFrame, InkStamp, OrnamentRule, Signature }
 import { CloakroomTag, percent, rankName, share } from "../quiz/Museum";
 
 const WRONG = "#7b1e2a"; // the velvet-rope red
+const RIGHT = "#2b6a3e"; // the «ПРАВИЛЬНО» stamp green
+
+/** No drag on touch screens: phones tap a painting, then an author. */
+const PAIRS_HINT = (
+  <>
+    <span className="md:hidden">Оберіть картину, потім — її автора.</span>
+    <span className="hidden md:inline">Перетягніть автора під його картину.</span>
+  </>
+);
 
 export function QuizPlayPage() {
   const { game = "" } = useParams();
@@ -92,7 +101,7 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
   const page = (children: ReactNode) => (
     <Page
       title={meta.title}
-      subtitle={scopeName ? `Картини: ${scopeName}` : undefined}
+      subtitle={game === "pairs" ? (!showFinal && !result && !run?.score ? PAIRS_HINT : undefined) : scopeName ? `Картини: ${scopeName}` : undefined}
       back={<Link to="/quiz" className="t-small inline-flex items-center gap-2 text-text-secondary hover:text-accent"><Icon name="arrowLeft" size={16} /> Усі зали</Link>}
       actions={!showFinal && header}
     >
@@ -111,18 +120,17 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     );
   }
 
-  const number = run.score + (result ? (result.correct ? 0 : 1) : 1);
   return page(
     game === "pairs"
-      ? <PairsQuestion key={question.images.map((i) => i.image_url).join()} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} number={number} />
-      : <SingleQuestion key={question.images[0].image_url} game={game} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} number={number} />,
+      ? <PairsQuestion key={question.images.map((i) => i.image_url).join()} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} />
+      : <SingleQuestion key={question.images[0].image_url} game={game} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} />,
   );
 }
 
 // ---------- «Хто автор?» and «Назва картини» ----------
 
-function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number }: {
-  game: QuizGame; question: QuizQuestion; result: QuizResult | null; busy: boolean; number: number;
+function SingleQuestion({ game, question, result, busy, onAnswer, onNext }: {
+  game: QuizGame; question: QuizQuestion; result: QuizResult | null; busy: boolean;
   onAnswer: (answer: Record<string, string>) => void; onNext: () => void;
 }) {
   const reveal = result?.reveals[0];
@@ -149,8 +157,7 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
         crack={reveal && !reveal.correct ? "animate" : null}
       />
       <div>
-        <div className="t-label">Питання {number}</div>
-        <h2 className="t-h2 mt-2">{GAMES[game].prompt}</h2>
+        <h2 className="t-h2">{GAMES[game].prompt}</h2>
         {/* Q3 · typed index cards from the museum catalogue; the right one gets a «ВІРНО» stamp. */}
         <div className="mt-6 space-y-4" role="group" aria-label="Картки каталогу: варіанти відповіді">
           {question.options.map((option, index) => {
@@ -172,7 +179,6 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
             );
           })}
         </div>
-        {!reveal && <p className="t-caption mt-3 text-text-secondary">Підказка: можна відповідати клавішами 1–{question.options.length}.</p>}
         {reveal && result && <RevealCard reveal={reveal} result={result} onNext={onNext} />}
       </div>
     </div>
@@ -183,11 +189,8 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext, number
 function RevealCard({ reveal, result, onNext }: { reveal: QuizReveal; result: QuizResult; onNext: () => void }) {
   const a = reveal.artwork;
   return (
-    <div className="mt-8" role="status">
-      <div className="t-label" style={reveal.correct ? undefined : { color: WRONG }}>
-        {reveal.correct ? "Правильно! Ось етикетка картини" : "Ой, ні. Ось етикетка картини"}
-      </div>
-      <div className="wall-label mt-3 !p-5">
+    <div className="mt-8" role="status" aria-label={reveal.correct ? "Правильно" : "Неправильно"}>
+      <div className={`wall-label verdict ${reveal.correct ? "verdict-right" : "verdict-wrong"} !p-5`}>
         <Link to={`/artists/${a.artist.slug}`} className="wl-who hover:text-accent">{a.artist.name} →</Link>
         <div className="wl-what !text-[22px]">«{a.title}»{a.year ? `, ${a.year}` : ""}</div>
         {reveal.fact && <p className="t-small mt-3">{reveal.fact}</p>}
@@ -208,24 +211,40 @@ function NextButton({ result, onNext }: { result: QuizResult; onNext: () => void
 
 // ---------- «Пари» ----------
 
-function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
-  question: QuizQuestion; result: QuizResult | null; busy: boolean; number: number;
+
+function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
+  question: QuizQuestion; result: QuizResult | null; busy: boolean;
   onAnswer: (answer: Record<string, string>) => void; onNext: () => void;
 }) {
   const [pairs, setPairs] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(question.images[0].key);
+  const [over, setOver] = useState<string | null>(null); // drop target under the dragged label: an image key or "tray"
   const labels = Object.fromEntries(question.options.map((o) => [o.key, o.label]));
   const revealed = (key: string) => result?.reveals.find((r) => r.image_key === key);
   const complete = question.images.every((i) => pairs[i.key]);
 
-  const assign = (option: string) => {
+  // No «check» button: once the third label is hung the round is checked, after a beat to see it hang.
+  // Moving a label within that beat restarts it.
+  useEffect(() => {
+    if (!complete || result || busy) return;
+    const timer = window.setTimeout(() => onAnswer(pairs), 450);
+    return () => window.clearTimeout(timer);
+  }, [complete, result, busy, pairs, onAnswer]);
+
+  /** Hang a label under a painting. A label already there swaps places with it, or goes back to the tray. */
+  const place = (option: string, image: string) => {
     if (busy || result) return;
-    const target = selected ?? question.images.find((i) => !pairs[i.key])?.key;
-    if (!target) return;
-    const nextPairs = Object.fromEntries(Object.entries(pairs).filter(([, o]) => o !== option));
-    nextPairs[target] = option;
+    const from = Object.keys(pairs).find((k) => pairs[k] === option);
+    const displaced = pairs[image];
+    const nextPairs = Object.fromEntries(Object.entries(pairs).filter(([k, o]) => o !== option && k !== image));
+    nextPairs[image] = option;
+    if (from && displaced && from !== image) nextPairs[from] = displaced;
     setPairs(nextPairs);
     setSelected(question.images.find((i) => !nextPairs[i.key])?.key ?? null);
+  };
+  const assign = (option: string) => {
+    const target = selected ?? question.images.find((i) => !pairs[i.key])?.key;
+    if (target) place(option, target);
   };
   const unassign = (image: string) => {
     if (busy || result) return;
@@ -233,75 +252,71 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
     setSelected(image);
   };
 
-  const optionButtons = () => question.options.map((option) => {
-    const used = Object.values(pairs).includes(option.key);
-    return (
-      <button
-        key={option.key}
-        type="button"
-        disabled={used || busy || !selected}
-        onClick={() => assign(option.key)}
-        className={`wall-label min-h-11 min-w-0 break-words text-left transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${used ? "opacity-30" : "hover:-translate-y-0.5"}`}
-      >
-        <span className="wl-who">{option.label}</span>
-      </button>
-    );
-  });
+  // drag and drop: labels carry their option key; paintings and the tray take them
+  const drag = (option: string) => (e: DragEvent) => {
+    e.dataTransfer.setData("text/plain", option);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const target = (key: string, onDrop: (option: string) => void) => result ? {} : {
+    onDragOver: (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (over !== key) setOver(key); },
+    onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null); },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      setOver(null);
+      const option = e.dataTransfer.getData("text/plain");
+      if (option in labels) onDrop(option);
+    },
+  };
 
   return (
     <div>
-      <div className="t-label">Раунд {number}</div>
-      <p className="t-body mt-2 text-text-secondary">
-        {result
-          ? "Ось як було насправді."
-          : "Повісьте етикетки під картини: оберіть картину, а потім етикетку з лотка. Натисніть на повішену етикетку, щоб зняти її."}
-      </p>
       {/* P1 · blank wall labels from the curator's tray, hung on hooks under the paintings */}
-      <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6 lg:gap-10">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6 lg:gap-8">
         {question.images.map((image, index) => {
           const reveal = revealed(image.key);
           const chosen = pairs[image.key];
+          const active = !result && (selected === image.key || over === image.key);
           return (
-            <div key={image.key} className="flex min-w-0 flex-col break-words">
+            <div key={image.key} className="flex min-w-0 flex-col items-center break-words" {...target(image.key, (option) => place(option, image.key))}>
               <button
                 type="button"
                 aria-label={`Картина ${index + 1}`}
                 aria-pressed={selected === image.key}
                 disabled={busy || !!result}
                 onClick={() => setSelected(image.key)}
-                className="block text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                className="pairs-painting block text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
-                <Artwork src={image.image_url} alt={`Картина ${index + 1} з вікторини`} aspect="4/5" selected={!result && selected === image.key}
+                <Artwork src={image.image_url} alt={`Картина ${index + 1} з вікторини`} aspect="4/5" selected={active}
                   crack={reveal && !reveal.correct ? "animate" : null} />
               </button>
-              <span className="t-small mt-3 text-center">Картина {index + 1}{!result && selected === image.key ? " · Обрано" : ""}</span>
               <span className="label-hook mt-3" aria-hidden />
-              {reveal ? (
-                <div className="wall-label" style={reveal.correct ? undefined : { boxShadow: `0 0 0 2px ${WRONG}` }}>
-                  {!reveal.correct && <div className="wl-who" style={{ color: WRONG, textDecoration: "line-through" }}>{labels[chosen] ?? "—"}</div>}
-                  <div className="wl-who">{reveal.correct ? "✓ " : ""}{labels[reveal.right]}</div>
-                  <div className="wl-what">«{reveal.artwork.title}»{reveal.artwork.year ? `, ${reveal.artwork.year}` : ""}</div>
-                  <div className="wl-inv">Інв. № {inventoryNo(reveal.artwork.id)}</div>
-                </div>
-              ) : chosen ? (
-                <button type="button" disabled={busy} onClick={() => unassign(image.key)} className="wall-label min-h-11 text-left transition disabled:opacity-50 hover:-translate-y-0.5" aria-label={`Зняти етикетку: ${labels[chosen]}`} title="Зняти етикетку">
-                  <div className="wl-who">{labels[chosen]}</div>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  aria-pressed={selected === image.key}
-                  onClick={() => setSelected(image.key)}
-                  className={`flex min-h-[64px] items-center justify-center border-2 border-dashed px-4 py-2 text-center transition t-small ${selected === image.key ? "border-accent text-accent" : "border-line text-text-secondary"}`}
-                >
-                  {selected === image.key ? "Тепер оберіть етикетку нижче ↓" : "Повісьте етикетку"}
-                </button>
-              )}
+              <div className="pairs-painting">
+                {reveal ? (
+                  <div className={`wall-label verdict ${reveal.correct ? "verdict-right" : "verdict-wrong"}`}>
+                    <span className={`stamp ${reveal.correct ? "stamp-right" : "stamp-wrong"}`}>{reveal.correct ? "ПРАВИЛЬНО" : "ПОМИЛКА"}</span>
+                    {!reveal.correct && <div className="wl-who line-through" style={{ color: WRONG }}>{labels[chosen] ?? "—"}</div>}
+                    <div className="wl-who" style={reveal.correct ? { color: RIGHT } : undefined}>{reveal.correct ? "✓ " : "→ "}{labels[reveal.right]}</div>
+                    <div className="wl-what">«{reveal.artwork.title}»{reveal.artwork.year ? `, ${reveal.artwork.year}` : ""}</div>
+                    <div className="wl-inv">Інв. № {inventoryNo(reveal.artwork.id)}</div>
+                  </div>
+                ) : chosen ? (
+                  <DragLabel label={labels[chosen]} ariaLabel={`Зняти етикетку: ${labels[chosen]}`} onDragStart={drag(chosen)} onClick={() => unassign(image.key)} className="w-full" title="Перетягніть або натисніть, щоб зняти" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelected(image.key)}
+                    className={`flex min-h-[46px] w-full items-center justify-center border-2 border-dashed px-4 py-2 text-center transition t-small ${active ? "border-accent text-accent" : "border-line text-text-secondary"}`}
+                  >
+                    {active ? "Автор ↓" : "?"}
+                  </button>
+                )}
+              </div>
+              {/* phones: no drag on touch, and the tray is far below, so the free labels come up under the chosen painting */}
               {!result && selected === image.key && (
-                <div className="label-tray mt-4 grid gap-3 rounded-card p-4 md:hidden" role="group" aria-label={`Етикетки для картини ${index + 1}`}>
-                  <span className="t-label !text-[#C9B08F]">Оберіть етикетку</span>
-                  {optionButtons()}
+                <div className="label-tray mt-4 grid w-full gap-3 rounded-card p-4 md:hidden" role="group" aria-label={`Автори для картини ${index + 1}`}>
+                  {question.options.filter((o) => !Object.values(pairs).includes(o.key)).map((option) => (
+                    <DragLabel key={option.key} label={option.label} onClick={() => assign(option.key)} />
+                  ))}
                 </div>
               )}
             </div>
@@ -310,17 +325,26 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
       </div>
 
       {!result && (
-        <div className="label-tray mt-6 flex flex-wrap items-center gap-4 rounded-card p-4 md:mt-10 md:px-6 md:py-5">
-          <span className="t-label !text-[#C9B08F]">Лоток куратора</span>
-          <div className="hidden flex-wrap gap-4 md:flex">{optionButtons()}</div>
-          <Button className="min-h-11 w-full md:ml-auto md:w-auto" disabled={!complete || busy} onClick={() => onAnswer(pairs)}>{busy ? "Перевіряємо…" : "Перевірити"}</Button>
+        <div
+          className={`label-tray mt-8 hidden flex-wrap items-center justify-center gap-4 rounded-card px-6 py-4 md:flex ${over === "tray" ? "drop-over" : ""}`}
+          {...target("tray", (option) => {
+            const image = Object.keys(pairs).find((k) => pairs[k] === option);
+            if (image) unassign(image);
+          })}
+        >
+          {question.options.map((option) => {
+            const used = Object.values(pairs).includes(option.key);
+            return (
+              <DragLabel key={option.key} label={option.label} onDragStart={drag(option.key)} onClick={() => assign(option.key)} className={used ? "invisible" : ""} />
+            );
+          })}
         </div>
       )}
       {result && (
         <div className="mt-8 flex flex-col items-stretch gap-4 rounded-card bg-muted p-5 md:flex-row md:items-center md:gap-6" role="status">
           <div className="flex-1">
-            <div className="t-label" style={result.correct ? undefined : { color: WRONG }}>
-              {result.correct ? "Усі етикетки на своїх місцях!" : "Одна з етикеток висить не там"}
+            <div className="t-label" style={{ color: result.correct ? RIGHT : WRONG }}>
+              {result.correct ? "Усе правильно!" : "Є помилка"}
             </div>
             {result.reveals[0]?.fact && <p className="t-small mt-2">{result.reveals.find((r) => !r.correct)?.fact || result.reveals[0].fact}</p>}
           </div>
@@ -331,12 +355,33 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext, number }: {
   );
 }
 
+/** A wall label you can drag, or click (Enter/Space) instead. A div, not a button: Firefox never starts a drag from a button. */
+function DragLabel({ label, ariaLabel, onDragStart, onClick, className = "", title }: {
+  label: string; ariaLabel?: string; onDragStart?: (e: DragEvent) => void; onClick: () => void; className?: string; title?: string;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable={!!onDragStart}
+      aria-label={ariaLabel}
+      title={title}
+      onDragStart={onDragStart}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className={`pair-label wall-label min-h-11 min-w-0 break-words text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${className}`}
+    >
+      <span className="wl-who">{label}</span>
+    </div>
+  );
+}
+
 // ---------- the end of a run ----------
 
 const ENDINGS = {
   mistake: { label: "Гру завершено", text: "" },
-  complete: { label: "Колекцію пройдено!", text: "Ви впізнали всі картини, які є у вікторині зараз. Нові з’являться, щойно колекція поповниться." },
-  guest_limit: { label: "Гостьову версію пройдено", text: "Жодної помилки! Далі — лише для відвідувачів з акаунтом." },
+  complete: { label: "Колекцію пройдено!", text: "Ви впізнали всю колекцію!" },
+  guest_limit: { label: "Гостьову версію пройдено", text: "Жодної помилки!" },
 } as const;
 
 /** R1 · a museum certificate with a rank and a wax seal; guests get it stamped «ТИМЧАСОВЕ». */
@@ -407,7 +452,7 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
       </CertificateFrame>
       {guest && (
         <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
-          <p className="t-body">Посвідчення тимчасове. Увійдіть, щоб грати без обмежень, обирати автора і зберегти звання в профілі.</p>
+          <p className="t-body">Увійдіть, щоб грати без обмежень і зберегти звання.</p>
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}
