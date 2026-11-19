@@ -378,6 +378,10 @@ try {
     assert.equal(await evaluate("document.querySelector('dialog[open], [role=\"dialog\"]')"), null);
   };
   if (process.env.AUTH_BROWSER_CASE === "share-link") {
+    const canvasReady = async (artworkId) => {
+      await until(`window.Konva?.stages.some((stage) => stage.getAttr('exportReady') &&
+        stage.findOne('.bg')?.image()?.src === ${JSON.stringify(`${origin}/painting-${artworkId}.png`)})`);
+    };
     await navigate("/create/painting/1/own");
     await editCaption("Link-only sharing");
     assert.equal(await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]')"), null,
@@ -388,7 +392,7 @@ try {
     await until("location.pathname === '/me' && document.body.innerText.includes('Вийти')");
     await navigate("/create/painting/1/own");
     await editCaption("Link-only sharing");
-    await evaluate("document.fonts.ready");
+    await canvasReady(1);
     await exportImage();
     await until("window.exportedPNGs.length === 1");
     assert.equal(state.saves, 0, "Download must not save the meme");
@@ -420,7 +424,7 @@ try {
     for (const [returnToSource, failResponse] of [[false, false], [true, false], [false, true]]) {
       await navigate(`/create/result?q=share-switch-${returnToSource}-${failResponse}`);
       await until("document.querySelector('[aria-label=\"Поділитися посиланням\"]') !== null");
-      await evaluate("document.fonts.ready");
+      await canvasReady(1);
       await exportImage();
       await until("window.exportedPNGs.length === 1");
       await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
@@ -429,6 +433,7 @@ try {
       await until("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]') !== null");
       assert.equal(await evaluate("document.querySelector('[aria-label=\"Закрити посилання\"]') !== null"), false,
         "Switching artwork must dismiss the previous artwork's share panel");
+      await canvasReady(2);
       await exportImage();
       await until("window.exportedPNGs.length === 2");
       state.holdNextSave = true;
@@ -447,6 +452,7 @@ try {
         await click("Інша картина");
         await until("document.querySelector('[aria-label=\"Зберегти в «Мої меми»\"]') !== null");
       } else {
+        await canvasReady(1);
         await evaluate("document.querySelector('[aria-label=\"Поділитися посиланням\"]').click()", true);
         await until("window.sharedLinks.length === 2");
         await until("document.querySelector('[role=\"status\"] a[target=\"_blank\"]') !== null");
