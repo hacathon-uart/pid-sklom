@@ -12,7 +12,8 @@ The responsive foundation is implemented; the following milestones are the
 remaining execution order, not a request to repeat Steps 0-5 below.
 Current execution evidence is recorded in the handoff: R1-R3 are implemented
 and locally verified; R4/R5 have automated/content improvements but retain human
-device/visual gates. R6 is blocked; R7 remains a post-release follow-up.
+device/visual gates. R6 is blocked; catalogue pagination in R7 is implemented,
+while measured mobile performance remains a post-release follow-up.
 This plan does not authorize publishing, merging, or deploying.
 
 | Milestone | Priority | Depends on | Deliverable and exit gate |
@@ -23,7 +24,7 @@ This plan does not authorize publishing, merging, or deploying.
 | R4. Validate access and native interaction | Release requirement | R3 | Keyboard, real text enlargement, iOS Safari and Android Chrome acceptance evidence is recorded; any fixes rerun the affected automated checks. |
 | R5. Focused visual/content polish | Release requirement | Existing baseline | Reviewed phone/desktop reference pairs, readable action hierarchy and shared states, verified public links; changes pass R3 and R4 before release. |
 | R6. Release checkpoint | Release gate | R1, R2, R3, R4, R5 | Required CI passes for the final candidate; authorized release and production smoke checks confirm the intended frontend revision. |
-| R7. Measured follow-ups | After release | R6 | Profile mobile loading before optimization; add catalogue pagination before the current 50-item limit hides approved artworks. |
+| R7. Measured follow-ups | After release | R6 | Catalogue pagination is implemented; profile mobile loading before optimization and reassess the 20-artwork page size with the full collection. |
 
 R1, R2, and reference review for R5 can proceed independently. Complete R3
 against the resulting behavior, then test that candidate on devices in R4.
@@ -124,8 +125,8 @@ evidence; do not treat an earlier device pass as approval of a different build.
 - After release, measure loading on a representative phone and connection.
   The baseline main chunk is about 564 kB (166 kB gzip), and the editor chunk
   is about 348 kB (107 kB gzip). Optimize the measured bottleneck, not just
-  the warning threshold. Plan search debouncing and pagination before the
-  approved catalogue outgrows the current 50-artwork requests.
+  the warning threshold. Measure search latency before adding debounce; the
+  gallery and picker now use 20-artwork pages.
 
 ### Design skill usage
 

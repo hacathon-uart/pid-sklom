@@ -17,7 +17,7 @@ The same document retains the original implementation sequence for context.
 | R4 | Automated representative text actually doubles; narrow reflow, real keyboard traversal/focus, skip link, selected-picker obstruction, guest-ticket Escape/focus return, non-drag presets and reduced motion pass. This exposed and fixed real heading/ticket/story/preset overflow, an unfocusable skip target, decorative SVG clone tab stops and selected-panel focus obstruction. Real devices, real browser zoom, screen readers and final contrast/visual acceptance remain open. |
 | R5 | Footer now links the verified production bot page (with restricted-access copy), repository and gallery instead of stale/placeholder items. Content-sized caption presets avoid unnecessary word splitting, and the certificate reserves space so its decorative stamp does not cover copy. Twenty-five local fixture reference screenshots cover home, selected picker, editor/controls/story, errors and certificates at 320/390/1440 px. They are geometry references, not final production-art/font approval. |
 | R6 | Implementation recorded in granular local commits. Release remains blocked on the human gates below, final hosted CI and explicit publishing/deployment authorization. No push, merge, production API call or deployment was performed. |
-| R7 | Deliberately deferred until release/profile evidence; the existing 50-artwork catalogue limit is unchanged. |
+| R7 | Catalogue pagination now uses 20-artwork pages in gallery and picker; mobile loading measurements remain deferred until device evidence. |
 
 The mobile harness intercepts external font CSS and supplies the existing bundled
 Oswald font. Other named font controls are exercised with browser fallbacks:
@@ -122,6 +122,17 @@ the original 88 px rail, 64 px page gutter, and core two-column editor/quiz
 layouts are retained. This is functional and geometry evidence, not a pixel-for-
 pixel approval of production fonts and artwork.
 
+### Catalogue pagination (2026-11-19)
+
+The gallery and painting picker now share URL-backed search, genre, and page
+state. They request 20 artworks at a time using the existing backend
+`limit`/`offset` contract. Previous/Next controls show the item range and total;
+filter changes return to page one while preserving unrelated picker parameters
+such as `artwork` and `mode`. Browser history restores the visited page. The
+local browser fixture checks a 53-artwork catalogue at phone and desktop widths,
+including the last page, filter resets, and selection from that page. The API
+contract test checks distinct offset slices and stable totals.
+
 | Priority | Status | Work and release evidence needed |
 |---|---|---|
 | Regression gate | **Passing locally** | Complete desktop and 390 px account/draft/Save/share/export runners; isolated story-race and accessibility checks; expanded mobile journeys. Hosted CI must still run on the final published candidate. |
@@ -129,10 +140,10 @@ pixel approval of production fonts and artwork.
 | Release gate | **Automated locally; human pending** | Critical journeys now run against deterministic fixtures, including full quizzes, allowances, OAuth, saved/public views and auth-disabled navigation. Repeat native interactions and real provider/content acceptance on the final candidate without unnecessary AI spend or production writes. |
 | Design gate | **Partial** | Review generated phone/desktop reference pairs with production artwork and loaded UI/meme fonts; approve long text, story, certificate and error states. No mobile Figma frames or designer approval are implied by fixture screenshots. |
 | Accessibility gate | **Partial** | Automated 200% representative text, effective narrow-viewport reflow and keyboard checks pass. Check actual browser zoom/text settings, screen readers, contrast and focus with native overlays on real devices. |
-| Follow-up | **TBD** | Gallery and picker still request at most 50 artworks. Decide pagination/search behavior when the approved catalogue exceeds that limit. This predates the mobile change. |
+| Follow-up | **Implemented locally** | Gallery and picker page the catalogue. Reassess page size and search latency with the full approved collection on a real device. |
 | Follow-up | **TBD** | Measure mobile loading on a representative device. Route splitting reduced the initial JS, but the main bundle remains 564 kB and the editor chunk 348 kB. Optimize based on measured delay. |
 
-There is no data migration or backend change in this branch. The branch has not
+There is no data migration or backend runtime change in this branch. The branch has not
 been pushed or deployed. The prior attempt to publish this local branch was
 rejected by automatic approval review, so publishing remains a separate step
 requiring explicit authorization.
@@ -142,4 +153,4 @@ requiring explicit authorization.
 R1-R3 are implemented and locally verified. Finish R4/R5 with real-device,
 production-font/artwork and visual acceptance; fix any findings and rerun affected
 checks. Then obtain explicit authorization for R6 publication/CI/merge/deployment.
-Measured performance and catalogue-growth work remain R7, after the release.
+Measured mobile performance remains R7, after the release.
