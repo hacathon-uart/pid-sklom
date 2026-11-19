@@ -1,0 +1,40 @@
+# Local-only test bot. Uses a separate BotFather token from an ignored env file.
+services:
+  api:
+    image: pid-sklom-telegram-test
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - ${TELEGRAM_TEST_ENV_FILE:-backend/.env.telegram.local}
+    environment:
+      DATA_BACKEND: local
+      AI_PROVIDER: stub
+      AUTH_MODE: stub
+      ENVIRONMENT: development
+      PUBLIC_BASE_URL: http://api:8000
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  bot:
+    image: pid-sklom-telegram-test
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - ${TELEGRAM_TEST_ENV_FILE:-backend/.env.telegram.local}
+    environment:
+      DATA_BACKEND: local
+      AI_PROVIDER: stub
+      AUTH_MODE: stub
+      ENVIRONMENT: development
+      PUBLIC_BASE_URL: http://api:8000
+    command: ["python", "-m", "app.bot.polling"]
+    depends_on:
+      api:
+        condition: service_healthy

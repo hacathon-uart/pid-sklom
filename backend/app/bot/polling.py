@@ -8,15 +8,24 @@ Use a separate test bot from BotFather so you don't steal updates from productio
 import asyncio
 import logging
 
-from app.bot.webhook import get_bot, get_dispatcher
+from app.bot.commands import setup_commands
+from app.bot.webhook import close_bot, get_bot, get_dispatcher
+from app.config import get_settings
 
 
 async def main() -> None:
+    get_settings().validate_runtime()
     bot = get_bot()
     if bot is None:
         raise SystemExit("Set TELEGRAM_BOT_TOKEN in backend/.env")
-    await bot.delete_webhook(drop_pending_updates=True)
-    await get_dispatcher().start_polling(bot)
+    try:
+        await setup_commands(bot)
+        await bot.delete_webhook()
+        await get_dispatcher().start_polling(
+            bot, allowed_updates=["message", "callback_query"], close_bot_session=False,
+        )
+    finally:
+        await close_bot()
 
 
 if __name__ == "__main__":

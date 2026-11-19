@@ -55,7 +55,7 @@ services:
       - key: AI_API_KEY
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
-        generateValue: true
+        sync: false
 
   - type: web
     name: pidsklom-web
