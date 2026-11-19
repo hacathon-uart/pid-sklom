@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { LogoMark } from "../components/Museum";
+import { MemeDemo } from "../components/MemeDemo";
 import { MuseumWall } from "../components/MuseumWall";
 import { WordWreath } from "../components/WordWreath";
 import { Tag } from "../components/Tag";
@@ -76,6 +77,9 @@ export function HomePage() {
           )}
           </div>
         </div>}
+
+        <h2 className="t-h2 mt-16 mb-6 md:mt-20 md:mb-8">Фраза чи картина — і мем готовий</h2>
+        <MemeDemo />
 
         <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему – оберіть свій!</h2>
 

@@ -93,6 +93,50 @@ button.loupe::before { content: ""; position: absolute; inset: -6px; border-radi
   background: #FCFAF6; color: var(--color-accent, #8B6B4A); transform: scale(1.06);
 }
 
+/* ---- Landing demo (MemeDemo): an exhibit under a picture lamp that makes memes by itself. ---- */
+.demo-stage { position: absolute; inset: 0; overflow: hidden; background: #2E2620; }
+.demo-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: filter .35s ease, opacity .35s ease; }
+.demo-stage.is-flicking .demo-img { filter: blur(7px) saturate(.6) brightness(.75); }
+.demo-stage.is-searching .demo-img { filter: blur(2px) saturate(.8); }
+.demo-caption {
+  position: absolute; z-index: 1; left: 10px; right: 10px; bottom: 14px; text-align: center; text-transform: uppercase;
+  font: 600 clamp(1.25rem, 5.5vw, 1.75rem)/1.06 var(--font-meme); color: #fff; overflow-wrap: anywhere; text-wrap: balance;
+  text-shadow: 2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 1.5px 1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px -1.5px 0 #000;
+}
+.demo-caption.is-stamped { animation: caption-land .38s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes caption-land { from { opacity: 0; transform: scale(1.6) rotate(-3deg); } to { opacity: 1; transform: none; } }
+
+/* Brass-free picture lamp: a dark bronze bar on a short arm, and the light it throws. */
+.picture-lamp {
+  position: absolute; top: 0; left: 50%; width: 46%; height: 11px; transform: translateX(-50%); border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(#5A4D40, #2E2620); box-shadow: 0 3px 6px rgba(46, 38, 32, .35);
+}
+.picture-lamp::before { /* arm down to the frame */
+  content: ""; position: absolute; top: 9px; left: 50%; width: 4px; height: 28px; transform: translateX(-50%);
+  background: linear-gradient(90deg, #2E2620, #5A4D40, #2E2620); border-radius: 2px;
+}
+.picture-lamp::after { /* light cone on the wall */
+  content: ""; position: absolute; top: 8px; left: -45%; right: -45%; height: 120px; pointer-events: none;
+  background: radial-gradient(ellipse 50% 100% at 50% 0%, rgba(255, 222, 150, .85), rgba(255, 222, 150, .25) 45%, transparent 75%);
+  opacity: 0; transition: opacity .5s ease;
+}
+.picture-lamp.is-lit::after { opacity: 1; }
+.lamp-glow { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.lamp-glow::before, .lamp-glow::after { content: ""; position: absolute; inset: 0; transition: opacity .6s ease; }
+.lamp-glow::before { background: rgba(28, 20, 12, .32); } /* lamp off: the painting waits in the dusk */
+.lamp-glow::after {  /* lamp on: warm light from above */
+  mix-blend-mode: soft-light; opacity: 0;
+  background: radial-gradient(ellipse 80% 65% at 50% -5%, rgba(255, 240, 205, 1), rgba(255, 225, 170, .35) 55%, transparent 80%);
+}
+.lamp-glow.is-lit::before { opacity: 0; }
+.lamp-glow.is-lit::after { opacity: 1; }
+
+.demo-typed { min-height: 2.6em; font: italic 600 clamp(1.6rem, 4.5vw, 2.1rem)/1.2 var(--font-heading); color: #2E2620; }
+.demo-caret { display: inline-block; width: 2px; height: .95em; margin-left: 3px; vertical-align: -.1em; background: var(--color-accent); animation: caret-blink 1s steps(1) infinite; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+.demo-found { animation: found-in .45s ease both; }
+@keyframes found-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
 /* ---- Cracked glass (G3): on save in the editor, and on favourite memes. ---- */
 .crack { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
 .crack path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -284,4 +328,6 @@ button.loupe::before { content: ""; position: absolute; inset: -6px; border-radi
   .you-are-here { animation: none; }
   .stamp { animation: none; }
   .loupe { transition: none; }
+  .demo-img, .picture-lamp::after, .lamp-glow::before, .lamp-glow::after { transition: none; }
+  .demo-caption.is-stamped, .demo-caret, .demo-found { animation: none; }
 }
