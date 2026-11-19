@@ -15,6 +15,7 @@ import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { LogoMark } from "../components/Museum";
 import { MuseumWall } from "../components/MuseumWall";
+import { WordWreath } from "../components/WordWreath";
 import { Tag } from "../components/Tag";
 
 const EXAMPLES = ["коли понеділок", "дедлайн завтра", "мама кличе вечеряти", "чекаю на зарплату"];
@@ -112,7 +113,8 @@ export function HomePage() {
 
       <section id="about" className="bg-surface px-[var(--page-gutter)] py-14 md:py-24">
         <div className="mx-auto max-w-[1000px]">
-          <div className="t-label">Про проєкт</div>
+          <WordWreath />
+          <div className="t-label mt-10">Про проєкт</div>
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
           {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
