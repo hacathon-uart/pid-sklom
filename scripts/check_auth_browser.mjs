@@ -2,7 +2,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
@@ -14,7 +13,9 @@ const chromePath = process.env.CHROME_PATH ?? [
   "/usr/bin/google-chrome", "/usr/bin/chromium",
 ].find(existsSync);
 assert(chromePath, "Chrome is required; set CHROME_PATH");
-const profile = mkdtempSync(join(tmpdir(), "pidsklom-auth-browser-"));
+const workspace = mkdtempSync(join(root, ".auth-browser-"));
+const profile = join(workspace, "chrome");
+const dist = join(workspace, "dist");
 let chrome;
 let socket;
 let closeBrowser;
@@ -163,13 +164,12 @@ const server = createServer(async (req, res) => {
     return json({ ...meme, can_edit: signedIn });
   }
   if (/^\/painting(?:-[12])?\.png$/.test(url.pathname)) { res.writeHead(200, { "Content-Type": "image/png" }).end(png); return; }
-  const dist = join(root, "frontend/dist");
   const requested = join(dist, decodeURIComponent(url.pathname));
   if (!requested.startsWith(dist + "/") && requested !== dist) {
     res.writeHead(404).end();
     return;
   }
-  const file = existsSync(requested) && extname(requested) ? requested : join(root, "frontend/dist/index.html");
+  const file = existsSync(requested) && extname(requested) ? requested : join(dist, "index.html");
   const mime = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".woff2": "font/woff2", ".woff": "font/woff" };
   res.writeHead(200, { "Content-Type": mime[extname(file)] ?? "application/octet-stream" }).end(readFileSync(file));
 });
@@ -177,7 +177,14 @@ const server = createServer(async (req, res) => {
 try {
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
   origin = `http://127.0.0.1:${server.address().port}`;
-  const build = spawnSync("npm", ["run", "build"], {
+  const typecheck = spawnSync("npm", ["run", "typecheck"], {
+    cwd: join(root, "frontend"), encoding: "utf8",
+  });
+  assert.equal(typecheck.status, 0, typecheck.stdout + typecheck.stderr);
+  const build = spawnSync(process.execPath, ["--input-type=module", "--eval",
+    `import { build } from "vite"; await build({
+      envFile: false, build: { outDir: ${JSON.stringify(dist)}, emptyOutDir: true }
+    });`], {
     cwd: join(root, "frontend"), encoding: "utf8",
     env: { ...process.env, VITE_AUTH_MODE: "supabase", VITE_API_URL: origin,
       VITE_SUPABASE_URL: origin, VITE_SUPABASE_ANON_KEY: "synthetic-public-key" },
@@ -232,6 +239,13 @@ try {
   });
   await command("Runtime.enable");
   await command("Page.enable");
+  if (process.env.BROWSER_WIDTH !== undefined) {
+    const width = Number(process.env.BROWSER_WIDTH);
+    assert(Number.isInteger(width) && width > 0, "BROWSER_WIDTH must be a positive integer");
+    await command("Emulation.setDeviceMetricsOverride", {
+      width, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+  }
   await command("Page.addScriptToEvaluateOnNewDocument", { source: `
     window.exportedPNGs = [];
     window.sharedPNGs = [];
@@ -281,11 +295,15 @@ try {
       document.documentElement.appendChild(body);
     }, 500);`);
   await until("document.body.innerText.includes('poll-ready')");
-  const click = async (text) => evaluate(`(() => {
+  const click = async (text) => {
+    await until(`[...document.querySelectorAll('button,a')].some((item) =>
+      item.textContent.includes(${JSON.stringify(text)}) && !item.disabled)`);
+    return evaluate(`(() => {
     const button = [...document.querySelectorAll('button,a')].find((item) => item.textContent.includes(${JSON.stringify(text)}));
     if (!button) throw new Error('Missing button: ' + ${JSON.stringify(text)});
     button.click();
   })()`);
+  };
   const logout = async () => {
     await navigate("/me");
     await until("document.body.innerText.includes('Вийти')");
@@ -301,21 +319,32 @@ try {
     })()`);
     await delay(100);
   };
-  const exportImage = (mode = "download", publicView = false) => evaluate(
-    `document.querySelector('[aria-label="${mode === "share" ? "Поділитися" : publicView ? "Завантажити" : "Завантажити PNG"}"]').click()`, true,
-  );
-  const editorFields = () => evaluate(`({
+  const exportImage = async (mode = "download", publicView = false) => {
+    const control = publicView && mode === "share"
+      ? `[...document.querySelectorAll('button')].find((item) => item.textContent.trim() === 'Поділитися посиланням')`
+      : `document.querySelector('[aria-label="${mode === "share" ? "Поділитися" : publicView ? "Завантажити" : "Завантажити PNG"}"]')`;
+    await until(`(${control}) && !(${control}).disabled`);
+    return evaluate(`(${control}).click()`, true);
+  };
+  const editorFields = async () => {
+    const fields = await evaluate(`({
     caption: document.querySelector('input[maxlength="200"]').value,
     font: document.querySelector('select').value,
     size: document.querySelector('input[type="range"]').value,
     outline: document.querySelector('[role="switch"]').getAttribute('aria-checked'),
-    color: [...document.querySelectorAll('button[aria-label]')].find((item) =>
-      item.getAttribute('aria-label').startsWith('#') && item.className.includes('ring-2'))?.getAttribute('aria-label'),
+    color: [...document.querySelectorAll('button[aria-label^="Колір #"][aria-pressed="true"]')].map((item) =>
+      item.getAttribute('aria-label')),
     position: [...document.querySelectorAll('button')].find((item) =>
       item.className.includes('bg-surface shadow-sm'))?.textContent,
-    frame: document.querySelector('[role="radio"][aria-checked="true"]').title,
+    frame: [...document.querySelectorAll('[role="group"][aria-label="Рамка"] button[aria-pressed="true"]')].map((item) => item.title),
     withFrame: document.querySelector('input[type="checkbox"]').checked,
   })`);
+    assert.equal(fields.color.length, 1, "Exactly one caption color must be selected");
+    assert.match(fields.color[0], /^Колір #[0-9a-f]{6}$/i, "Selected color must have its accessible label");
+    assert.equal(fields.frame.length, 1, "Exactly one frame toggle must be pressed");
+    assert(fields.frame[0], "Selected frame must have its label");
+    return fields;
+  };
   const saveEditor = async (clicks = 1, mutations = 1) => {
     await evaluate("document.fonts.ready");
     const before = state.saves + state.updates;
@@ -391,7 +420,7 @@ try {
     await navigate("/create/painting/1/own");
     await editCaption("Direct-entry tab draft");
     await evaluate("document.querySelector('select').value = 'Rubik'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
-    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:last-child').click()");
     const draft = await editorFields();
     const mutations = state.saves + state.updates;
     const generations = state.calls;
@@ -503,16 +532,16 @@ try {
   {
     const before = state.saves;
     await editCaption("Artwork A draft");
-    await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').click()");
+    await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:nth-child(2)').click()");
     await saveEditor();
     const first = [...state.memes.values()].find((meme) => meme.caption === "Artwork A draft");
     assert(first);
     await click("Test painting 2");
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork A draft'");
-    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').getAttribute('aria-checked')"), "true",
+    assert.equal(await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:nth-child(2)').getAttribute('aria-pressed')"), "true",
       "A newly selected artwork inherits the current caption and style");
     await editCaption("Artwork B draft");
-    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:last-child').click()");
     state.holdNextSave = true;
     await saveEditor();
     assert.equal(state.saves, before + 2, "Switching artwork must create a separate meme, not PATCH the prior artwork");
@@ -526,7 +555,7 @@ try {
     state.releaseSave();
     state.releaseSave = null;
     await delay(100);
-    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').getAttribute('aria-checked')"), "true");
+    assert.equal(await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:nth-child(2)').getAttribute('aria-pressed')"), "true");
     await editCaption("Artwork A revised");
     await saveEditor();
     assert.equal(state.saves, before + 2, "Returning to A must reuse its saved identity");
@@ -536,7 +565,7 @@ try {
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork B draft'");
     await command("Page.reload");
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Artwork B draft'");
-    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').getAttribute('aria-checked')"), "true");
+    assert.equal(await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:last-child').getAttribute('aria-pressed')"), "true");
     await editCaption("Artwork B revised");
     await saveEditor();
     assert.equal(state.saves, before + 2, "Reload must retain B's save identity");
@@ -589,13 +618,13 @@ try {
     const mutations = state.saves + state.updates;
     await editCaption("Unsaved revision");
     await evaluate("document.querySelector('select').value = 'Rubik'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
-    await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').click()");
+    await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:last-child').click()");
     await delay(100);
     await command("Page.reload");
     await until("document.querySelector('input[maxlength=\"200\"]') !== null");
     assert.equal(await evaluate("document.querySelector('input[maxlength=\"200\"]').value"), "Unsaved revision");
     assert.equal(await evaluate("document.querySelector('select').value"), "Rubik");
-    assert.equal(await evaluate("document.querySelector('[role=\"radiogroup\"] button:last-child').getAttribute('aria-checked')"), "true");
+    assert.equal(await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:last-child').getAttribute('aria-pressed')"), "true");
     assert.equal(state.saves + state.updates, mutations, "Draft edits and reload must not autosave the public meme");
     assert.equal(saved.caption, "Saved revision");
     await saveEditor();
@@ -612,7 +641,7 @@ try {
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Unsaved revision'");
     await editCaption("Unsaved existing-meme edit");
     await evaluate("document.querySelector('select').value = 'Oswald'; document.querySelector('select').dispatchEvent(new Event('change', {bubbles:true}))");
-    await evaluate("document.querySelector('[role=\"radiogroup\"] button:nth-child(2)').click()");
+    await evaluate("document.querySelector('[role=\"group\"][aria-label=\"Рамка\"] button:nth-child(2)').click()");
     const unsavedEdit = await editorFields();
     const beforeLeaving = state.saves + state.updates;
     await click("До мему");
@@ -726,5 +755,5 @@ try {
   }
   socket?.close();
   await new Promise((done) => server.close(done));
-  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  rmSync(workspace, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }

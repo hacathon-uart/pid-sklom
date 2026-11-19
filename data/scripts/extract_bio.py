@@ -59,6 +59,7 @@ from extract_facts import (  # noqa: E402  (shared source/quote helpers)
     SEED,
     USER_AGENT,
     Settings,
+    ModelChain,
     call_gemini,
     html_to_text,
     load_json,
@@ -205,7 +206,7 @@ def assemble(items: list[dict], by_paragraph: bool) -> str:
     return "\n\n".join(" ".join(p) for _, p in sorted(paragraphs.items()))
 
 
-async def ask(artist: dict, sources: list[dict], settings: Settings, model: str,
+async def ask(artist: dict, sources: list[dict], settings: Settings, model,
               timeout: float = GEMINI_TIMEOUT_S) -> dict:
     years = f"{artist.get('birth_year') or '?'}–{artist.get('death_year') or '?'}"
     budget = MAX_SOURCE_CHARS // max(1, len(sources))
@@ -266,7 +267,8 @@ def cmd_extract(args) -> int:
         return 0
 
     print("Gemini пише біографію, це може тривати кілька хвилин…")
-    raw = asyncio.run(ask(artist, sources, settings, model, args.timeout))
+    chain = ModelChain(model)
+    raw = asyncio.run(ask(artist, sources, settings, chain, args.timeout))
     by_id = {s["id"]: s for s in sources}
     kept: dict[str, list[dict]] = {"short_bio": [], "long_bio": []}
     sentences, screened, warnings = [], [], []
@@ -302,7 +304,7 @@ def cmd_extract(args) -> int:
         "warnings": warnings,
         "sentences": sentences,
         "screened_out": screened,
-        "model": model,
+        "model": chain.summary(),
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     save_json(path, draft)

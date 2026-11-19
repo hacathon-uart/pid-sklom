@@ -18,6 +18,14 @@ import { CloakroomTag, percent, rankName, share } from "../quiz/Museum";
 const WRONG = "#7b1e2a"; // the velvet-rope red
 const RIGHT = "#2b6a3e"; // the «ПРАВИЛЬНО» stamp green
 
+/** No drag on touch screens: phones tap a painting, then an author. */
+const PAIRS_HINT = (
+  <>
+    <span className="md:hidden">Оберіть картину, потім — її автора.</span>
+    <span className="hidden md:inline">Перетягніть автора під його картину.</span>
+  </>
+);
+
 export function QuizPlayPage() {
   const { game = "" } = useParams();
   const [params] = useSearchParams();
@@ -93,7 +101,7 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
   const page = (children: ReactNode) => (
     <Page
       title={meta.title}
-      subtitle={game === "pairs" ? (!showFinal && !result && !run?.score ? "Перетягніть автора під його картину." : undefined) : scopeName ? `Картини: ${scopeName}` : undefined}
+      subtitle={game === "pairs" ? (!showFinal && !result && !run?.score ? PAIRS_HINT : undefined) : scopeName ? `Картини: ${scopeName}` : undefined}
       back={<Link to="/quiz" className="t-small inline-flex items-center gap-2 text-text-secondary hover:text-accent"><Icon name="arrowLeft" size={16} /> Усі зали</Link>}
       actions={!showFinal && header}
     >
@@ -141,7 +149,7 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext }: {
   });
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-14">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
       <Artwork
         src={question.images[0].image_url}
         alt="Картина з вікторини"
@@ -160,12 +168,12 @@ function SingleQuestion({ game, question, result, busy, onAnswer, onNext }: {
                 type="button"
                 disabled={busy || !!reveal}
                 onClick={() => pick(option.key)}
-                className={`catalogue-card ${state === "other" ? "faded" : ""} ${state === "wrong" ? "struck" : ""}`}
+                className={`catalogue-card !flex-wrap max-md:!grid max-md:!grid-cols-[22px_minmax(0,1fr)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${state === "other" ? "faded" : ""} ${state === "wrong" ? "struck" : ""}`}
               >
                 <span className="card-no">{index + 1}</span>
-                <span className="card-text min-w-0 flex-1 pr-36">{option.label}</span>
-                {state === "right" && <span className="stamp stamp-right">ПРАВИЛЬНО</span>}
-                {state === "wrong" && <span className="stamp stamp-wrong">НЕПРАВИЛЬНО</span>}
+                <span className="card-text min-w-0 flex-1 break-words">{option.label}</span>
+                {state === "right" && <span className="stamp stamp-right !static ml-auto !translate-y-0 !animate-none max-md:col-start-2 max-md:!ml-0 max-md:justify-self-start">ПРАВИЛЬНО</span>}
+                {state === "wrong" && <span className="stamp stamp-wrong !static ml-auto !translate-y-0 !animate-none max-md:col-start-2 max-md:!ml-0 max-md:justify-self-start">НЕПРАВИЛЬНО</span>}
                 <span className="card-hole" aria-hidden />
               </button>
             );
@@ -195,7 +203,7 @@ function RevealCard({ reveal, result, onNext }: { reveal: QuizReveal; result: Qu
 
 function NextButton({ result, onNext }: { result: QuizResult; onNext: () => void }) {
   return (
-    <Button autoFocus className="mt-5 flex items-center gap-2" onClick={onNext}>
+    <Button autoFocus className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 md:w-auto" onClick={onNext}>
       {result.finished ? "Підсумки" : "Далі"} <Icon name="arrowRight" size={18} />
     </Button>
   );
@@ -203,8 +211,6 @@ function NextButton({ result, onNext }: { result: QuizResult; onNext: () => void
 
 // ---------- «Пари» ----------
 
-/** Paintings are sized by the screen height, so the paintings, their labels and the tray fit on a laptop without scrolling. */
-const PAIRS_PAINTING = { width: "min(100%, calc((100vh - 460px) * 0.8))", minWidth: "180px" };
 
 function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
   question: QuizQuestion; result: QuizResult | null; busy: boolean;
@@ -227,7 +233,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
 
   /** Hang a label under a painting. A label already there swaps places with it, or goes back to the tray. */
   const place = (option: string, image: string) => {
-    if (result) return;
+    if (busy || result) return;
     const from = Object.keys(pairs).find((k) => pairs[k] === option);
     const displaced = pairs[image];
     const nextPairs = Object.fromEntries(Object.entries(pairs).filter(([k, o]) => o !== option && k !== image));
@@ -241,7 +247,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
     if (target) place(option, target);
   };
   const unassign = (image: string) => {
-    if (result) return;
+    if (busy || result) return;
     setPairs(Object.fromEntries(Object.entries(pairs).filter(([k]) => k !== image)));
     setSelected(image);
   };
@@ -265,27 +271,26 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
   return (
     <div>
       {/* P1 · blank wall labels from the curator's tray, hung on hooks under the paintings */}
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-6 lg:gap-8">
         {question.images.map((image, index) => {
           const reveal = revealed(image.key);
           const chosen = pairs[image.key];
           const active = !result && (selected === image.key || over === image.key);
           return (
-            <div key={image.key} className="flex flex-col items-center" {...target(image.key, (option) => place(option, image.key))}>
+            <div key={image.key} className="flex min-w-0 flex-col items-center break-words" {...target(image.key, (option) => place(option, image.key))}>
               <button
                 type="button"
                 aria-label={`Картина ${index + 1}`}
                 aria-pressed={selected === image.key}
-                disabled={!!result}
+                disabled={busy || !!result}
                 onClick={() => setSelected(image.key)}
-                className="block text-left"
-                style={PAIRS_PAINTING}
+                className="pairs-painting block text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
                 <Artwork src={image.image_url} alt={`Картина ${index + 1} з вікторини`} aspect="4/5" selected={active}
                   crack={reveal && !reveal.correct ? "animate" : null} />
               </button>
               <span className="label-hook mt-3" aria-hidden />
-              <div className="w-full" style={PAIRS_PAINTING}>
+              <div className="pairs-painting">
                 {reveal ? (
                   <div className={`wall-label verdict ${reveal.correct ? "verdict-right" : "verdict-wrong"}`}>
                     <span className={`stamp ${reveal.correct ? "stamp-right" : "stamp-wrong"}`}>{reveal.correct ? "ПРАВИЛЬНО" : "ПОМИЛКА"}</span>
@@ -295,7 +300,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
                     <div className="wl-inv">Інв. № {inventoryNo(reveal.artwork.id)}</div>
                   </div>
                 ) : chosen ? (
-                  <DragLabel label={labels[chosen]} onDragStart={drag(chosen)} onClick={() => unassign(image.key)} className="w-full" title="Перетягніть або натисніть, щоб зняти" />
+                  <DragLabel label={labels[chosen]} ariaLabel={`Зняти етикетку: ${labels[chosen]}`} onDragStart={drag(chosen)} onClick={() => unassign(image.key)} className="w-full" title="Перетягніть або натисніть, щоб зняти" />
                 ) : (
                   <button
                     type="button"
@@ -306,6 +311,14 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
                   </button>
                 )}
               </div>
+              {/* phones: no drag on touch, and the tray is far below, so the free labels come up under the chosen painting */}
+              {!result && selected === image.key && (
+                <div className="label-tray mt-4 grid w-full gap-3 rounded-card p-4 md:hidden" role="group" aria-label={`Автори для картини ${index + 1}`}>
+                  {question.options.filter((o) => !Object.values(pairs).includes(o.key)).map((option) => (
+                    <DragLabel key={option.key} label={option.label} onClick={() => assign(option.key)} />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
@@ -313,7 +326,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
 
       {!result && (
         <div
-          className={`label-tray mt-8 flex flex-wrap items-center justify-center gap-4 rounded-card px-6 py-4 ${over === "tray" ? "drop-over" : ""}`}
+          className={`label-tray mt-8 hidden flex-wrap items-center justify-center gap-4 rounded-card px-6 py-4 md:flex ${over === "tray" ? "drop-over" : ""}`}
           {...target("tray", (option) => {
             const image = Object.keys(pairs).find((k) => pairs[k] === option);
             if (image) unassign(image);
@@ -328,7 +341,7 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
         </div>
       )}
       {result && (
-        <div className="mt-8 flex items-center gap-6 rounded-card bg-muted p-5" role="status">
+        <div className="mt-8 flex flex-col items-stretch gap-4 rounded-card bg-muted p-5 md:flex-row md:items-center md:gap-6" role="status">
           <div className="flex-1">
             <div className="t-label" style={{ color: result.correct ? RIGHT : WRONG }}>
               {result.correct ? "Усе правильно!" : "Є помилка"}
@@ -343,19 +356,20 @@ function PairsQuestion({ question, result, busy, onAnswer, onNext }: {
 }
 
 /** A wall label you can drag, or click (Enter/Space) instead. A div, not a button: Firefox never starts a drag from a button. */
-function DragLabel({ label, onDragStart, onClick, className = "", title }: {
-  label: string; onDragStart: (e: DragEvent) => void; onClick: () => void; className?: string; title?: string;
+function DragLabel({ label, ariaLabel, onDragStart, onClick, className = "", title }: {
+  label: string; ariaLabel?: string; onDragStart?: (e: DragEvent) => void; onClick: () => void; className?: string; title?: string;
 }) {
   return (
     <div
       role="button"
       tabIndex={0}
-      draggable
+      draggable={!!onDragStart}
+      aria-label={ariaLabel}
       title={title}
       onDragStart={onDragStart}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      className={`pair-label wall-label text-left ${className}`}
+      className={`pair-label wall-label min-h-11 min-w-0 break-words text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${className}`}
     >
       <span className="wl-who">{label}</span>
     </div>
@@ -385,15 +399,15 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
   const date = new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="mx-auto flex max-w-[660px] flex-col items-center lg:max-w-[980px]">
+    <div className="mx-auto flex w-full min-w-0 max-w-[660px] flex-col items-center lg:max-w-[980px]">
       <CertificateFrame>
-        {guest && <span className="temp-stamp" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
+        {guest && <span className="temp-stamp max-md:!static max-md:mb-6 max-md:inline-block max-md:!transform-none max-md:!text-xs max-md:!tracking-normal" aria-label="Тимчасове посвідчення">ТИМЧАСОВЕ</span>}
 
         {/* Header: spans both columns on a laptop */}
         <div className="lg:col-span-2">
           <CertificateCrest />
-          <h2 className="mt-5 font-heading text-[60px] font-semibold italic leading-none lg:mt-3 lg:text-[64px]">Посвідчення</h2>
-          <OrnamentRule className="mx-auto mt-4 h-4 w-[240px] text-accent" />
+          <h2 className="mt-5 break-words font-heading text-4xl md:text-[60px] font-semibold italic leading-none lg:mt-3 lg:text-[64px]">Посвідчення</h2>
+          <OrnamentRule className="mx-auto mt-4 h-4 w-full max-w-[240px] text-accent" />
           <p className="t-body mt-4 text-text-secondary">
             засвідчує, що відвідувач пройшов залу <strong className="font-heading text-[22px] italic text-text">«{GAMES[game].title}»</strong>
             {scopeName && <> · {scopeName}</>}
@@ -412,10 +426,10 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
         <div className="mt-6 lg:mt-8">
           <div className="t-label">Звання</div>
           {/* The rules sit on the rank's own row, so they line up with the middle of the text, not of the label above it. */}
-          <div className="mt-1 flex items-center justify-center gap-4">
-            <span className="h-px w-14 bg-accent-soft lg:w-10" />
-            <div className="font-heading text-[40px] font-semibold italic leading-tight lg:text-[46px]">{rankName(part)}</div>
-            <span className="h-px w-14 bg-accent-soft lg:w-10" />
+          <div className="mt-1 flex min-w-0 items-center justify-center gap-2 md:gap-4">
+            <span className="hidden h-px w-14 shrink-0 bg-accent-soft md:block lg:w-10" />
+            <div className="min-w-0 break-words font-heading text-3xl md:text-[40px] font-semibold italic leading-tight lg:text-[46px]">{rankName(part)}</div>
+            <span className="hidden h-px w-14 shrink-0 bg-accent-soft md:block lg:w-10" />
           </div>
           <p className="t-small mt-1 text-text-secondary">впізнано {percent(part)} колекції</p>
           {result.new_record && <p className="t-label mt-3">Новий рекорд!</p>}
@@ -426,15 +440,15 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
         </div>
 
         {/* Footer: spans both columns; the right gap is where the stamp sits */}
-        <div className="mt-8 flex items-end justify-between px-4 text-left lg:col-span-2 lg:mt-6">
+        <div className="mt-8 flex flex-col items-center justify-between gap-6 text-center md:min-h-[150px] md:flex-row md:items-end md:gap-4 md:px-4 md:text-left lg:col-span-2 lg:mt-6">
           <div>
             <div className="t-caption text-text-secondary">Видано</div>
             <div className="t-strong">{date}</div>
           </div>
           <Signature title="Директор музею" />
-          <div className="w-[150px]" aria-hidden />
+          <div className="hidden w-[150px] shrink-0 md:block" aria-hidden />
         </div>
-        <InkStamp />
+        <InkStamp className="max-md:!static max-md:mx-auto max-md:mt-6 max-md:!h-24 max-md:!w-24" />
       </CertificateFrame>
       {guest && (
         <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
@@ -442,9 +456,9 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}
-      <div className={`flex gap-3 ${guest ? "mt-6" : "mt-12"}`}>
+      <div className={`flex w-full flex-col gap-3 md:w-auto md:flex-row ${guest ? "mt-6" : "mt-12"}`}>
         <Button onClick={onAgain}>Зіграти ще</Button>
-        <Link to="/quiz" className="rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі зали</Link>
+        <Link to="/quiz" className="flex min-h-11 items-center justify-center rounded-control bg-muted px-6 py-3 text-[15px] font-semibold leading-[1.2] transition hover:brightness-95">Усі зали</Link>
       </div>
     </div>
   );

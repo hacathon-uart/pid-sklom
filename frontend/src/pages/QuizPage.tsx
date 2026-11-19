@@ -49,14 +49,16 @@ export function QuizPage() {
         <Loading />
       ) : (
         <>
-          <div className="grid grid-cols-[minmax(0,1fr)_280px] items-stretch gap-6">
+          {/* phones: the plan is too small to read, so the halls are plain cards; from a tablet up, the plan itself */}
+          <HallCards info={info} />
+          <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <FloorPlan info={info} />
             <RankLadder info={info} />
           </div>
           {info.limited && authEnabled && (
-            <div className="mt-8 flex items-center gap-6 rounded-card bg-muted px-6 py-4">
+            <div className="mt-8 flex flex-col items-stretch gap-4 rounded-card bg-muted px-6 py-4 md:flex-row md:items-center md:gap-6">
               <p className="t-body flex-1">Гості грають коротку версію. Увійдіть, щоб грати без обмежень і зберігати звання.</p>
-              <Button variant="secondary" className="shrink-0" onClick={() => void login()}>Увійти з Google</Button>
+              <Button variant="secondary" className="min-h-11 shrink-0" onClick={() => void login()}>Увійти з Google</Button>
             </div>
           )}
         </>
@@ -67,18 +69,53 @@ export function QuizPage() {
 
 // ---------- the floor plan ----------
 
+/** The line under a hall's title: closed, the guest allowance, or the record and rank. */
+function hallStatus(game: QuizGame, info: QuizInfo) {
+  if (!info.games.includes(game)) return "ЗАЛА ЗАЧИНЕНА";
+  if (info.limited) return `${GAMES[game].level.toUpperCase()} · ${GAMES[game].guestShort(info.guest_limits[game]).toUpperCase()}`;
+  const best = bestOf(game, info);
+  return best ? `РЕКОРД ${best.score} · ${rankName(best.part).toUpperCase()}` : `${GAMES[game].level.toUpperCase()} · РЕКОРДУ ЩЕ НЕМАЄ`;
+}
+
+/** «Назва картини» always runs over the whole collection. */
+const gamePath = (game: QuizGame) => `/quiz/${game}`;
+
+/** Phones only: one card per hall, in the hall's colour, each one tap from its game. */
+function HallCards({ info }: { info: QuizInfo }) {
+  const navigate = useNavigate();
+  return (
+    <div className="mb-6 grid gap-3 md:hidden" role="group" aria-label="Зали вікторини">
+      {GAME_ORDER.map((game) => {
+        const open = info.games.includes(game);
+        return (
+          <button
+            key={game}
+            type="button"
+            disabled={!open}
+            onClick={() => navigate(gamePath(game))}
+            className="flex min-h-11 min-w-0 items-center gap-4 rounded-card border border-line p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            style={{ background: `color-mix(in srgb, ${HALL_COLOURS[game]} 10%, var(--color-surface))` }}
+          >
+            <span className="w-10 shrink-0 text-center font-heading text-[34px] font-semibold italic leading-none" style={{ color: HALL_COLOURS[game] }} aria-hidden>{GAMES[game].no}</span>
+            <span className="min-w-0 flex-1">
+              <span className="t-h3 block break-words">{GAMES[game].title}</span>
+              <span className="t-label mt-1 block break-words">{hallStatus(game, info)}</span>
+            </span>
+            {open && <span className="shrink-0 rounded-control bg-accent px-3 py-2 text-[13px] font-bold tracking-[0.1em] text-white">ГРАТИ ▸</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function FloorPlan({ info }: { info: QuizInfo }) {
   const navigate = useNavigate();
-  const play = (game: QuizGame) => navigate(`/quiz/${game}`); // «Назва картини» always runs over the whole collection
-  const status = (game: QuizGame) => {
-    if (!info.games.includes(game)) return "ЗАЛА ЗАЧИНЕНА";
-    if (info.limited) return `${GAMES[game].level.toUpperCase()} · ${GAMES[game].guestShort(info.guest_limits[game]).toUpperCase()}`;
-    const best = bestOf(game, info);
-    return best ? `РЕКОРД ${best.score} · ${rankName(best.part).toUpperCase()}` : `${GAMES[game].level.toUpperCase()} · РЕКОРДУ ЩЕ НЕМАЄ`;
-  };
+  const play = (game: QuizGame) => navigate(gamePath(game));
+  const status = (game: QuizGame) => hallStatus(game, info);
 
   return (
-    <div className="rounded-card border border-line bg-surface p-4">
+    <div className="hidden min-w-0 rounded-card border border-line bg-surface p-4 md:block">
       <svg viewBox="0 0 1000 600" className="block h-auto w-full" role="group" aria-label="План музею: три зали вікторини">
         <PlanDefs />
         <rect x="20" y="20" width="960" height="520" fill="#FFFDF8" />

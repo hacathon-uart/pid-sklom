@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { Icon } from "./Icon";
 
 const BASE =
-  "w-full rounded-control border border-line bg-surface px-4 text-base placeholder:text-text-secondary focus:border-accent focus:outline-none";
+  "w-full min-w-0 rounded-control border border-line bg-surface px-4 text-base placeholder:text-text-secondary focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={`${BASE} h-[52px] ${className}`} {...props} />;

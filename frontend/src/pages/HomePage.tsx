@@ -14,6 +14,8 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { LogoMark } from "../components/Museum";
+import { MuseumWall } from "../components/MuseumWall";
+import { WordWreath } from "../components/WordWreath";
 import { Tag } from "../components/Tag";
 
 const EXAMPLES = ["коли понеділок", "дедлайн завтра", "мама кличе вечеряти", "чекаю на зарплату"];
@@ -52,8 +54,17 @@ export function HomePage() {
 
   return (
     <>
-      <section className="relative flex flex-col items-center px-8 pb-8 pt-6 text-center">
-        {authEnabled && <div className="absolute inset-x-8 top-6 mx-auto flex max-w-[1120px] items-start gap-6">
+      <main id="main-content" tabIndex={-1}>
+      <MuseumWall>
+        <LogoMark size={52} className="text-accent" />
+        <h1 className="t-logo mt-3 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
+        <p className="t-quote mt-3 text-[#5a4a3c] md:!text-[1.9rem]">Мистецтво крізь жарти</p>
+        <a href="#start" className="t-small mt-10 flex flex-col items-center gap-1 rounded-control px-3 py-2 text-[#5a4a3c] hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+          Гортайте вниз <span className="animate-bounce"><Icon name="chevronDown" size={20} /></span>
+        </a>
+      </MuseumWall>
+      <section id="start" className="relative flex scroll-mt-4 flex-col items-center px-[var(--page-gutter)] pb-8 pt-5 text-center md:pt-6">
+        {authEnabled && <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-start gap-4 text-left md:absolute md:inset-x-8 md:top-6 md:w-auto md:gap-6">
           <GuestAllowance />
           <div className="ml-auto">
           {user ? (
@@ -66,19 +77,14 @@ export function HomePage() {
           </div>
         </div>}
 
-        <div className="mt-10 flex flex-col items-center gap-3">
-          <LogoMark size={56} className="text-accent" />
-          <h1 className="t-logo !text-[80px]">Під склом</h1>
-        </div>
-        <p className="t-quote mt-3 text-text-secondary">Мистецтво крізь жарти</p>
-        <p className="t-body mt-10 text-text-secondary">Три шляхи до мему – оберіть свій!</p>
+        <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему – оберіть свій!</h2>
 
         {/* Path I — the fastest one, right here */}
-        <div className="mt-4 w-full max-w-[920px] rounded-card border border-line bg-surface p-5 text-left">
+        <div className="mt-4 w-full max-w-[920px] rounded-card border border-line bg-surface p-4 text-left sm:p-5">
           <PathHead no="I" title="Фраза → картина" text="Напишіть фразу чи опишіть ситуацію, а ШІ знайде українську картину, яка пасує найкраще." />
-          <form onSubmit={onSubmit} className="mt-4 flex gap-3">
-            <Input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
-            <Button type="submit" className="shrink-0">Створити мем</Button>
+          <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <Input aria-label="Фраза для мему" value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
+            <Button type="submit" className="w-full shrink-0 sm:w-auto">Створити мем</Button>
           </form>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="t-small text-text-secondary">Спробуйте:</span>
@@ -89,7 +95,7 @@ export function HomePage() {
         </div>
 
         {/* Paths II and III start from a painting */}
-        <div className="mt-4 grid w-full max-w-[920px] grid-cols-2 gap-4 text-left">
+        <div className="mt-4 grid w-full max-w-[920px] grid-cols-1 gap-4 text-left sm:grid-cols-2">
           {PAINTING_PATHS.map((p) => (
             <Link key={p.no} to={p.to} className="group flex flex-col rounded-card border border-line bg-surface p-5 transition hover:border-accent">
               <PathHead no={p.no} title={p.title} text={p.text} />
@@ -105,9 +111,10 @@ export function HomePage() {
         </a>
       </section>
 
-      <section id="about" className="bg-surface px-8 py-24">
+      <section id="about" className="bg-surface px-[var(--page-gutter)] py-14 md:py-24">
         <div className="mx-auto max-w-[1000px]">
-          <div className="t-label">Про проєкт</div>
+          <WordWreath />
+          <div className="t-label mt-10">Про проєкт</div>
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
           {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
@@ -115,7 +122,7 @@ export function HomePage() {
             картину, яка пасує найкраще. Або почніть із картини: підпис запропонує ШІ чи напишете ви самі. До кожного
             мему додаємо коротку історію про автора й картину. Без лекцій: лише гумор і трохи несподіваних фактів.
           </p>
-          <div className="mt-12 grid grid-cols-3 gap-6">
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
             {FEATURES.map(([title, text]) => (
               <div key={title} className="rounded-card border border-line bg-bg p-6">
                 <h3 className="t-h3">{title}</h3>
@@ -130,9 +137,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <footer className="bg-muted px-8 py-12">
-        {/* TODO(D): real bot handle and GitHub link */}
-        <div className="mx-auto flex max-w-[1000px] justify-between">
+      </main>
+
+      <footer className="bg-muted px-[var(--page-gutter)] py-12">
+        <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
               <LogoMark size={36} className="text-accent" />
@@ -144,10 +152,13 @@ export function HomePage() {
             title="Контакти"
             items={[
               <a key="mail" href={`mailto:${EMAIL}`} className="hover:text-accent">{EMAIL}</a>,
-              "Telegram-бот: @pidsklom_bot",
+              <span key="telegram"><a href="https://t.me/pid_sklom_bot" className="hover:text-accent">Telegram-бот: @pid_sklom_bot</a><span className="t-caption mt-1 block text-text-secondary">Поки що з обмеженим доступом.</span></span>,
             ]}
           />
-          <FooterCol title="Проєкт" items={["Код на GitHub", "Звідки картини і факти"]} />
+          <FooterCol title="Проєкт" items={[
+            <a key="code" href="https://github.com/hacathon-uart/pid-sklom" className="hover:text-accent">Код на GitHub</a>,
+            <Link key="gallery" to="/gallery" className="hover:text-accent">Картини та їхні історії</Link>,
+          ]} />
           <FooterCol title="Команда" items={TEAM} />
         </div>
       </footer>

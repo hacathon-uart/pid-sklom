@@ -42,6 +42,21 @@ cp .env.example .env.local
 npm run dev                            # http://localhost:5173
 ```
 
+**Story and artwork-selection browser regressions:** from the repository root, run
+`node scripts/check_story_browser.mjs` after installing frontend dependencies.
+Requires local Chrome (`CHROME_PATH` can override discovery). Uses loopback-only
+fixtures and an isolated build without loading `.env` files; no backend is needed.
+Checks loading, failures, retries, dismissal, draft/source retention and selection races.
+
+**Responsive browser gates:** `npm --prefix frontend run smoke:mobile` runs an
+isolated 14-route/seven-width matrix, complete quiz journeys and PNG invariants.
+`node scripts/check_accessibility_browser.mjs` checks real representative text
+growth, reflow and keyboard interaction. `BROWSER_WIDTH=390 node scripts/check_auth_browser.mjs`
+runs the existing account/draft/export journeys at phone width. All own their
+fixtures/build/browser and run in frontend CI; no backend or production secrets
+are needed. See [the responsive handoff](docs/MOBILE_FRONTEND_HANDOFF.md) for
+font-fixture limitations and outstanding real-device/visual release gates.
+
 **Telegram bot** (test only): create a separate BotFather test bot and follow the [local Docker Compose and invite procedure](docs/TELEGRAM_TESTING.md). The public bot remains disabled until a separate release.
 
 **Placeholder images:** `python data/scripts/make_placeholders.py` regenerates the `stub-*` images in `data/images/` from `data/seed/artworks.json`.

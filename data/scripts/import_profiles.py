@@ -110,8 +110,9 @@ def normalize_row(row: dict) -> dict:
 def check_profile(p: dict, artist_ids: dict[str, int]) -> list[str]:
     errors = []
     qid = p.get("artwork_id") or "?"
-    if not str(qid).startswith("Q"):
-        errors.append(f"{qid}: artwork_id must be a Wikidata id like Q111822246")
+    if not str(qid)[:1] in ("Q", "M"):
+        # Q… = Wikidata item; M… = Commons file (MediaInfo id) for paintings that have no Wikidata item
+        errors.append(f"{qid}: artwork_id must be a Wikidata id like Q111822246 or a Commons id like M12345")
     if not p.get("title_uk"):
         errors.append(f"{qid}: title_uk is empty")
     if norm(p.get("artist", "")) not in artist_ids:

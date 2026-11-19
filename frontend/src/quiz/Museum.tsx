@@ -63,12 +63,12 @@ export function CloakroomTag({ value, label, tone = "ink" }: { value: ReactNode;
 /** A typed catalogue card with dotted leaders: «Рекорд ……… 13», «Звання ……… Екскурсовод». */
 export function CatalogueRecord({ rows }: { rows: [string, ReactNode][] }) {
   return (
-    <div className="catalogue-card record-card">
+    <div className="catalogue-card record-card min-w-0">
       {rows.map(([key, value]) => (
-        <div key={key} className="leader-row">
-          <span>{key}</span>
+        <div key={key} className="leader-row max-md:!flex-wrap">
+          <span className="max-md:!whitespace-normal">{key}</span>
           <i aria-hidden />
-          <b>{value}</b>
+          <b className="min-w-0 max-md:w-full max-md:break-words max-md:!whitespace-normal">{value}</b>
         </div>
       ))}
       <span className="card-hole" aria-hidden />

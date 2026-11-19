@@ -23,7 +23,7 @@ export function MyMemesPage() {
   if (!user) {
     return (
       <Page title="Мої меми" subtitle="Увійдіть, щоб зберігати меми і повертатися до них.">
-        <Button onClick={login}>Продовжити через Google</Button>
+        <Button className="min-h-11 w-full whitespace-normal sm:w-auto" onClick={login}>Продовжити через Google</Button>
         <p className="t-small mt-3 text-text-secondary">Новий акаунт створиться автоматично</p>
       </Page>
     );
@@ -42,17 +42,17 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
       title="Мої меми"
       subtitle={data ? `${data.length} у вашій колекції · улюблені позначені тріснутим склом` : " "}
       actions={
-        <>
+        <div className="flex min-w-0 flex-wrap items-center gap-3 [overflow-wrap:anywhere] [&_.ticket]:max-w-full [&_.ticket]:grid-cols-[minmax(0,1fr)_auto]">
           <Ticket title={name} subtitle="Відвідувач «Під склом»" number={data ? data.length : "…"} />
           <Button variant="soft" onClick={onLogout}>Вийти</Button>
-        </>
+        </div>
       }
     >
       <QuizRecords />
-      <div className="mb-8 flex gap-2">
-        <Tag active={!favorite} onClick={() => setFavorite(false)}>Усі</Tag>
-        <Tag active={favorite} onClick={() => setFavorite(true)}>Улюблені</Tag>
-        <Tag onClick={() => setOldestFirst(!oldestFirst)}>{oldestFirst ? "Від старих до нових" : "Від нових до старих"}</Tag>
+      <div className="mb-8 flex flex-wrap gap-2">
+        <Tag className="min-h-11" active={!favorite} onClick={() => setFavorite(false)}>Усі</Tag>
+        <Tag className="min-h-11" active={favorite} onClick={() => setFavorite(true)}>Улюблені</Tag>
+        <Tag className="min-h-11" onClick={() => setOldestFirst(!oldestFirst)}>{oldestFirst ? "Від старих до нових" : "Від нових до старих"}</Tag>
       </div>
       {loading ? (
         <Loading />
@@ -65,7 +65,7 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
             : "Тут поки порожньо. Не торкатися — бо нічого. Створіть свій перший мем!"}
         </RopedOff>
       ) : (
-        <div className="grid grid-cols-4 gap-x-8 gap-y-10">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-8 min-[375px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 xl:gap-y-10">
           {memes!.map((m) => (
             <MemeCard key={m.id} meme={m} />
           ))}

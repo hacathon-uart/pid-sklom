@@ -13,9 +13,9 @@ export function ArtistsPage() {
       ) : error ? (
         <ErrorMessage error={error} onRetry={reload} />
       ) : (
-        <div className="grid grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 gap-8 min-[375px]:grid-cols-2 md:grid-cols-3 md:gap-10 xl:grid-cols-4">
           {data!.map((a) => (
-            <div key={a.id}>
+            <div key={a.id} className="min-w-0 break-words">
               <AuthorCard artist={a} />
               <p className="t-small mt-3 text-center text-text-secondary">{a.short_bio}</p>
             </div>
