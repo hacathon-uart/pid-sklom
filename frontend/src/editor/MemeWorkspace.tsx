@@ -31,6 +31,12 @@ import { MemeCanvas } from "./MemeCanvas";
 import type { MemeDraft } from "./useMemeDraft";
 import { useMemeExport } from "./useMemeExport";
 
+export type StoryState =
+  | { status: "loading" }
+  | { status: "ready"; story: Story }
+  | { status: "unavailable" }
+  | { status: "error"; message: string; retry: () => void };
+
 export function MemeWorkspace({
   artwork,
   story,
@@ -45,7 +51,7 @@ export function MemeWorkspace({
   children,
 }: {
   artwork: ArtworkSummary;
-  story: Story | null;
+  story: StoryState;
   draft: MemeDraft;
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
@@ -142,7 +148,7 @@ export function MemeWorkspace({
           />
         </Artwork>
         </div>
-        {story && <a href="#artwork-story" className="t-small mt-3 inline-flex min-h-11 items-center text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent">Читати історію картини ↓</a>}
+        <a href="#artwork-story" className="t-small mt-3 inline-flex min-h-11 items-center text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent">Читати історію картини ↓</a>
         {authEnabled && <p className="t-small mt-4 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {!editing && <button type="button" className="t-strong min-h-11 rounded-control border border-accent px-4 text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" onClick={() => onEditingChange(true)}>Редагувати підпис</button>}
@@ -171,8 +177,17 @@ export function MemeWorkspace({
         </div>
         <div ref={controlsZone} className="mt-6">{children}</div>
       </div>
-      <div id="artwork-story" className="min-w-0 scroll-mt-6">
-        {story ? <StoryCard artwork={artwork} story={story} /> : <div role="status" className="t-body rounded-story border border-line bg-surface p-6 text-text-secondary">Історія цієї картини зараз недоступна.</div>}
+      <div id="artwork-story" role="region" tabIndex={-1} aria-label="Історія картини" aria-busy={story.status === "loading"} className="min-w-0 scroll-mt-6">
+        {story.status === "ready" ? <StoryCard artwork={artwork} story={story.story} /> : (
+          <div className="t-body rounded-story border border-line bg-surface p-6 text-text-secondary">
+            {story.status === "error" ? (
+              <>
+                <p role="alert">{story.message}</p>
+                <button type="button" className="t-strong mt-3 min-h-11 rounded-control px-3 text-accent focus-visible:outline-2 focus-visible:outline-accent" onClick={story.retry}>Спробувати ще раз</button>
+              </>
+            ) : <p role="status">{story.status === "loading" ? "Завантажуємо історію картини…" : "Історія цієї картини зараз недоступна."}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

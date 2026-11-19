@@ -20,6 +20,8 @@ export function ChoosePaintingPage() {
   const [selected, setSelected] = useState<ArtworkSummary | null>(null);
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState<string | null>(null);
+  const [preselection, setPreselection] = useState<"loading" | "error" | null>(null);
+  const [preselectionAttempt, setPreselectionAttempt] = useState(0);
   const [panelHeight, setPanelHeight] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const selectionEpoch = useRef(0);
@@ -29,36 +31,59 @@ export function ChoosePaintingPage() {
   const { data, error, loading, reload } = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
 
   useEffect(() => {
-    const id = Number(preselectedId);
-    if (!id) return;
     const epoch = ++selectionEpoch.current;
-    let current = true;
+    setRandomBusy(false);
+    setRandomError(null);
+    setPreselection(null);
+    if (preselectedId === null) return;
+    const id = Number(preselectedId);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      setPreselection("error");
+      return;
+    }
+    setPreselection("loading");
     api.artwork(id).then((artwork) => {
-      if (current && epoch === selectionEpoch.current) setSelected(artwork);
-    }).catch(() => {});
-    return () => { current = false; };
-  }, [preselectedId]);
+      if (epoch !== selectionEpoch.current) return;
+      setSelected(artwork);
+      setPreselection(null);
+    }).catch(() => {
+      if (epoch === selectionEpoch.current) setPreselection("error");
+    });
+    return () => { selectionEpoch.current += 1; };
+  }, [preselectedId, preselectionAttempt]);
 
   useLayoutEffect(() => {
     if (!selected || !panelRef.current) return;
     const panel = panelRef.current;
-    const measure = () => setPanelHeight(panel.getBoundingClientRect().height);
+    const root = document.documentElement;
+    const previousClearance = root.style.getPropertyValue("--picker-panel-clearance");
+    const measure = () => {
+      const height = panel.getBoundingClientRect().height;
+      setPanelHeight(height);
+      root.style.setProperty("--picker-panel-clearance", `${height}px`);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (previousClearance) root.style.setProperty("--picker-panel-clearance", previousClearance);
+      else root.style.removeProperty("--picker-panel-clearance");
+    };
   }, [selected]);
 
   const choose = (artwork: ArtworkSummary | null) => {
     selectionEpoch.current += 1;
     setRandomBusy(false);
     setRandomError(null);
+    setPreselection(null);
     setSelected(artwork);
   };
   const random = async () => {
     const epoch = ++selectionEpoch.current;
     setRandomBusy(true);
     setRandomError(null);
+    setPreselection(null);
     try {
       const artwork = await api.randomArtwork();
       if (epoch === selectionEpoch.current) setSelected(artwork);
@@ -82,6 +107,23 @@ export function ChoosePaintingPage() {
         <Button variant="secondary" className="w-full sm:ml-auto sm:w-auto" onClick={() => void random()} disabled={randomBusy}>{randomBusy ? "Обираємо…" : "Випадкова картина"}</Button>
       </div>
       {randomError && <div className="mb-6"><ErrorMessage error={randomError} onRetry={() => void random()} /></div>}
+      {preselection && (
+        <div aria-busy={preselection === "loading"} className="mb-6 rounded-card border border-line bg-surface p-5">
+          <p role={preselection === "error" ? "alert" : "status"} className="t-body text-text-secondary">
+            {preselection === "loading" ? "Завантажуємо обрану картину…" : "Не вдалося завантажити картину за посиланням. Спробуйте ще раз або оберіть іншу в каталозі."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            {preselection === "error" && <Button variant="secondary" onClick={() => {
+              selectionEpoch.current += 1;
+              setPreselectionAttempt((attempt) => attempt + 1);
+            }}>Спробувати ще раз</Button>}
+            <Button variant="soft" onClick={() => {
+              selectionEpoch.current += 1;
+              setPreselection(null);
+            }}>Закрити повідомлення</Button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <Loading />

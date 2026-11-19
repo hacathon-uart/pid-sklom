@@ -60,7 +60,7 @@ export function AiCaptionsPage() {
       back={back}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={save}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }} draft={draft} editing={styleOpen} onEditingChange={setStyleOpen} onSave={save}
         savedId={savedId} stageRef={stageRef}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="t-label">Підписи від ШІ</div>
