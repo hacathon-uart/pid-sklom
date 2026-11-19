@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { LogoMark } from "../components/Museum";
+import { MuseumWall } from "../components/MuseumWall";
 import { Tag } from "../components/Tag";
 
 const EXAMPLES = ["коли понеділок", "дедлайн завтра", "мама кличе вечеряти", "чекаю на зарплату"];
@@ -53,7 +54,15 @@ export function HomePage() {
   return (
     <>
       <main id="main-content" tabIndex={-1}>
-      <section className="relative flex flex-col items-center px-[var(--page-gutter)] pb-8 pt-5 text-center md:pt-6">
+      <MuseumWall>
+        <LogoMark size={52} className="text-accent" />
+        <h1 className="t-logo mt-3 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
+        <p className="t-quote mt-3 text-[#5a4a3c] md:!text-[1.9rem]">Мистецтво крізь жарти</p>
+        <a href="#start" className="t-small mt-10 flex flex-col items-center gap-1 rounded-control px-3 py-2 text-[#5a4a3c] hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+          Гортайте вниз <span className="animate-bounce"><Icon name="chevronDown" size={20} /></span>
+        </a>
+      </MuseumWall>
+      <section id="start" className="relative flex scroll-mt-4 flex-col items-center px-[var(--page-gutter)] pb-8 pt-5 text-center md:pt-6">
         {authEnabled && <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-start gap-4 text-left md:absolute md:inset-x-8 md:top-6 md:w-auto md:gap-6">
           <GuestAllowance />
           <div className="ml-auto">
@@ -67,12 +76,7 @@ export function HomePage() {
           </div>
         </div>}
 
-        <div className="mt-6 flex flex-col items-center gap-3 md:mt-10">
-          <LogoMark size={56} className="text-accent" />
-          <h1 className="t-logo !text-[clamp(48px,15vw,80px)] md:!text-[80px]">Під склом</h1>
-        </div>
-        <p className="t-quote mt-3 text-text-secondary">Мистецтво крізь жарти</p>
-        <p className="t-body mt-6 text-text-secondary md:mt-10">Три шляхи до мему – оберіть свій!</p>
+        <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему – оберіть свій!</h2>
 
         {/* Path I — the fastest one, right here */}
         <div className="mt-4 w-full max-w-[920px] rounded-card border border-line bg-surface p-4 text-left sm:p-5">
