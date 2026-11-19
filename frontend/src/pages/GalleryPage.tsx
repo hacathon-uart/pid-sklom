@@ -20,16 +20,16 @@ export function GalleryPage() {
   const artworks = useApi(() => api.artworks({ q, genre, limit: 50 }), [q, genre]);
   const allCount = useApi(() => api.artworks({ limit: 1 }), []);
 
-  // CSS shows two, three or six portraits; step by one so every author is reachable.
+  // Match the visible columns: preserve the desktop three-author carousel step.
   const [authorStart, setAuthorStart] = useState(0);
   const [slide, setSlide] = useState<"next" | "prev">("next");
   const authorList = artists.data ?? [];
   const PER_VIEW = 6;
-  const STEP = 1;
   const canScroll = authorList.length > 2;
   const scrollAuthors = (dir: 1 | -1) => {
+    const step = window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1;
     setSlide(dir === 1 ? "next" : "prev");
-    setAuthorStart((s) => (s + dir * STEP + authorList.length) % authorList.length);
+    setAuthorStart((s) => (s + dir * step + authorList.length) % authorList.length);
   };
   const visibleAuthors = canScroll
     ? Array.from({ length: Math.min(PER_VIEW, authorList.length) }, (_, i) => authorList[(authorStart + i) % authorList.length])

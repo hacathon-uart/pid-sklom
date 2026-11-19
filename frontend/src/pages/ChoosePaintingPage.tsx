@@ -146,17 +146,18 @@ export function ChoosePaintingPage() {
 
       {selected && (
         <div className="fixed right-0 bottom-[calc(var(--app-bottom-clearance)+8px)] left-[var(--app-side-offset)] z-20 px-[var(--page-gutter)] md:bottom-6">
-          <div ref={panelRef} className="mx-auto max-h-[min(55dvh,360px)] max-w-[1150px] overflow-y-auto rounded-story border border-accent bg-surface p-4 shadow-lg">
-            <div className="flex items-center gap-3 md:gap-5">
+          <div ref={panelRef} className="mx-auto max-h-[min(55dvh,360px)] max-w-[1150px] overflow-y-auto rounded-story border border-accent bg-surface p-4 shadow-lg lg:flex lg:items-center lg:gap-5">
+            <div className="flex min-w-0 items-center gap-3 md:gap-5 lg:flex-1">
               <img src={selected.thumb_url} alt="" className="h-16 w-14 shrink-0 rounded-control object-cover md:h-24 md:w-20" />
               <div className="min-w-0 flex-1" role="status">
                 <div className="t-label">Обрано</div>
                 <div className="t-strong break-words">{selected.title}{selected.year ? `, ${selected.year}` : ""}</div>
                 <div className="t-small text-text-secondary">{selected.artist.name}</div>
               </div>
-              <button type="button" className="t-small min-h-11 shrink-0 rounded-control px-2 text-accent focus-visible:outline-2 focus-visible:outline-accent" onClick={() => choose(null)}>Закрити</button>
+              <button type="button" className="t-small min-h-11 shrink-0 rounded-control px-2 text-accent focus-visible:outline-2 focus-visible:outline-accent lg:hidden" onClick={() => choose(null)}>Закрити</button>
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 md:mt-0 md:flex md:justify-end md:gap-3">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 md:mt-0 md:flex md:justify-end md:gap-3 lg:shrink-0">
+              <Button variant="soft" className="hidden lg:inline-flex" onClick={() => choose(null)}>Скинути вибір</Button>
               <Button variant={ownFirst ? "primary" : "secondary"} onClick={() => navigate(`/create/painting/${selected.id}/own`)}>Написати свій підпис</Button>
               <Button variant={ownFirst ? "secondary" : "primary"} onClick={() => navigate(`/create/painting/${selected.id}/ai`)}>Згенерувати підпис</Button>
             </div>

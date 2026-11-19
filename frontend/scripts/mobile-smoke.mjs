@@ -102,6 +102,15 @@ await runBrowserCheck({
       await evaluate("document.querySelector('main button:has(img)').click()");
       await until("document.body.innerText.includes('Згенерувати підпис')");
       await layout(`${width} selected picker`);
+      if (width === 1440) {
+        assert(await evaluate(`(() => {
+          const image = [...document.images].find(i => i.alt === '' && i.closest('.fixed'));
+          const reset = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Скинути вибір');
+          if (!image || !reset || !reset.getClientRects().length) return false;
+          const a = image.getBoundingClientRect(), b = reset.getBoundingClientRect();
+          return Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 12;
+        })()`), "Desktop selected artwork actions stay in the original single row");
+      }
       await reference(`picker-${width}`);
       await click("Написати свій підпис");
       await ready("#caption-font");
@@ -118,6 +127,24 @@ await runBrowserCheck({
       await until("document.body.innerText.includes('Понеділок знову настав')");
       await layout(`${width} artist to AI`);
     }
+
+    const carouselArtists = Array.from({ length: 8 }, (_, index) => ({
+      ...fixtures.art().artist, id: index + 1, slug: `carousel-${index}`, name: `Автор ${index}`,
+    }));
+    fixtures.state.override = ({ url, json }) => url.pathname === "/api/artists" ? json(carouselArtists) : false;
+    const firstVisibleAuthor = () => evaluate(`[
+      ...document.querySelectorAll('main a[href^="/artists/"]')
+    ].find(a => a.getClientRects().length)?.getAttribute('href')`);
+    for (const [width, expected] of [[390, "/artists/carousel-1"], [1440, "/artists/carousel-3"]]) {
+      await setWidth(width);
+      await visit("/gallery", "main a[href='/artists/carousel-0']");
+      await evaluate("document.querySelector('button[aria-label=\"Наступні автори\"]').click()");
+      await until(`[
+        ...document.querySelectorAll('main a[href^="/artists/"]')
+      ].find(a => a.getClientRects().length)?.getAttribute('href') === ${JSON.stringify(expected)}`);
+      assert.equal(await firstVisibleAuthor(), expected, `${width}: carousel advances by visible column group`);
+    }
+    fixtures.state.override = null;
 
     await setWidth(390);
     fixtures.state.empty = true;
