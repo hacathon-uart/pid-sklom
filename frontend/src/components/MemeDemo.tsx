@@ -16,7 +16,7 @@ import { Artwork, Crack } from "./Artwork";
 type Example = { id: number; mode: "phrase" | "painting"; text: string };
 
 const EXAMPLES: Example[] = [
-  { id: 29, mode: "phrase", text: "Коли пара о 8:00" },
+  { id: 14, mode: "phrase", text: "Друг, коли я фліртую" },
   { id: 55, mode: "painting", text: "Ще п’ять хвилинок" },
   { id: 107, mode: "phrase", text: "Коли мама кличе вечеряти" },
   { id: 88, mode: "painting", text: "Мої плани на вихідні" },
