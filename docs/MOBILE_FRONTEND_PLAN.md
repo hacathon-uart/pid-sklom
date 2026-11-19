@@ -5,6 +5,8 @@ Decision: [ADR 0009](adr/0009-one-responsive-frontend.md).
 Desktop visual reference: [design README and Figma](design/README.md).
 Execution sequence: [responsive frontend implementation](MOBILE_FRONTEND_IMPLEMENTATION.md).
 Current state: [implementation handoff](MOBILE_FRONTEND_HANDOFF.md).
+Next delivery milestones and release gates:
+[remaining roadmap](MOBILE_FRONTEND_IMPLEMENTATION.md#remaining-delivery-roadmap).
 
 ## Product outcome
 
@@ -24,7 +26,11 @@ services. This work changes the browser presentation only. A link opened from a
 Telegram conversation should land on a usable phone page, while bot permissions,
 messages and rendering remain governed by the bot's existing decisions.
 
-## Current state and risks
+## Pre-implementation baseline and risks
+
+This table describes the starting point before the responsive implementation,
+not the current branch. Use the handoff and remaining roadmap above for current
+status and unresolved release work.
 
 | Area | Evidence in code | Mobile consequence |
 |---|---|---|

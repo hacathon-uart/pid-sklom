@@ -5,6 +5,141 @@ plan for [the product plan](MOBILE_FRONTEND_PLAN.md) and [ADR 0009](adr/0009-one
 It does not change the agreed product or route contracts.
 Progress and remaining gates: [implementation handoff](MOBILE_FRONTEND_HANDOFF.md).
 
+## Remaining delivery roadmap
+
+Assessment baseline: local commit `7745a0f`, reviewed on 2026-11-18.
+The responsive foundation is implemented; the following milestones are the
+remaining execution order, not a request to repeat Steps 0-5 below.
+Current execution evidence is recorded in the handoff: R1-R3 are implemented
+and locally verified; R4/R5 have automated/content improvements but retain human
+device/visual gates. R6 is blocked; R7 remains a post-release follow-up.
+This plan does not authorize publishing, merging, or deploying.
+
+| Milestone | Priority | Depends on | Deliverable and exit gate |
+|---|---|---|---|
+| R1. Restore browser regressions | Release blocker | Existing baseline | Update obsolete control selectors and assertions in `scripts/check_auth_browser.mjs`; the complete checked-in runner passes without weakening draft, account, Save, share, or export assertions. |
+| R2. Complete loading/error feedback | Release requirement | Existing baseline | Explicit story loading/ready/unavailable/error states with retry for recoverable failures; visible picker preselection errors; focused delayed/failing-response tests pass. |
+| R3. Make mobile coverage durable | Release requirement | R1, R2 | Complete critical journeys and export variants have deterministic browser coverage; the mobile suite runs in the existing frontend CI job against isolated fixtures. |
+| R4. Validate access and native interaction | Release requirement | R3 | Keyboard, real text enlargement, iOS Safari and Android Chrome acceptance evidence is recorded; any fixes rerun the affected automated checks. |
+| R5. Focused visual/content polish | Release requirement | Existing baseline | Reviewed phone/desktop reference pairs, readable action hierarchy and shared states, verified public links; changes pass R3 and R4 before release. |
+| R6. Release checkpoint | Release gate | R1, R2, R3, R4, R5 | Required CI passes for the final candidate; authorized release and production smoke checks confirm the intended frontend revision. |
+| R7. Measured follow-ups | After release | R6 | Profile mobile loading before optimization; add catalogue pagination before the current 50-item limit hides approved artworks. |
+
+R1, R2, and reference review for R5 can proceed independently. Complete R3
+against the resulting behavior, then test that candidate on devices in R4.
+Any later functional or visual change invalidates the affected acceptance
+evidence; do not treat an earlier device pass as approval of a different build.
+
+### R1 - restore the existing behavioral safety net
+
+- Start with `node scripts/check_auth_browser.mjs` from the repository root.
+  The assessment reproduced a failure at line 394: the runner expects
+  `radiogroup`/`radio`/`aria-checked`, while `FramePicker` now exposes a labelled
+  group of toggle buttons using `aria-pressed`.
+- Update all affected frame and share-control lookups to current accessible
+  names and state. Keep assertions about the selected frame and persisted
+  draft values; do not merely remove failing assertions or revert accessible
+  controls to satisfy obsolete selectors. Update the color lookup to the
+  current accessible label and assert that it actually finds a selection.
+- In-memory diagnostic adaptations passed direct-entry draft restoration,
+  artwork-scoped drafts, and signed-in Save checks, then stopped at another
+  missing-control lookup. This is partial diagnostic evidence, not a suite
+  pass. Resolve remaining failures and run the complete checked-in runner
+  without in-memory adaptations.
+- Add bounded readiness waits where lazy-loaded routes make timing relevant.
+  A failing or missing control must produce an explicit test failure.
+
+### R2 - make asynchronous states truthful
+
+- Let route modules own story request state and pass a small explicit state
+  interface into `MemeWorkspace`. Do not show "unavailable" while a selected
+  alternative's story is still loading. Preserve story and source access
+  after retries; an older response must not replace the current artwork.
+- Replace `ChoosePaintingPage`'s swallowed preselection rejection with a
+  recoverable message. Verify failed deep links, retry, dismissal, and a
+  manual selection made while preselection/random requests are pending.
+- Extract the selected-artwork panel when changing its sizing or feedback
+  behavior if that improves locality. Keep fetching and selection ownership
+  in the route; do not make a cosmetic extraction a release blocker.
+
+### R3 - expand coverage and integrate it once
+
+- Cover phrase -> edit -> Save/export, painting -> AI and own caption,
+  gallery -> artist -> create, saved edit, and signed-out public `/m/:id`.
+  Complete all three quiz games through certificate; verify signed-in
+  record persistence and the guest stopping condition.
+- Exercise guest generation/export exhaustion independently, unchanged PNG
+  replay after exhaustion, OAuth return to the same draft, cancelled sharing,
+  and auth-disabled navigation. Existing desktop account tests remain part
+  of the safety net, not proof that the phone presentation works.
+- Add 375/430 px to the durable width matrix. Check long Ukrainian labels,
+  loading/empty/error states, portrait/landscape artwork, two caption blocks,
+  supported fonts, frame options, resize, and editor-open PNG identity.
+  Compare unchanged exports across desktop and phone within the same browser;
+  do not require byte identity between different browser engines.
+- Replace fixed sleeps with bounded assertions on route, content, image/font
+  readiness and operation completion. Capture browser errors and useful
+  failure evidence. Check both document overflow and controls clipped inside
+  fixed surfaces.
+- Extend the existing browser/CDP tooling where practical. Run against
+  isolated local fixtures with explicit stub settings and Telegram disabled;
+  a loopback frontend URL alone does not prove its backend is offline.
+  CI must start, check readiness of, and clean up its own processes.
+
+### R4 - distinguish emulation from device acceptance
+
+- The existing root-font-size probe is only a navigation containment check.
+  In the assessment, doubling the root size left the tested heading at 43 px.
+  Verify that representative text actually enlarges before calling a test
+  "200% text"; also check browser zoom/reflow separately.
+- Check keyboard-only completion, visible and unobscured focus, dialog focus
+  return, visual versus DOM order in the quiz lobby, non-drag editing,
+  reduced motion, contrast and main touch targets.
+- On real iOS Safari and Android Chrome, test caption drag versus page scroll,
+  virtual keyboard and picker-panel actions, safe areas, orientation changes,
+  PNG download, native share/cancel/retry and clipboard denial. Include a
+  public link opened from Telegram's in-app browser when available.
+- Record device/browser, candidate revision, journey and result. This requires
+  device access or a human tester; headless Chrome is not a substitute.
+- Current automation: `node scripts/check_accessibility_browser.mjs` measures
+  actual representative text growth before checking reflow, and traverses the
+  creation/editor/selected-picker/quiz routes with real keyboard events.
+  Shared typography and rail sizing now use relative units without changing
+  their default 16 px-root dimensions. This is not a complete WCAG audit.
+
+### R5-R7 - polish, release, and avoid premature scaling work
+
+- Review a small 390 px reference set for home, selected picker, editor/story
+  and quiz/certificate beside desktop counterparts. Include 320 px and long
+  content/error examples; expand references where those reviews expose gaps.
+  Keep the existing museum identity rather than starting a new visual system.
+- Correct the homepage's stale bot handle and placeholder project links.
+  Verify link targets and preserve the bot's restricted-access messaging.
+- Before release, run the final width/state/journey matrix and required CI.
+  Keep granular commits, validate locally per slice, and push coherent batches
+  rather than triggering CI after every commit. Publishing and deployment
+  require separate authorization; afterward verify revision, deep links,
+  static assets, navigation, public view and export without unnecessary
+  production writes or AI spend.
+- After release, measure loading on a representative phone and connection.
+  The baseline main chunk is about 564 kB (166 kB gzip), and the editor chunk
+  is about 348 kB (107 kB gzip). Optimize the measured bottleneck, not just
+  the warning threshold. Plan search debouncing and pagination before the
+  approved catalogue outgrows the current 50-artwork requests.
+
+### Design skill usage
+
+`ui-ux-pro-max` is already installed project-locally under
+`.agents/skills/ui-ux-pro-max` from
+`https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git`; its provenance
+and upstream license are documented in `.agents/skills/README.md`.
+The skills CLI recognizes it for GitHub Copilot. Use targeted accessibility,
+touch and React/Tailwind guidance for these milestones. Existing Figma,
+`frontend/src/styles/tokens.css`, and ADR 0009 remain authoritative; skill
+recommendations do not authorize a replacement palette, route tree or draft
+model. Skill availability in an already-running agent session may differ from
+on-disk discovery.
+
 ## Rules for the implementation
 
 - Keep one React route tree, one set of flow state, and one editor/export path.
