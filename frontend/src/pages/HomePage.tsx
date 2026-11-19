@@ -24,20 +24,20 @@ const PAINTING_PATHS = [
   {
     no: "II",
     title: "Картина → підпис від ШІ",
-    text: "Оберіть картину в галереї, а ШІ запропонує три смішні підписи до неї.",
+    text: "ШІ запропонує три підписи.",
     to: "/create/painting?mode=ai",
   },
   {
     no: "III",
     title: "Картина → свій підпис",
-    text: "Усе самі: оберіть картину і напишіть підпис. Історія картини підкаже ідею.",
+    text: "Підпис пишете ви.",
     to: "/create/painting?mode=own",
   },
 ];
 const FEATURES = [
-  ["Українські картини", "Твори українських художників, які вже стали суспільним надбанням: від Шевченка до Екстер."],
-  ["Історія за кожним мемом", "Поруч із мемом є коротка історія картини і несподівані факти про автора. Ви можете дізнатись більше у галереї."],
-  ["ШІ на підхваті", "Підбирає картину до вашої фрази або вигадує підпис до обраної картини. Або не заважає, якщо ви самі."],
+  ["Українські картини", "Суспільне надбання: від Шевченка до Малевича."],
+  ["Історія за кожним мемом", "Коротка історія картини й факти про автора."],
+  ["ШІ на підхваті", "Підбере картину до фрази або підпис до картини."],
 ];
 const TEAM = ["Алла Ковальчук", "Герман Гавва", "Вікторія Лозяк"];
 const EMAIL = "kov.koalla@gmail.com";
@@ -61,7 +61,7 @@ export function HomePage() {
         <h1 className="t-logo mt-3 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
         <p className="t-quote mt-3 text-[#5a4a3c] md:!text-[1.9rem]">Мистецтво крізь жарти</p>
         <a href="#start" className="t-small mt-10 flex flex-col items-center gap-1 rounded-control px-3 py-2 text-[#5a4a3c] hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
-          Гортайте вниз <span className="animate-bounce"><Icon name="chevronDown" size={20} /></span>
+          <span className="sr-only">Гортайте вниз</span><span className="animate-bounce"><Icon name="chevronDown" size={28} /></span>
         </a>
       </MuseumWall>
       <section id="start" className="relative flex scroll-mt-4 flex-col items-center px-[var(--page-gutter)] pb-8 pt-5 text-center md:pt-6">
@@ -73,19 +73,18 @@ export function HomePage() {
               {user.name}
             </Link>
           ) : (
-            <Button variant="secondary" onClick={login} title="Новий акаунт створиться автоматично">Увійти з Google</Button>
+            <Button variant="secondary" onClick={login}>Увійти з Google</Button>
           )}
           </div>
         </div>}
 
-        <h2 className="t-h2 mt-16 mb-6 md:mt-20 md:mb-8">Фраза чи картина — і мем готовий</h2>
         <MemeDemo />
 
-        <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему – оберіть свій!</h2>
+        <h2 className="t-h2 mt-16 md:mt-20">Три шляхи до мему</h2>
 
         {/* Path I — the fastest one, right here */}
         <div className="mt-4 w-full max-w-[920px] rounded-card border border-line bg-surface p-4 text-left sm:p-5">
-          <PathHead no="I" title="Фраза → картина" text="Напишіть фразу чи опишіть ситуацію, а ШІ знайде українську картину, яка пасує найкраще." />
+          <PathHead no="I" title="Фраза → картина" text="ШІ знайде картину до вашої фрази." />
           <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Input aria-label="Фраза для мему" value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="Опишіть ситуацію або напишіть фразу…" maxLength={200} />
             <Button type="submit" className="w-full shrink-0 sm:w-auto">Створити мем</Button>
@@ -119,11 +118,9 @@ export function HomePage() {
         <div className="mx-auto max-w-[1000px]">
           <div className="t-label">Про проєкт</div>
           <h2 className="t-h1 mt-6 max-w-[560px]">Українське мистецтво — без серйозних облич</h2>
-          {/* TODO(C): final About text */}
           <p className="t-body-lg mt-8 max-w-[720px]">
-            «Під склом» — платформа, де українські картини стають мемами. Почніть із фрази, і штучний інтелект знайде
-            картину, яка пасує найкраще. Або почніть із картини: підпис запропонує ШІ чи напишете ви самі. До кожного
-            мему додаємо коротку історію про автора й картину. Без лекцій: лише гумор і трохи несподіваних фактів.
+            Українські картини стають мемами, а до кожного мему — коротка історія картини й автора. Без лекцій: лише
+            гумор і трохи несподіваних фактів.
           </p>
           <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
             {FEATURES.map(([title, text]) => (

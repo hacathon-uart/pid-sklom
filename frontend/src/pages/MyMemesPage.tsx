@@ -1,5 +1,6 @@
 /** Screen 4 · Профіль — мої меми (US-08). Requires login. */
 import { useState } from "react";
+import { plural } from "../plural";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { useAuth } from "../auth/AuthContext";
@@ -15,7 +16,7 @@ export function MyMemesPage() {
   const { user, login, logout } = useAuth();
   if (!authEnabled) {
     return (
-      <Page title="Мої меми" subtitle="Збереження в акаунт поки недоступне. Створюйте меми та завантажуйте PNG.">
+      <Page title="Мої меми" subtitle="Збереження в акаунт поки недоступне.">
         <Button onClick={() => window.location.assign("/create")}>Створити мем</Button>
       </Page>
     );
@@ -40,7 +41,7 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
   return (
     <Page
       title="Мої меми"
-      subtitle={data ? `${data.length} у вашій колекції · улюблені позначені тріснутим склом` : " "}
+      subtitle={data ? `${data.length} ${plural(data.length, "мем", "меми", "мемів")} у колекції` : " "}
       actions={
         <div className="flex min-w-0 flex-wrap items-center gap-3 [overflow-wrap:anywhere] [&_.ticket]:max-w-full [&_.ticket]:grid-cols-[minmax(0,1fr)_auto]">
           <Ticket title={name} subtitle="Відвідувач «Під склом»" number={data ? data.length : "…"} />
@@ -61,8 +62,8 @@ function MyMemes({ name, onLogout }: { name: string; onLogout: () => void }) {
       ) : memes!.length === 0 ? (
         <RopedOff>
           {favorite
-            ? "Улюблених поки немає. Поставте ♥ найкращому мему, і скло на ньому трісне від гордості."
-            : "Тут поки порожньо. Не торкатися — бо нічого. Створіть свій перший мем!"}
+            ? "Улюблених поки немає. Поставте ♥ найкращому мему."
+            : "Тут поки порожньо. Створіть свій перший мем!"}
         </RopedOff>
       ) : (
         <div className="grid grid-cols-1 gap-x-4 gap-y-8 min-[375px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 xl:gap-y-10">

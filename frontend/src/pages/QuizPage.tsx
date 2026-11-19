@@ -42,7 +42,7 @@ export function QuizPage() {
   }, [ready, user?.id, attempt]);
 
   return (
-    <Page title="Вікторина" subtitle="Натисніть на залу, щоб почати. Одна помилка — і гра завершується.">
+    <Page title="Вікторина" subtitle="Оберіть залу. Одна помилка — і гра завершується.">
       {error ? (
         <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
       ) : !info ? (
@@ -57,7 +57,7 @@ export function QuizPage() {
           </div>
           {info.limited && authEnabled && (
             <div className="mt-8 flex flex-col items-stretch gap-4 rounded-card bg-muted px-6 py-4 md:flex-row md:items-center md:gap-6">
-              <p className="t-body flex-1">Гості грають коротку версію. Увійдіть, щоб грати без обмежень і зберігати звання.</p>
+              <p className="t-body flex-1">Гості грають коротку версію.</p>
               <Button variant="secondary" className="min-h-11 shrink-0" onClick={() => void login()}>Увійти з Google</Button>
             </div>
           )}
@@ -273,7 +273,7 @@ function Interior({ game }: { game: QuizGame }) {
     [416, 820].forEach((gx, g) => [0, 1, 2].forEach((k) => items.push(
       <Painting key={`b${g}${k}`} x={gx + k * 42} y={210} w={36} h={30} />,
     )));
-    items.push(<Bench key="b1" x={436} y={100} w={70} vertical />, <Bench key="b2" x={912} y={100} w={70} vertical />);
+    items.push(<Bench key="bench1" x={436} y={100} w={70} vertical />, <Bench key="bench2" x={912} y={100} w={70} vertical />);
   }
   if (game === "titles") {
     [430, 520, 760, 856].forEach((x, n) => items.push(<Painting key={`t${n}`} x={x} y={262} w={64} h={34} />));
@@ -281,7 +281,7 @@ function Interior({ game }: { game: QuizGame }) {
     items.push(<Painting key="big" x={940} y={330} w={30} h={110} />);
     items.push(<Rope key="rope" x1={612} x2={672} y={478} />);
     items.push(<Sculpture key="s1" x={446} y={340} />, <Sculpture key="s2" x={446} y={430} />);
-    items.push(<Bench key="b1" x={850} y={340} w={60} />, <Bench key="b2" x={850} y={420} w={60} />);
+    items.push(<Bench key="bench1" x={850} y={340} w={60} />, <Bench key="bench2" x={850} y={420} w={60} />);
   }
   return <g pointerEvents="none" fill="none" stroke={LINE} strokeWidth="1.1" strokeOpacity=".45">{items}</g>;
 }

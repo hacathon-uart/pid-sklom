@@ -179,8 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       />}
       {!saveOffer && (error || offered) && <div role="alert" className="relative z-50 ml-[var(--app-side-offset)] border-b border-line bg-surface p-5">
         <p>{error ?? (offered?.kind === "export"
-          ? "Три унікальні PNG використано. Увійдіть через Google, щоб завантажувати й поширювати нові. Повтори незмінених мемів залишаються безкоштовними."
-          : "Три гостьові генерації використано. Увійдіть через Google, щоб продовжити.")}</p>
+          ? "Три унікальні PNG використано. Увійдіть, щоб завантажувати нові."
+          : "Три гостьові генерації використано. Увійдіть, щоб продовжити.")}</p>
         {offered && <button className="t-strong mr-5 text-accent" onClick={() => void startLogin(offered)}>Увійти через Google і продовжити</button>}
         <button className="t-strong mr-5" onClick={() => { setOffered(null); setError(null); }}>Закрити</button>
         {window.location.pathname === "/auth/callback" && <button className="t-strong" onClick={() => {

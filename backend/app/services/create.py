@@ -17,6 +17,7 @@ from app.schemas import CaptionsResult, MatchCandidate, MatchResult, Source, Sto
 log = logging.getLogger(__name__)
 _fallback = StubProvider()
 _match_cache: dict[tuple[str, str], MatchResult] = {}  # repeated & demo phrases (plan §4)
+_MATCH_CACHE_SIZE = 500
 
 
 class NotFoundError(LookupError):
@@ -66,7 +67,11 @@ async def match_phrase(phrase: str, description: str | None = None) -> MatchResu
         alternatives=[MatchCandidate(artwork=d, score=s) for d, s in candidates],
         source=source,
     )
-    _match_cache[key] = result
+    # A fallback result means the AI failed this time: don't pin it to the phrase until a restart.
+    if source != "fallback":
+        if len(_match_cache) >= _MATCH_CACHE_SIZE:
+            _match_cache.pop(next(iter(_match_cache)))  # oldest first (dicts keep insertion order)
+        _match_cache[key] = result
     return result
 
 

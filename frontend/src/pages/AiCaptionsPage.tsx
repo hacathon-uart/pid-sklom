@@ -56,7 +56,6 @@ export function AiCaptionsPage() {
   return (
     <Page
       title="Підпис для картини"
-      subtitle="ШІ запропонував три підписи. Оберіть, відредагуйте або напишіть свій."
       back={back}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />

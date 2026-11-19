@@ -34,7 +34,7 @@ export function EditMemePage() {
   return (
     <Page
       title="Редагування"
-      subtitle="Перетягніть підпис на картині або змініть його стиль під нею. Незбережені зміни залишаться в цій вкладці; опублікований мем не зміниться без збереження."
+      subtitle="Перетягніть підпис або змініть його стиль"
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace artwork={artwork.data} story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
@@ -48,7 +48,7 @@ export function EditMemePage() {
         {editing ? (
           <CaptionControls draft={draft} />
         ) : (
-          <p className="t-small text-text-secondary">Натисніть на підпис на картині, щоб змінити його.</p>
+          <p className="t-small text-text-secondary">Натисніть на підпис, щоб змінити його.</p>
         )}
       </MemeWorkspace>
     </Page>

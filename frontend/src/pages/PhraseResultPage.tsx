@@ -7,7 +7,7 @@ import { useSearchParams } from "react-router";
 import { api } from "../api/client";
 import type { ArtworkSummary, Story } from "../api/types";
 import { useApi } from "../api/useApi";
-import { Button, IconButton } from "../components/Button";
+import { Button } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
 import { Input } from "../components/Input";
 import { PaintingViewer } from "../components/PaintingViewer";
@@ -23,7 +23,7 @@ export function PhraseResultPage() {
   const phrase = params.get("q") ?? "";
   const description = params.get("d") ?? undefined;
 
-  const { data: match, error, loading, reload } = useApi(() => api.match(phrase, description), [phrase, description]);
+  const { data: match, error, loading, reload } = useApi(() => (phrase ? api.match(phrase, description) : Promise.resolve(null)), [phrase, description]);
   const [selected, setSelected] = useTabState<{ artwork: ArtworkSummary; story: Story | null } | null>("selected", null);
   const [editing, setEditing] = useState(false);
   const [zoomed, setZoomed] = useState<ArtworkSummary | null>(null);
@@ -89,7 +89,7 @@ export function PhraseResultPage() {
   return (
     <Page
       title={editing ? "Редагування" : "Ваш мем"}
-      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Підпис можна змінити кнопкою під картиною."}
+      subtitle={editing ? "Перетягніть підпис або змініть його стиль" : "Не те? Оберіть іншу з топ-5 нижче."}
       actions={
         editing ? null : <ModeSwitch />
       }
@@ -113,8 +113,6 @@ export function PhraseResultPage() {
             <div className="t-label mb-3">Підпис</div>
             <div className="flex gap-3">
               <Input aria-label="Підпис мему" value={draft.blocks[0].text} onChange={(e) => draft.setText(e.target.value)} maxLength={200} />
-              {/* TODO(team): design shows a refresh icon here — regenerate caption? another painting? */}
-              <IconButton icon="refresh" label="Інша картина" onClick={nextAlternative} />
             </div>
             <div className="mt-4">
               <Button variant="secondary" onClick={nextAlternative}>Інша картина</Button>

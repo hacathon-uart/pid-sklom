@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { Outlet } from "react-router";
+import { Outlet, ScrollRestoration } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { GuestAllowance } from "../auth/GuestAllowance";
 
@@ -7,6 +7,8 @@ export function Layout() {
   return (
     <div className="min-h-screen pl-[var(--app-side-offset)] pb-[var(--app-bottom-clearance)]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-control focus:bg-surface focus:px-4 focus:py-3 focus:outline-2 focus:outline-accent">До вмісту</a>
+      {/* New pages open at the top (back/forward restore the old position). */}
+      <ScrollRestoration />
       <Sidebar />
       <Suspense fallback={<main id="main-content" tabIndex={-1} className="mx-auto max-w-[1280px] px-[var(--page-gutter)] py-7"><Loading text="Завантажуємо сторінку…" /></main>}>
         <Outlet />

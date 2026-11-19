@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../api/client";
+import type { ArtworkDetail } from "../api/types";
 import { useApi } from "../api/useApi";
 import { Artwork, Crack } from "./Artwork";
 
@@ -29,8 +30,28 @@ type Phase = "type" | "search" | "reveal";
 
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+type Loaded = Example & { work: ArtworkDetail };
+
+/** Loads the examples' paintings and keeps the ones that arrived: one hidden or missing painting
+ *  must not break the demo. Nothing is shown until they load, or at all if none did. */
 export function MemeDemo() {
-  const { data: works } = useApi(() => Promise.all(EXAMPLES.map((e) => api.artwork(e.id))), []);
+  const { data: items } = useApi(async () => {
+    const results = await Promise.allSettled(EXAMPLES.map((e) => api.artwork(e.id)));
+    return EXAMPLES.flatMap((e, i): Loaded[] => {
+      const r = results[i];
+      return r.status === "fulfilled" ? [{ ...e, work: r.value }] : [];
+    });
+  }, []);
+  if (!items?.length) return null;
+  return (
+    <>
+      <h2 className="t-h2 mt-16 mb-6 md:mt-20 md:mb-8">Фраза чи картина — і мем готовий</h2>
+      <Exhibit items={items} />
+    </>
+  );
+}
+
+function Exhibit({ items }: { items: Loaded[] }) {
   const { data: pool } = useApi(() => api.artworks({ limit: 16 }), []);
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>("type");
@@ -40,8 +61,8 @@ export function MemeDemo() {
   const root = useRef<HTMLDivElement>(null);
   const [still] = useState(reducedMotion);
 
-  const ex = EXAMPLES[idx];
-  const work = works?.[idx];
+  const ex = items[idx % items.length];
+  const work = ex.work;
   const shuffle = (pool?.items ?? []).map((a) => a.thumb_url).filter((u) => u !== work?.thumb_url);
 
   // Play only while the exhibit is on screen.
@@ -55,7 +76,7 @@ export function MemeDemo() {
 
   // The timeline of one example.
   useEffect(() => {
-    if (still || !works) {
+    if (still) {
       setPhase("reveal");
       setTyped(ex.text.length);
       return;
@@ -74,9 +95,9 @@ export function MemeDemo() {
       revealAt = typedAt + 200 + SEARCH_MS;
     }
     later(revealAt, () => setPhase("reveal"));
-    later(revealAt + HOLD_MS, () => setIdx((i) => (i + 1) % EXAMPLES.length));
+    later(revealAt + HOLD_MS, () => setIdx((i) => (i + 1) % items.length));
     return () => timers.forEach(clearTimeout);
-  }, [idx, works, visible, still, ex]);
+  }, [idx, visible, still, ex, items.length]);
 
   // Paintings flicking behind the glass: slow and blurred while typing, fast while searching.
   const flicking = ex.mode === "phrase" && phase !== "reveal" && shuffle.length > 0;
@@ -97,7 +118,7 @@ export function MemeDemo() {
         <div aria-hidden className={`picture-lamp ${lit ? "is-lit" : ""}`} />
         <button
           type="button"
-          onClick={() => setIdx((i) => (i + 1) % EXAMPLES.length)}
+          onClick={() => setIdx((i) => (i + 1) % items.length)}
           aria-label="Наступний приклад"
           className="relative block w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
@@ -133,7 +154,7 @@ export function MemeDemo() {
         <div className="mt-4 flex items-center justify-between gap-4">
           <Link to="/gallery#memes" className="t-strong inline-flex min-h-11 items-center text-accent hover:underline">Більше мемів →</Link>
           <div className="flex" role="group" aria-label="Приклади">
-            {EXAMPLES.map((e, i) => (
+            {items.map((e, i) => (
               <button
                 key={e.id}
                 type="button"
