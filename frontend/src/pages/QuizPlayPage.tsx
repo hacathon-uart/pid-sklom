@@ -1,5 +1,5 @@
 /** One quiz run (ADR 0008): question → answer → reveal with the painting's story → next, until the run ends. */
-import { useCallback, useEffect, useState, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError } from "../api/client";
 import type { QuizGame, QuizQuestion, QuizResult, QuizReveal, QuizRun } from "../api/types";
@@ -46,7 +46,9 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
   const [result, setResult] = useState<QuizResult | null>(null);
   const [showFinal, setShowFinal] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // the run can't go on
+  const [answerError, setAnswerError] = useState<string | null>(null); // this answer didn't arrive: resend it
+  const lastAnswer = useRef<Record<string, string> | null>(null);
   const [best, setBest] = useState<number | null>(null);
   const [scopeName, setScopeName] = useState<string | null>(null);
   const [artworks, setArtworks] = useState<number | null>(null); // size of the collection: the base of the museum rank
@@ -65,10 +67,14 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     return () => { active = false; };
   }, [game, scope]);
 
-  const answer = useCallback(async (value: Record<string, string>) => {
-    if (!run?.token || busy || result) return;
+  // `retry` resends after a failed request; otherwise new answers wait until the error is dealt with
+  // (stops «Пари» from auto-submitting again and again on a dead connection).
+  const answer = useCallback(async (value: Record<string, string>, retry = false) => {
+    if (!run?.token || busy || result || (answerError && !retry)) return;
+    lastAnswer.current = value;
     setBusy(true);
     setError(null);
+    setAnswerError(null);
     try {
       const next = await api.answerQuiz(run.token, value);
       setResult(next);
@@ -76,11 +82,13 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
       if (next.best !== null) setBest(next.best);
       for (const image of next.run.question?.images ?? []) new Image().src = image.image_url; // preload
     } catch (e) {
-      setError(e instanceof ApiError && e.code === "quiz_restart" ? e.message : (e as Error).message);
+      // Only an expired/invalid run has to start over; a network blip keeps the streak.
+      if (e instanceof ApiError && e.code === "quiz_restart") setError(e.message);
+      else setAnswerError((e as Error).message);
     } finally {
       setBusy(false);
     }
-  }, [run, busy, result]);
+  }, [run, busy, result, answerError]);
 
   const next = useCallback(() => {
     if (!result) return;
@@ -120,11 +128,16 @@ function QuizRunView({ game, scope, onRestart }: { game: QuizGame; scope: string
     );
   }
 
-  return page(
-    game === "pairs"
+  return page(<>
+    {answerError && (
+      <div className="mb-6">
+        <ErrorMessage error={answerError} onRetry={() => lastAnswer.current && void answer(lastAnswer.current, true)} />
+      </div>
+    )}
+    {game === "pairs"
       ? <PairsQuestion key={question.images.map((i) => i.image_url).join()} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} />
-      : <SingleQuestion key={question.images[0].image_url} game={game} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} />,
-  );
+      : <SingleQuestion key={question.images[0].image_url} game={game} question={question} result={result} busy={busy} onAnswer={answer} onNext={next} />}
+  </>);
 }
 
 // ---------- «Хто автор?» and «Назва картини» ----------
@@ -390,7 +403,9 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
 }) {
   const score = result.run.score;
   // Finishing one artist's works is not finishing the collection, so «complete» only counts on the whole one.
-  const part = share(game, score, artworks ?? Math.max(score, 1), scope === "all" ? result.finished : null);
+  const finished = scope === "all" ? result.finished : null;
+  // Without the collection size (quiz info failed to load) the share is unknown: no rank rather than a wrong one.
+  const part = artworks !== null ? share(game, score, artworks, finished) : finished === "complete" ? 1 : null;
   const ending = ENDINGS[result.finished!];
   const unit = game === "pairs"
     ? `${plural(score, "раунд", "раунди", "раундів")} без помилки`
@@ -424,6 +439,7 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
 
         {/* The rank (right on a laptop) */}
         <div className="mt-6 lg:mt-8">
+          {part !== null && <>
           <div className="t-label">Звання</div>
           {/* The rules sit on the rank's own row, so they line up with the middle of the text, not of the label above it. */}
           <div className="mt-1 flex min-w-0 items-center justify-center gap-2 md:gap-4">
@@ -432,6 +448,7 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
             <span className="hidden h-px w-14 shrink-0 bg-accent-soft md:block lg:w-10" />
           </div>
           <p className="t-small mt-1 text-text-secondary">впізнано {percent(part)} колекції</p>
+          </>}
           {result.new_record && <p className="t-label mt-3">Новий рекорд!</p>}
           {signedIn && !result.new_record && !!result.best && (
             <p className="t-small mt-3 text-text-secondary">Ваш рекорд: <strong className="text-text">{result.best}</strong></p>
@@ -452,7 +469,7 @@ function FinalCard({ game, scope, scopeName, result, signedIn, artworks, onAgain
       </CertificateFrame>
       {guest && (
         <div className="mt-12 w-full rounded-card bg-muted p-5 text-center">
-          <p className="t-body">Увійдіть, щоб грати без обмежень і зберегти звання.</p>
+          <p className="t-body">Увійдіть, щоб зберегти звання.</p>
           <Button variant="secondary" className="mt-4" onClick={onLogin}>Увійти з Google</Button>
         </div>
       )}

@@ -425,7 +425,7 @@ try {
     const mutations = state.saves + state.updates;
     const generations = state.calls;
     const exports = exportsRemaining();
-    await click("До вибору картини");
+    await click("Обрати іншу картину");
     await until("location.pathname === '/create/painting' && location.search === '?artwork=1' && document.body.innerText.includes('Написати свій підпис')");
     await click("Написати свій підпис");
     await until("document.querySelector('input[maxlength=\"200\"]')?.value === 'Direct-entry tab draft'");

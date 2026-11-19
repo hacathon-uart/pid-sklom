@@ -100,7 +100,7 @@ export function ChoosePaintingPage() {
   };
 
   return (
-    <Page title="Створити мем" subtitle="Оберіть картину, а підпис запропонує ШІ або напишете ви самі" actions={<ModeSwitch />}>
+    <Page title="Створити мем" actions={<ModeSwitch />}>
       <div className="mb-8 flex flex-wrap items-center gap-3">
         <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Автор, назва або настрій" className="w-full lg:max-w-[370px]" />
         <div className="flex min-w-0 flex-wrap gap-2">
@@ -115,7 +115,7 @@ export function ChoosePaintingPage() {
       {preselection && (
         <div aria-busy={preselection === "loading"} className="mb-6 rounded-card border border-line bg-surface p-5">
           <p role={preselection === "error" ? "alert" : "status"} className="t-body text-text-secondary">
-            {preselection === "loading" ? "Завантажуємо обрану картину…" : "Не вдалося завантажити картину за посиланням. Спробуйте ще раз або оберіть іншу в каталозі."}
+            {preselection === "loading" ? "Завантажуємо обрану картину…" : "Не вдалося завантажити картину за посиланням."}
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
             {preselection === "error" && <Button variant="secondary" onClick={() => {
@@ -125,7 +125,7 @@ export function ChoosePaintingPage() {
             <Button variant="soft" onClick={() => {
               selectionEpoch.current += 1;
               setPreselection(null);
-            }}>Закрити повідомлення</Button>
+            }}>Приховати</Button>
           </div>
         </div>
       )}

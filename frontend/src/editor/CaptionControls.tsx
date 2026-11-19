@@ -103,7 +103,7 @@ export function CaptionControls({
 
       {blocks.length < MAX_BLOCKS && (
         <button onClick={addBlock} className="mt-6 min-h-11 rounded-control bg-muted px-5 py-3 text-[15px] font-semibold focus-visible:outline-2 focus-visible:outline-accent">
-          + Додати ще один текст
+          + Додати текст
         </button>
       )}
     </section>

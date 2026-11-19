@@ -87,7 +87,7 @@ export function createMobileFixtures() {
       const limit = Number(url.searchParams.get("limit") ?? 50);
       return json({ items: (url.searchParams.get("random") ? ids.slice(1, 2) : ids.slice(offset, offset + limit)).map(art), total: ids.length });
     }
-    const detail = url.pathname.match(/^\/api\/artworks\/([123]|29|55|88|107)$/); // 29, 55, 88, 107: the landing demo (MemeDemo)
+    const detail = url.pathname.match(/^\/api\/artworks\/([123]|14|55|88|107)$/); // 14, 55, 88, 107: the landing demo (MemeDemo)
     if (detail) return json({
       ...art(Number(detail[1])), about: story.about_artwork, story, tags: [], facts: [], artist_facts: [],
       museum: story.museum, source_url: story.source_url, license: "Public domain", medium: "Олія",

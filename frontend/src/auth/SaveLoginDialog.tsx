@@ -44,7 +44,7 @@ export function SaveLoginDialog({
     >
       <h2 id="save-login-title" className="t-h3">Увійдіть, щоб зберегти мем</h2>
       <p id="save-login-description" className="t-body mt-3">
-        Продовжте через Google. Ми збережемо чернетку й автоматично додамо мем до вашої колекції після входу.
+        Після входу мем автоматично з’явиться у вашій колекції.
       </p>
       <p id="save-login-disclosure" className="t-small mt-3 text-text-secondary">
         Збережений мем і PNG будуть доступні всім, хто має посилання.

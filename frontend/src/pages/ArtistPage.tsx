@@ -70,7 +70,7 @@ export function ArtistPage() {
                   <div className="t-h3">«{artist.featured_artwork.title}»{artist.featured_artwork.year ? `, ${artist.featured_artwork.year}` : ""}</div>
                   <div className="t-small text-text-secondary">{[f?.museum, f?.medium].filter(Boolean).join(" · ")}</div>
                 </div>
-                <Button className="min-h-11 w-full whitespace-normal xl:w-auto xl:shrink-0" onClick={() => navigate(`/create/painting/${artist.featured_artwork!.id}/ai`)}>Зробити мем з картини</Button>
+                <Button className="min-h-11 w-full whitespace-normal xl:w-auto xl:shrink-0" onClick={() => navigate(`/create/painting/${artist.featured_artwork!.id}/ai`)}>Зробити мем</Button>
               </div>
             </section>
           )}
@@ -109,7 +109,7 @@ export function ArtistPage() {
             position={list.length > 1 ? `${i + 1} / ${list.length}` : undefined}
           >
             <Button variant="secondary" className="border-white/60 text-white hover:bg-white/10" onClick={() => navigate(`/create/painting/${w.id}/own`)}>Написати свій підпис</Button>
-            <Button onClick={() => navigate(`/create/painting/${w.id}/ai`)}>Зробити мем з картини</Button>
+            <Button onClick={() => navigate(`/create/painting/${w.id}/ai`)}>Зробити мем</Button>
           </PaintingViewer>
         );
       })()}

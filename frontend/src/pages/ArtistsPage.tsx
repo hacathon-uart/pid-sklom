@@ -7,7 +7,7 @@ import { ErrorMessage, Loading, Page } from "../components/Layout";
 export function ArtistsPage() {
   const { data, error, loading, reload } = useApi(() => api.artists(), []);
   return (
-    <Page title="Автори" subtitle="Українські художники, чиї твори стали суспільним надбанням">
+    <Page title="Автори">
       {loading ? (
         <Loading />
       ) : error ? (

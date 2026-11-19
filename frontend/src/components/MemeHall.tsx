@@ -47,7 +47,23 @@ export function MemeHall({ n }: { n: number }) {
   const ready = hits.length > 0;
   // «Більше мемів» on the landing links to /gallery#memes: scroll here once the hall has rendered.
   useEffect(() => {
-    if (ready && hash === "#memes") document.getElementById("memes")?.scrollIntoView({ block: "start" });
+    if (!ready || hash !== "#memes") return;
+    const hall = document.getElementById("memes");
+    if (!hall) return;
+    const jump = () => hall.scrollIntoView({ block: "start" });
+    jump();
+    // Sections above (the authors) may still be loading and grow: keep the hall in place while the page
+    // settles, until the visitor scrolls themselves or 2.5 s pass.
+    const resize = new ResizeObserver(jump);
+    resize.observe(document.body);
+    const stop = () => {
+      resize.disconnect();
+      window.clearTimeout(timer);
+      ["wheel", "touchstart", "keydown"].forEach((t) => window.removeEventListener(t, stop));
+    };
+    const timer = window.setTimeout(stop, 2500);
+    ["wheel", "touchstart", "keydown"].forEach((t) => window.addEventListener(t, stop, { passive: true }));
+    return stop;
   }, [ready, hash]);
   if (!ready) return null;
   const columns = Array.from({ length: cols }, (_, c) => hits.filter((_, i) => i % cols === c));
