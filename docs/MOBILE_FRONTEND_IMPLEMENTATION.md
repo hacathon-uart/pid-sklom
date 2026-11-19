@@ -1,6 +1,6 @@
 # Responsive frontend: implementation sequence
 
-Status: **Implementation baseline complete; release QA pending.** This is the execution
+Status: **Implementation merged and deployed; device and visual QA pending.** This is the execution
 plan for [the product plan](MOBILE_FRONTEND_PLAN.md) and [ADR 0009](adr/0009-one-responsive-frontend.md).
 It does not change the agreed product or route contracts.
 Progress and remaining gates: [implementation handoff](MOBILE_FRONTEND_HANDOFF.md).
@@ -10,11 +10,11 @@ Progress and remaining gates: [implementation handoff](MOBILE_FRONTEND_HANDOFF.m
 Assessment baseline: local commit `7745a0f`, reviewed on 2026-11-18.
 The responsive foundation is implemented; the following milestones are the
 remaining execution order, not a request to repeat Steps 0-5 below.
-Current execution evidence is recorded in the handoff: R1-R3 are implemented
-and locally verified; R4/R5 have automated/content improvements but retain human
-device/visual gates. R6 is blocked; catalogue pagination in R7 is implemented,
-while measured mobile performance remains a post-release follow-up.
-This plan does not authorize publishing, merging, or deploying.
+Current execution evidence is recorded in the handoff: R1-R3 passed locally and
+in hosted CI; R4/R5 have automated/content improvements but retain human
+device/visual gates. R6 merged and deployed via PR #24; catalogue pagination in
+R7 is implemented, while measured mobile performance remains a follow-up.
+Publication authorization came from the user's 2026-11-19 release request.
 
 | Milestone | Priority | Depends on | Deliverable and exit gate |
 |---|---|---|---|

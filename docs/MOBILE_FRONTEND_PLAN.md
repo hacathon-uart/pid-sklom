@@ -1,6 +1,6 @@
 # Mobile frontend: product and delivery plan
 
-Status: **Responsive implementation on `herman/mobile-front`; release QA pending.**
+Status: **Responsive implementation merged and deployed; device and visual QA pending.**
 Decision: [ADR 0009](adr/0009-one-responsive-frontend.md).
 Desktop visual reference: [design README and Figma](design/README.md).
 Execution sequence: [responsive frontend implementation](MOBILE_FRONTEND_IMPLEMENTATION.md).

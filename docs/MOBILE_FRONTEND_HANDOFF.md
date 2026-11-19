@@ -1,6 +1,6 @@
 # Responsive frontend handoff
 
-Status: **Responsive hardening implemented locally on `herman/mobile-front`; automated gates passing; device/visual acceptance and release pending.**
+Status: **Responsive frontend merged and deployed from `main`; real-device and visual acceptance remain open.**
 Base: `origin/main` at `45f1730`. Product scope and route contract are in
 [the mobile plan](MOBILE_FRONTEND_PLAN.md) and [ADR 0009](adr/0009-one-responsive-frontend.md).
 The remaining delivery order and acceptance gates are in the
@@ -13,10 +13,10 @@ The same document retains the original implementation sequence for context.
 |---|---|
 | R1 | Full account/draft/Save/share/export runner passes at its default desktop viewport and at `BROWSER_WIDTH=390`. Frame/color assertions use current accessible names and pressed states, without removing behavioral checks. Builds no longer load `.env` files or overwrite a shared `dist`. |
 | R2 | Explicit story loading/ready/unavailable/error states, retry, preserved source links/drafts and epoch-protected responses. Picker preselection failures are visible, retryable and dismissible. Held-response tests cover A -> B -> A, stale success/failure/retry, manual selection versus preselection/random, and invalid links. |
-| R3 | Self-owned mobile runner covers 14 routes at 320/375/390/430/768/1024/1440 px, catalogue empty/error/retry, painting -> own, gallery -> artist -> AI, public view, all guest/member quiz runs through certificate and restored member records. Desktop and phone account runners retain allowance exhaustion/replay, OAuth, saved-edit and cancelled-share coverage. All runners are wired into the frontend CI job; hosted CI has not been triggered for this local candidate. |
+| R3 | Self-owned mobile runner covers 14 routes at 320/375/390/430/768/1024/1440 px, catalogue empty/error/retry, painting -> own, gallery -> artist -> AI, public view, all guest/member quiz runs through certificate and restored member records. Desktop and phone account runners retain allowance exhaustion/replay, OAuth, saved-edit and cancelled-share coverage. All runners passed in PR #24 and post-merge `main` CI. |
 | R4 | Automated representative text actually doubles; narrow reflow, real keyboard traversal/focus, skip link, selected-picker obstruction, guest-ticket Escape/focus return, non-drag presets and reduced motion pass. This exposed and fixed real heading/ticket/story/preset overflow, an unfocusable skip target, decorative SVG clone tab stops and selected-panel focus obstruction. Real devices, real browser zoom, screen readers and final contrast/visual acceptance remain open. |
 | R5 | Footer now links the verified production bot page (with restricted-access copy), repository and gallery instead of stale/placeholder items. Content-sized caption presets avoid unnecessary word splitting, and the certificate reserves space so its decorative stamp does not cover copy. Twenty-five local fixture reference screenshots cover home, selected picker, editor/controls/story, errors and certificates at 320/390/1440 px. They are geometry references, not final production-art/font approval. |
-| R6 | Implementation recorded in granular local commits. Release remains blocked on the human gates below, final hosted CI and explicit publishing/deployment authorization. No push, merge, production API call or deployment was performed. |
+| R6 | PR #24 merged as `68930c7` after `backend`, `frontend` and `containers` checks passed. Post-merge `main` CI passed; both Render services automatically deployed that revision. Human device and visual acceptance remains open. |
 | R7 | Catalogue pagination now uses 20-artwork pages in gallery and picker; mobile loading measurements remain deferred until device evidence. |
 
 The mobile harness intercepts external font CSS and supplies the existing bundled
@@ -135,7 +135,7 @@ contract test checks distinct offset slices and stable totals.
 
 | Priority | Status | Work and release evidence needed |
 |---|---|---|
-| Regression gate | **Passing locally** | Complete desktop and 390 px account/draft/Save/share/export runners; isolated story-race and accessibility checks; expanded mobile journeys. Hosted CI must still run on the final published candidate. |
+| Regression gate | **Passing locally and in hosted CI** | Complete desktop and 390 px account/draft/Save/share/export runners; isolated story-race and accessibility checks; expanded mobile journeys. PR #24 and post-merge `main` checks passed. |
 | Release gate | **TBD** | Test real iOS Safari and Android Chrome: caption drag versus page scroll, virtual keyboard, bottom safe areas, selected-artwork panel, PNG download, native share/cancel/retry, clipboard denial, and orientation changes. Headless Chrome cannot establish these outcomes. |
 | Release gate | **Automated locally; human pending** | Critical journeys now run against deterministic fixtures, including full quizzes, allowances, OAuth, saved/public views and auth-disabled navigation. Repeat native interactions and real provider/content acceptance on the final candidate without unnecessary AI spend or production writes. |
 | Design gate | **Partial** | Review generated phone/desktop reference pairs with production artwork and loaded UI/meme fonts; approve long text, story, certificate and error states. No mobile Figma frames or designer approval are implied by fixture screenshots. |
@@ -143,14 +143,24 @@ contract test checks distinct offset slices and stable totals.
 | Follow-up | **Implemented locally** | Gallery and picker page the catalogue. Reassess page size and search latency with the full approved collection on a real device. |
 | Follow-up | **TBD** | Measure mobile loading on a representative device. Route splitting reduced the initial JS, but the main bundle remains 564 kB and the editor chunk 348 kB. Optimize based on measured delay. |
 
-There is no data migration or backend runtime change in this branch. The branch has not
-been pushed or deployed. The prior attempt to publish this local branch was
-rejected by automatic approval review, so publishing remains a separate step
-requiring explicit authorization.
+There was no data migration or backend runtime change in this release. The user
+authorized publication, merge and deployment on 2026-11-19.
+
+### Hosted release checkpoint (2026-11-19)
+
+- [PR #24](https://github.com/hacathon-uart/pid-sklom/pull/24) merged into `main`
+  as `68930c7ad2b4fb84b7006d402cb4ad9d143cb66e`.
+- The PR and [post-merge CI](https://github.com/hacathon-uart/pid-sklom/actions/runs/44492247059)
+  passed all three jobs. Render reported the static site and API deployments at
+  that exact SHA as `live`, triggered by `new_commit` after CI.
+- Public home and `/gallery` returned 200; `/api/ready` returned 200; an
+  `/api/artworks?limit=1&offset=0` request returned 200 with total 110 and one
+  item. These are HTTP smoke checks, not an interactive production-browser or
+  real-device acceptance run.
 
 ## Suggested next work order
 
-R1-R3 are implemented and locally verified. Finish R4/R5 with real-device,
+R1-R3 are implemented, verified and released. Finish R4/R5 with real-device,
 production-font/artwork and visual acceptance; fix any findings and rerun affected
-checks. Then obtain explicit authorization for R6 publication/CI/merge/deployment.
-Measured mobile performance remains R7, after the release.
+checks. Measure mobile performance on a representative device before deciding
+whether further bundle or catalogue optimization is needed.
