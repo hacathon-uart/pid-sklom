@@ -93,3 +93,6 @@ frontend/dist/
 
 # Embedding vectors (data/scripts/embed_artworks.py); the shared copy lives in Supabase
 data/embeddings/
+
+# Raw downloads of the data pipeline (process_images.py makes the committed copies in data/images/)
+data/output/

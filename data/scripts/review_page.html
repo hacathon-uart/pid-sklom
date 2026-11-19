@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Перевірка даних</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b18; --muted:#6b665e; --line:#e2ddd3;
+          --ok:#1f7a3f; --ok-bg:#e3f3e8; --no:#a12c2c; --no-bg:#f8e3e3; --warn:#8a5a00; --warn-bg:#fdf0d5; --accent:#2d4f8f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161513; --card:#22201d; --ink:#ece8e1; --muted:#a39d93; --line:#3a3631;
+            --ok:#7fd29a; --ok-bg:#1d3326; --no:#f09a9a; --no-bg:#3a2020; --warn:#f0c46a; --warn-bg:#3a2f15; --accent:#8fb0ee; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  nav a { margin-right:12px; color:var(--accent); text-decoration:none; }
+  .counts { color:var(--muted); font-size:13px; }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  section { margin-bottom:40px; }
+  h2 { font-size:20px; margin:24px 0 4px; }
+  .hint { color:var(--muted); font-size:13px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line); border-radius:8px; padding:12px; margin-bottom:12px; }
+  .card.approved { border-left-color:var(--ok); }
+  .card.rejected { border-left-color:var(--no); opacity:.65; }
+  .row { display:flex; gap:14px; align-items:flex-start; }
+  .row img { width:180px; max-height:220px; object-fit:contain; border-radius:4px; background:var(--line); flex:none; }
+  .grow { flex:1; min-width:0; }
+  @media (max-width:700px) { .row { flex-direction:column; } .row img { width:100%; max-height:320px; } }
+  label { display:block; font-size:12px; color:var(--muted); margin-top:8px; }
+  input[type=text], textarea { width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  textarea { min-height:60px; resize:vertical; }
+  .btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+  button { font:inherit; font-size:14px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:5px 12px; cursor:pointer; }
+  button.ok.on, button.ok:hover { background:var(--ok-bg); border-color:var(--ok); color:var(--ok); }
+  button.no.on, button.no:hover { background:var(--no-bg); border-color:var(--no); color:var(--no); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; padding:8px 18px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .quote { border-left:3px solid var(--line); padding:4px 10px; margin:8px 0; color:var(--muted); font-size:14px; }
+  .meta { color:var(--muted); font-size:13px; }
+  .meta a { color:var(--accent); }
+  .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; margin-right:6px; background:var(--line); color:var(--ink); }
+  .badge.warn { background:var(--warn-bg); color:var(--warn); }
+  .badge.ok { background:var(--ok-bg); color:var(--ok); }
+  details summary { cursor:pointer; color:var(--accent); font-size:14px; margin-top:6px; }
+  .saved { font-size:12px; color:var(--ok); }
+  pre.log { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; max-height:420px; overflow:auto; font-size:12px; white-space:pre-wrap; }
+  .catalogued { font-size:13px; color:var(--muted); }
+  .empty { color:var(--muted); font-style:italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Перевірка</h1>
+  <nav><a href="#paintings">Картини</a><a href="#facts">Факти</a><a href="#bio">Біографія</a><a href="#publish">Опублікувати</a></nav>
+  <span class="counts" id="counts"></span>
+</header>
+<main>
+  <section id="paintings">
+    <h2>Картини</h2>
+    <p class="hint">Нові картини з Wikidata з ліцензією «суспільне надбання». Перевір, що опис відповідає зображенню, назва українська й правильна, ситуації для мемів не образливі. Кожна зміна зберігається одразу.</p>
+    <div id="paintings-list"></div>
+  </section>
+  <section id="facts">
+    <h2>Факти</h2>
+    <p class="hint">Факт має збігатися з цитатою. Щоб факт потрапив у базу, потрібні ✅ і друге джерело (посилання, де це теж написано).</p>
+    <div id="facts-list"></div>
+  </section>
+  <section id="bio">
+    <h2>Біографія</h2>
+    <p class="hint">Кожне речення спирається на цитату (розгорни «Цитати»). Виправ текст, якщо треба, і натисни ✅.</p>
+    <div id="bio-box"></div>
+  </section>
+  <section id="publish">
+    <h2>Опублікувати</h2>
+    <p class="hint">Записує схвалене в data/seed/*.json, качає зображення й рахує ембединги. Нічого не комітить.</p>
+    <label for="reviewer">Хто перевіряв (ім'я або нік на GitHub)</label>
+    <input type="text" id="reviewer" style="max-width:320px">
+    <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px;color:var(--ink)">
+      <input type="checkbox" id="supabase"> Також записати в Supabase (спільна база всієї команди — попередь команду)
+    </label>
+    <div class="btns"><button class="primary" id="publish-btn">Опублікувати</button><span id="publish-status" class="meta"></span></div>
+    <pre class="log" id="log" hidden></pre>
+  </section>
+</main>
+<script>
+let S = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const link = (url, text) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text || url)}</a>` : "";
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const data = await r.json();
+  if (!r.ok) { alert(data.detail || "Помилка"); throw new Error(data.detail); }
+  return data;
+}
+
+function statusButtons(kind, id, status) {
+  return `<button class="ok ${status === "approved" ? "on" : ""}" data-kind="${kind}" data-id="${esc(id)}" data-status="approved">✅ Так</button>
+          <button class="no ${status === "rejected" ? "on" : ""}" data-kind="${kind}" data-id="${esc(id)}" data-status="rejected">❌ Ні</button>
+          <button data-kind="${kind}" data-id="${esc(id)}" data-status="pending">↺ Ще не вирішено</button>`;
+}
+
+function renderPaintings() {
+  const cands = (S.paintings.candidates || []);
+  const fresh = cands.filter((c) => !c.in_catalogue || c.profile);
+  const old = cands.filter((c) => c.in_catalogue && !c.profile);
+  if (!cands.length) { $("paintings-list").innerHTML = `<p class="empty">Чернетки картин немає. Запусти enrich_artist.py.</p>`; return; }
+  $("paintings-list").innerHTML = fresh.map((c) => {
+    const p = c.profile;
+    const badges = [
+      c.title_is_translation ? `<span class="badge warn">назва перекладена з англійської</span>` : "",
+      c.in_catalogue ? `<span class="badge ok">уже в каталозі</span>` : "",
+      p && p.is_sensitive ? `<span class="badge warn">чутлива</span>` : "",
+      p ? `<span class="badge">мем-потенціал ${esc(p.meme_potential ?? "?")}/5</span>` : "",
+      p ? `<span class="badge">впевненість: ${esc(p.confidence)}</span>` : "",
+    ].join("");
+    const profile = p ? `
+      <label>Що зображено</label><textarea data-p="${esc(c.qid)}" data-field="visual_description">${esc(p.visual_description)}</textarea>
+      <label>Ситуації для мемів (по одній у рядку)</label><textarea data-p="${esc(c.qid)}" data-field="meme_situations" rows="5">${esc((p.meme_situations || []).join("\n"))}</textarea>
+      <details><summary>Настрій, теги, заборонені теми, люди</summary>
+        <label>Настрій</label><textarea data-p="${esc(c.qid)}" data-field="mood">${esc((p.mood || []).join("\n"))}</textarea>
+        <label>Теги</label><textarea data-p="${esc(c.qid)}" data-field="tags">${esc((p.tags || []).join("\n"))}</textarea>
+        <label>Не використовувати для</label><textarea data-p="${esc(c.qid)}" data-field="do_not_use_for">${esc((p.do_not_use_for || []).join("\n"))}</textarea>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-p="${esc(c.qid)}" data-field="is_sensitive" ${p.is_sensitive ? "checked" : ""}> чутлива картина</label>
+        <p class="meta">Люди: ${(p.people || []).map((x) => esc(`${x.who} — ${x.emotion}`)).join("; ") || "—"}</p>
+      </details>` : `<p class="empty">Профілю ще немає${c.profile_error ? `: ${esc(c.profile_error)}` : ""}. Без профілю картину не схвалити.</p>`;
+    return `<div class="card ${esc(c.status)}">
+      <div class="row">
+        <a href="${esc(c.image_url)}" target="_blank" rel="noopener"><img src="${esc(c.thumb_url || c.image_url)}" alt="" loading="lazy"></a>
+        <div class="grow">
+          <div>${badges}</div>
+          <label>Назва українською</label><input type="text" data-p="${esc(c.qid)}" data-field="title_uk" value="${esc(c.title_uk)}">
+          <p class="meta">${esc(c.title_en || "")} · рік ${esc(c.year ?? "невідомий")} · ${esc(c.museum || "музей невідомий")} · ${esc(c.width)}×${esc(c.height)} · ${esc(c.license)} · ${link(c.wikidata_url, c.qid)} · ${link(c.commons_file_page, "Commons")}</p>
+          ${profile}
+          <label>Нотатка</label><input type="text" data-p="${esc(c.qid)}" data-field="note" value="${esc(c.note)}">
+          <div class="btns">${statusButtons("painting", c.qid, c.status)}<span class="saved" data-saved="${esc(c.qid)}"></span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join("") + (old.length ? `<p class="catalogued">Уже в каталозі раніше (тут не змінюються): ${old.map((c) => esc(c.title_uk || c.qid)).join(", ")}.</p>` : "")
+    + ((S.paintings.screened_out || []).length ? `<details><summary>Відсіяно автоматично: ${S.paintings.screened_out.length}</summary><ul class="meta">${S.paintings.screened_out.map((s) => `<li>${esc(s.title)} — ${esc(s.reason)}</li>`).join("")}</ul></details>` : "");
+}
+
+function renderFacts() {
+  const facts = S.facts.facts || [];
+  if (!facts.length) { $("facts-list").innerHTML = `<p class="empty">Чернетки фактів немає.</p>`; return; }
+  $("facts-list").innerHTML = facts.map((f) => {
+    const about = f.artwork_title ? `про картину «${esc(f.artwork_title)}»` : f.artwork_id ? `про картину #${esc(f.artwork_id)}` : "про художника";
+    const noSecond = f.status === "approved" && !f.second_source_url;
+    return `<div class="card ${esc(f.status)}">
+      <div><span class="badge">${about}</span><span class="badge">${esc(f.kind)}</span>${f.ai_interest ? `<span class="badge">ШІ: цікавість ${esc(f.ai_interest)}/5</span>` : ""}${noSecond ? `<span class="badge warn">без другого джерела не потрапить у базу</span>` : ""}</div>
+      <label>Факт</label><textarea data-f="${esc(f.id)}" data-field="text_uk">${esc(f.text_uk)}</textarea>
+      <div class="quote">«${esc(f.quote)}» — ${link(f.source_url, "джерело")}</div>
+      ${f.why ? `<p class="meta">Чому цікаво: ${esc(f.why)}</p>` : ""}
+      <label>Друге джерело (посилання)</label><input type="text" data-f="${esc(f.id)}" data-field="second_source_url" value="${esc(f.second_source_url)}" placeholder="https://…">
+      <label>Нотатка</label><input type="text" data-f="${esc(f.id)}" data-field="note" value="${esc(f.note)}">
+      <div class="btns">${statusButtons("fact", f.id, f.status)}
+        <label style="display:flex;gap:6px;align-items:center;margin:0 0 0 12px;font-size:14px;color:var(--ink)"><input type="checkbox" data-f="${esc(f.id)}" data-field="interesting" ${f.interesting ? "checked" : ""}> справді цікаво</label>
+        <span class="saved" data-saved="${esc(f.id)}"></span></div>
+    </div>`;
+  }).join("") + ((S.facts.screened_out || []).length ? `<details><summary>Відсіяно автоматично: ${S.facts.screened_out.length}</summary><ul class="meta">${S.facts.screened_out.map((s) => `<li>${esc(s.reason)}: ${esc(s.text_uk)}</li>`).join("")}</ul></details>` : "");
+}
+
+function renderBio() {
+  const b = S.bio;
+  if (!b || !b.artist_id) { $("bio-box").innerHTML = `<p class="empty">Чернетки біографії немає.</p>`; return; }
+  const p = b.portrait || {};
+  const portrait = p.url ? `<img src="${esc(p.url)}" alt="">
+     <p class="meta">${esc(p.license)} · ${link(p.file_page, "Commons")}</p>
+     <label style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" data-bio="portrait_use" ${(p.use === true || (p.use == null && p.license_ok)) ? "checked" : ""}> взяти цей портрет</label>` : `<p class="empty">Портрета немає</p>`;
+  $("bio-box").innerHTML = `<div class="card ${esc(b.status)}"><div class="row">
+    <div style="width:180px;flex:none">${portrait}</div>
+    <div class="grow">
+      ${(b.warnings || []).length ? `<p class="badge warn">речень, скопійованих з джерела: ${b.warnings.length}</p>` : ""}
+      <label>Місце народження</label><input type="text" data-bio="birth_place" value="${esc(b.birth_place)}">
+      <label>Коротка біографія (для списку художників)</label><textarea data-bio="short_bio" rows="3">${esc(b.short_bio)}</textarea>
+      <label>Повна біографія (<span id="words">${esc(b.long_bio_words)}</span> слів, ціль 300–500)</label><textarea data-bio="long_bio" rows="14">${esc(b.long_bio)}</textarea>
+      <details><summary>Цитати до кожного речення (${(b.sentences || []).length})</summary>
+        ${(b.sentences || []).map((s) => `<p style="margin:10px 0 0">${esc(s.sentence)}</p><div class="quote">«${esc(s.quote)}» — ${link(s.source_url, "джерело")}</div>`).join("")}
+      </details>
+      <label>Нотатка</label><input type="text" data-bio="note" value="${esc(b.note)}">
+      <div class="btns">${statusButtons("bio", "bio", b.status)}<span class="saved" data-saved="bio"></span></div>
+    </div></div></div>`;
+}
+
+function renderCounts() {
+  const c = S.paintings.candidates || [], f = S.facts.facts || [];
+  const fresh = c.filter((x) => !x.in_catalogue || x.profile);
+  const n = (arr, st) => arr.filter((x) => x.status === st).length;
+  $("counts").textContent = `картини ✅${n(fresh, "approved")} ❌${n(fresh, "rejected")} ⏳${n(fresh, "pending")} · факти ✅${n(f, "approved")} ❌${n(f, "rejected")} ⏳${n(f, "pending")} · біо: ${S.bio.status || "—"}`;
+}
+
+function renderPublish() {
+  const pub = S.publish;
+  $("publish-btn").disabled = pub.running;
+  $("publish-status").textContent = pub.running ? "Публікую… (можна дивитися лог)" : pub.result === "ok" ? "Готово ✓" : pub.result === "error" ? "Сталася помилка, дивись лог" : "";
+  if (pub.log) { $("log").hidden = false; $("log").textContent = pub.log; $("log").scrollTop = $("log").scrollHeight; }
+}
+
+function render() {
+  $("title").textContent = `Перевірка: ${S.artist.name_uk}`;
+  document.title = `Перевірка: ${S.artist.name_uk}`;
+  renderPaintings(); renderFacts(); renderBio(); renderCounts(); renderPublish();
+}
+
+async function load() { S = await api("/api/state"); render(); }
+
+function flash(id) {
+  document.querySelectorAll(`[data-saved="${CSS.escape(id)}"]`).forEach((el) => { el.textContent = "збережено"; setTimeout(() => (el.textContent = ""), 1500); });
+}
+
+// Text fields save when you leave them; buttons and checkboxes save at once.
+document.addEventListener("change", async (e) => {
+  const el = e.target, value = el.type === "checkbox" ? el.checked : el.value;
+  if (el.dataset.p) {
+    const c = await api(`/api/painting/${encodeURIComponent(el.dataset.p)}`, {[el.dataset.field]: value});
+    Object.assign(S.paintings.candidates.find((x) => x.qid === c.qid), c); flash(c.qid);
+  } else if (el.dataset.f) {
+    const f = await api(`/api/fact/${encodeURIComponent(el.dataset.f)}`, {[el.dataset.field]: value});
+    Object.assign(S.facts.facts.find((x) => x.id === f.id), f); flash(f.id); renderFacts();
+  } else if (el.dataset.bio) {
+    S.bio = await api("/api/bio", {[el.dataset.bio]: value}); flash("bio");
+    if ($("words")) $("words").textContent = S.bio.long_bio_words;
+  }
+});
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-status]");
+  if (!b) return;
+  const {kind, id, status} = b.dataset;
+  if (kind === "painting") Object.assign(S.paintings.candidates.find((x) => x.qid === id), await api(`/api/painting/${encodeURIComponent(id)}`, {status}));
+  if (kind === "fact") Object.assign(S.facts.facts.find((x) => x.id === id), await api(`/api/fact/${encodeURIComponent(id)}`, {status}));
+  if (kind === "bio") S.bio = await api("/api/bio", {status});
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+});
+
+$("publish-btn").addEventListener("click", async () => {
+  const supabase = $("supabase").checked;
+  if (supabase && !confirm("Записати в спільну базу Supabase? Це побачить уся команда і застосунок на Render.")) return;
+  try { localStorage.setItem("reviewer", $("reviewer").value); } catch {}
+  await api("/api/publish", {supabase, reviewer: $("reviewer").value});
+  poll();
+});
+
+async function poll() {
+  S.publish = (await api("/api/state")).publish; renderPublish();
+  if (S.publish.running) setTimeout(poll, 1500); else load();
+}
+
+try { $("reviewer").value = localStorage.getItem("reviewer") || ""; } catch {}
+load();
+</script>
+</body>
+</html>

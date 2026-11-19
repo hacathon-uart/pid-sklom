@@ -42,6 +42,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import re
 import sys
 import time
@@ -85,7 +86,7 @@ SYSTEM = """Ти — дослідниця української мистець�
 Відповідай JSON-об'єктом."""
 
 PROMPT = """Художник: {artist}
-Картини цього художника в нашому каталозі (artwork_id: назва, рік):
+Картини цього художника (artwork_id: назва, рік):
 {artworks}
 
 Джерело: {source_url}
@@ -98,7 +99,7 @@ PROMPT = """Художник: {artist}
 {{"facts": [{{
   "text_uk": "...",
   "quote": "дослівна цитата з тексту",
-  "about": "artist" або artwork_id (число) з переліку вище, якщо факт саме про цю картину,
+  "about": "artist" або artwork_id з переліку вище (напр. "Q12345"), якщо факт саме про цю картину,
   "kind": одне з {kinds},
   "interest": 1-5 (наскільки здивує звичайну людину),
   "why": "чому це цікаво, 1 коротке речення"
@@ -199,12 +200,14 @@ def collect_sources(client: httpx.Client, artist: dict, works: list[dict], urls:
                     text_file: Path | None, text_url: str | None) -> list[dict]:
     sources = []
     qids = [artist["wikidata_id"]] + [w["wikidata_id"] for w in works if w.get("wikidata_id")]
-    titles = ukwiki_titles(client, [q for q in qids if q])
+    # Commons-only paintings have ids M<pageid>: Wikidata rejects the whole batch if one of them is in it.
+    titles = ukwiki_titles(client, [q for q in qids if q and q.startswith("Q")])
     for qid, title in titles.items():
         text = ukwiki_text(client, title)
         url = "https://uk.wikipedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_"))
         if len(text) > 200:
-            sources.append({"url": url, "text": text, "label": f"uk.wikipedia: {title}"})
+            sources.append({"url": url, "text": text, "label": f"uk.wikipedia: {title}",
+                            "about_qid": None if qid == artist["wikidata_id"] else qid})
         time.sleep(1)
     for url in urls:
         r = client.get(url, follow_redirects=True)
@@ -217,8 +220,28 @@ def collect_sources(client: httpx.Client, artist: dict, works: list[dict], urls:
 
 # ---------- extraction ----------
 
-def check(raw: dict, source: dict, artist_id: int, work_ids: set[int]) -> tuple[dict | None, str | None]:
-    """Return (draft, None) when the fact passes the automatic screening, else (None, reason)."""
+def work_key(w: dict) -> str:
+    """How a painting is named to the model: its Wikidata id, or the seed id for rows without one."""
+    return w.get("wikidata_id") or str(w["id"])
+
+
+def artist_works(artist: dict) -> list[dict]:
+    """Paintings facts may be about: the catalogue's, plus new candidates from collect_paintings.py
+    (data/artwork_drafts/<slug>.json) that are not rejected. Candidates have id None until published."""
+    works = [w for w in load_json(SEED / "artworks.json", [])
+             if w["artist_id"] == artist["id"] and not w["slug"].startswith("stub-")
+             and w.get("review_status") != "rejected"]
+    known = {w.get("wikidata_id") for w in works}
+    draft = load_json(DATA_DIR / "artwork_drafts" / f"{artist['slug']}.json", {})
+    for c in draft.get("candidates", []):
+        if c["qid"] not in known and c.get("status") != "rejected" and c.get("title_uk"):
+            works.append({"id": None, "wikidata_id": c["qid"], "title_uk": c["title_uk"], "year": c.get("year")})
+    return works
+
+
+def check(raw: dict, source: dict, artist_id: int, works: dict[str, dict]) -> tuple[dict | None, str | None]:
+    """Return (draft, None) when the fact passes the automatic screening, else (None, reason).
+    `works` maps work_key() -> painting."""
     text, quote = (raw.get("text_uk") or "").strip(), (raw.get("quote") or "").strip()
     if not text or not quote:
         return None, "немає тексту або цитати"
@@ -231,20 +254,24 @@ def check(raw: dict, source: dict, artist_id: int, work_ids: set[int]) -> tuple[
     missing = numbers(text) - numbers(quote)
     if missing:
         return None, f"числа {sorted(missing)} є у факті, але не в цитаті"
-    about = raw.get("about")
+    about, work = raw.get("about"), None
     if about != "artist":
-        try:
-            about = int(about)
-        except (TypeError, ValueError):
-            return None, f"невідомо, про що факт: {about!r}"
-        if about not in work_ids:
-            return None, f"artwork_id {about} не належить цьому художнику"
+        key = str(about).strip()
+        work = works.get(key) or next((w for w in works.values() if str(w["id"]) == key), None)
+        if work is None:
+            return None, f"artwork_id {about!r} не належить цьому художнику"
+        own_article = source.get("about_qid") and source["about_qid"] == work.get("wikidata_id")
+        if not own_article and (not work.get("title_uk") or not _title_in(work["title_uk"], quote)):
+            return None, f"у цитаті немає назви картини «{work.get('title_uk')}»"
+        about = work["id"] if work["id"] is not None else work["wikidata_id"]
     kind = raw.get("kind") if raw.get("kind") in KINDS else "other"
     return {
         "id": fact_id(quote, about),
         "status": "pending",
         "artist_id": artist_id if about == "artist" else None,
-        "artwork_id": None if about == "artist" else about,
+        "artwork_id": work["id"] if work else None,
+        "artwork_qid": work.get("wikidata_id") if work else None,
+        "artwork_title": work["title_uk"] if work else None,
         "text_uk": text,
         "quote": quote,
         "source_url": source["url"],
@@ -257,40 +284,127 @@ def check(raw: dict, source: dict, artist_id: int, work_ids: set[int]) -> tuple[
     }, None
 
 
-GEMINI_TIMEOUT_S = 600  # thinking models (e.g. gemini-3.8-flash) can take minutes on a long answer
+def _title_in(title: str, text: str) -> bool:
+    """Every longer word of the title occurs in the text, ignoring Ukrainian case endings."""
+    words = re.findall(r"[\w']+", normalise(title))
+    stems = [w[: max(4, len(w) - 2)] for w in words if len(w) >= 4] or words
+    plain = normalise(text)
+    return bool(stems) and all(st in plain for st in stems)
 
 
-async def call_gemini(prompt: str, *, system: str, settings: Settings, model: str, temperature: float,
-                      timeout: float = GEMINI_TIMEOUT_S):
-    """generate_json with patience: waits out HTTP 429, retries timeouts and 5xx a couple of times."""
-    timeouts = server_errors = 0
-    for attempt in range(8):
-        started = time.monotonic()
+GEMINI_TIMEOUT_S = 300  # a long answer of a thinking model takes minutes; past this the model is stuck, try another
+
+
+# Models to switch to when the main one is overloaded, fastest-but-good first. Quotas of the free
+# tier are per model, so a busy or rate-limited model does not slow the others down.
+# Override in backend/.env: AI_FALLBACK_MODELS=gemini-3.7-flash,gemini-3.1-flash-lite  (empty = no fallback)
+FALLBACK_MODELS = ["gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+MAX_WAIT_S = 30  # when every model rests, wait this long and try the one that rests the shortest
+
+
+class ModelBusy(Exception):
+    """The model cannot answer now; it rests `rest_s` seconds before it is tried again."""
+
+    def __init__(self, message: str, rest_s: float):
+        super().__init__(message)
+        self.rest_s = rest_s
+
+
+class ModelGone(Exception):
+    """The model is not available for this key or request (HTTP 400/403/404)."""
+
+
+def _fallbacks_from_env() -> list[str]:
+    raw = os.environ.get("AI_FALLBACK_MODELS")
+    if raw is None:
+        env = DATA_DIR.parent / "backend" / ".env"
+        for line in (env.read_text(encoding="utf-8").splitlines() if env.exists() else []):
+            if line.strip().startswith("AI_FALLBACK_MODELS="):
+                raw = line.split("=", 1)[1].split("#", 1)[0].strip().strip("'\"")
+    if raw is None:
+        return FALLBACK_MODELS
+    return [m.strip() for m in raw.split(",") if m.strip()]
+
+
+class ModelChain:
+    """The main model plus fallbacks. A model that answers «overloaded» rests for a while and the
+    next calls go straight to the next model, so a run never waits minutes on one busy model."""
+
+    def __init__(self, main: str, fallbacks: list[str] | None = None):
+        extra = _fallbacks_from_env() if fallbacks is None else fallbacks
+        self.models = list(dict.fromkeys([main, *extra]))
+        self.resting: dict[str, float] = {}
+        self.used: dict[str, int] = {}
+
+    def pick(self) -> tuple[str, float]:
+        """(model, seconds to wait first)."""
+        if not self.models:
+            raise RuntimeError("Жодна модель Gemini не доступна. Перевір AI_MODEL / AI_FALLBACK_MODELS.")
+        now = time.monotonic()
+        for m in self.models:
+            if self.resting.get(m, 0) <= now:
+                return m, 0
+        m = min(self.models, key=lambda m: self.resting[m])
+        return m, min(MAX_WAIT_S, self.resting[m] - now)
+
+    def busy(self, model: str, err: ModelBusy) -> None:
+        self.resting[model] = time.monotonic() + err.rest_s
+        nxt, wait = self.pick()
+        then = f"беру {nxt}" if nxt != model and not wait else f"чекаю {wait:.0f} с"
+        print(f"    {model}: {err} → {then}")
+
+    def gone(self, model: str, err: Exception) -> None:
+        self.models.remove(model)
+        print(f"    {model}: {err} → більше не використовую")
+
+    def ok(self, model: str) -> None:
+        self.used[model] = self.used.get(model, 0) + 1
+
+    def summary(self) -> str:
+        """For the draft's «model» field: which models actually wrote it."""
+        if len(self.used) == 1:
+            return next(iter(self.used))
+        return ", ".join(f"{m} ×{n}" for m, n in self.used.items()) or self.models[0]
+
+
+MAX_ATTEMPTS = 12
+
+
+async def call_gemini(prompt: str, *, system: str, settings: Settings, model: "str | ModelChain",
+                      temperature: float, timeout: float = GEMINI_TIMEOUT_S):
+    """generate_json that moves on to another model when one is overloaded or rate-limited."""
+    chain = model if isinstance(model, ModelChain) else ModelChain(model, fallbacks=[])
+    last = None
+    for _ in range(MAX_ATTEMPTS):
+        m, wait = chain.pick()
+        if wait:
+            await asyncio.sleep(wait)
         try:
-            return await generate_json(prompt, system=system, api_key=settings.ai_api_key, model=model,
+            data = await generate_json(prompt, system=system, api_key=settings.ai_api_key, model=m,
                                        timeout=timeout, temperature=temperature)
         except RateLimited:
-            wait = 20 * (attempt + 1)
-            print(f"    ліміт Gemini, чекаю {wait} с…")
-            await asyncio.sleep(wait)
+            last = ModelBusy("ліміт запитів (429)", 60)
         except httpx.TimeoutException:
-            timeouts += 1
-            if timeouts > 2:
-                raise RuntimeError(f"Gemini не відповів за {timeout:.0f} с тричі поспіль. "
-                                   "Спробуй --timeout більше або швидшу модель через --model.") from None
-            print(f"    Gemini не відповів за {time.monotonic() - started:.0f} с, пробую ще раз…")
+            last = ModelBusy(f"не відповів за {timeout:.0f} с", 300)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code < 500 or server_errors >= 3:
-                raise RuntimeError(f"Gemini повернув {e.response.status_code}: {e.response.text[:300]}") from None
-            server_errors += 1
-            print(f"    Gemini перевантажений ({e.response.status_code}), чекаю 15 с…")
-            await asyncio.sleep(15)
-    raise RuntimeError("Gemini rate limit did not clear")
+            code = e.response.status_code
+            if code >= 500:
+                last = ModelBusy(f"перевантажений ({code})", 300)
+            elif code in (400, 403, 404) and len(chain.models) > 1:
+                chain.gone(m, RuntimeError(f"недоступна ({code})"))
+                continue
+            else:
+                raise RuntimeError(f"Gemini повернув {code}: {e.response.text[:300]}") from None
+        else:
+            chain.ok(m)
+            return data
+        chain.busy(m, last)
+    raise RuntimeError(f"Gemini так і не відповів: {last}. Спробуй пізніше.")
 
 
 async def ask(source: dict, artist: dict, works: list[dict], settings: Settings, model: str, n: int,
               timeout: float = GEMINI_TIMEOUT_S) -> list[dict]:
-    listing = "\n".join(f"{w['id']}: {w['title_uk']}, {w.get('year') or 'рік невідомий'}" for w in works)
+    listing = "\n".join(f"{work_key(w)}: {w['title_uk']}, {w.get('year') or 'рік невідомий'}" for w in works)
     prompt = PROMPT.format(artist=artist["name_uk"], artworks=listing, source_url=source["url"],
                            text=source["text"][:MAX_SOURCE_CHARS], n=n, kinds=KINDS)
     data = await call_gemini(prompt, system=SYSTEM, settings=settings, model=model, temperature=0.3, timeout=timeout)
@@ -312,15 +426,14 @@ def cmd_extract(args) -> int:
         print("Потрібен AI_API_KEY у backend/.env (ключ Gemini з Google AI Studio).")
         return 1
     model = args.model or settings.ai_model
+    chain = ModelChain(model)
     artists = load_json(SEED / "artists.json", [])
     artist = next((a for a in artists if a["slug"] == args.artist), None)
     if not artist:
         print(f"Художника {args.artist!r} немає в data/seed/artists.json. Є: {', '.join(a['slug'] for a in artists)}")
         return 1
-    works = [w for w in load_json(SEED / "artworks.json", [])
-             if w["artist_id"] == artist["id"] and not w["slug"].startswith("stub-")
-             and w.get("review_status") != "rejected"]
-    work_ids = {w["id"] for w in works}
+    works = artist_works(artist)
+    by_key = {work_key(w): w for w in works}
 
     with httpx.Client(timeout=30, headers={"User-Agent": USER_AGENT}) as client:
         sources = collect_sources(client, artist, works, args.url, args.text_file, args.text_url)
@@ -337,9 +450,9 @@ def cmd_extract(args) -> int:
     for s in sources:
         print(f"→ {s['label']}")
         print("    чекаю відповідь Gemini…")
-        raw_facts = asyncio.run(ask(s, artist, works, settings, model, args.per_source, args.timeout))
+        raw_facts = asyncio.run(ask(s, artist, works, settings, chain, args.per_source, args.timeout))
         for raw in raw_facts:
-            draft, reason = check(raw, s, artist["id"], work_ids)
+            draft, reason = check(raw, s, artist["id"], by_key)
             if reason:
                 dropped += 1
                 entry = {"reason": reason, "source_url": s["url"],
@@ -355,7 +468,7 @@ def cmd_extract(args) -> int:
                 added += 1
                 print(f"    ✓ {draft['text_uk'][:90]}")
         time.sleep(2)
-    drafts["model"] = model
+    drafts["model"] = chain.summary()
     drafts["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     save_json(path, drafts)
     print(f"\nНових чернеток: {added}, відсіяно автоматично: {dropped}. Файл: {path}")
@@ -393,6 +506,8 @@ def cmd_import(args) -> int:
         if f["text_uk"].startswith(PLACEHOLDER):
             by_scope_placeholder.setdefault((f.get("artist_id"), f.get("artwork_id")), []).append(f)
     existing = {(f.get("artist_id"), f.get("artwork_id"), normalise(f["text_uk"])) for f in facts}
+    seed_by_qid = {w["wikidata_id"]: w["id"] for w in load_json(SEED / "artworks.json", []) if w.get("wikidata_id")}
+    waiting = 0
     next_id = max((f["id"] for f in facts), default=0) + 1
     added = replaced = skipped = 0
     for path in sorted(DRAFTS_DIR.glob("*.json")):
@@ -403,6 +518,13 @@ def cmd_import(args) -> int:
                 skipped += 1
                 print(f"  пропущено (немає second_source_url): {d['text_uk'][:70]}")
                 continue
+            if d.get("artwork_id") is None and d.get("artwork_qid"):
+                # a fact about a new painting: it gets a seed id once the painting is published
+                d = {**d, "artwork_id": seed_by_qid.get(d["artwork_qid"])}
+                if d["artwork_id"] is None:
+                    waiting += 1
+                    print(f"  чекає на картину {d['artwork_qid']} (ще не в каталозі): {d['text_uk'][:60]}")
+                    continue
             scope = (d["artist_id"], d["artwork_id"])
             key = (*scope, normalise(d["text_uk"]))
             if key in existing:
@@ -421,7 +543,8 @@ def cmd_import(args) -> int:
                 added += 1
                 print(f"  + #{next_id - 1}: {d['text_uk'][:70]}")
             existing.add(key)
-    print(f"\nДодано {added}, замінено заглушок {replaced}, пропущено без другого джерела {skipped}.")
+    print(f"\nДодано {added}, замінено заглушок {replaced}, пропущено без другого джерела {skipped}"
+          + (f", чекають на картину {waiting}" if waiting else "") + ".")
     if args.dry_run:
         print("--dry-run: data/seed/facts.json не змінено.")
     elif added or replaced:
