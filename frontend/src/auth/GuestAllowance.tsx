@@ -77,7 +77,7 @@ export function GuestAllowance() {
             <AllowanceRow label="Унікальні PNG" remaining={exports} />
           </div>
           <div className="t-caption mt-5 space-y-2 border-t border-line pt-4 text-text-secondary">
-            <p>Ліміти не поновлюються. Редагування й посилання — без обмежень.</p>
+            <p>Ліміти не поновлюються. Редагування — без обмежень. Щоб поділитися посиланням, увійдіть.</p>
             {typeof exports !== "number" && <p>Гостьовий ліміт PNG ще не ввімкнено.</p>}
           </div>
         </>}

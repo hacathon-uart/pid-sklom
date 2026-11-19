@@ -26,8 +26,8 @@ it on subsequent visits. Explain automatic account creation beside that action.
 | Browse | Available | Unchanged |
 | Phrase matching, generated captions | Three successful requests combined per browser guest; then require Google sign-in | Available without the guest allowance |
 | Edit an unsaved meme | Unlimited | Unchanged |
-| Download or share a PNG file | Three distinct compositions under a separate guest allowance once migration 0002 and its release flag are enabled; repeating an unchanged export is free | Unlimited |
-| Share an existing public meme link | Available without using a slot | Unchanged |
+| Download a PNG file | Three distinct compositions under a separate guest allowance once migration 0002 and its release flag are enabled; repeating an unchanged export is free | Unlimited |
+| Share a meme link | No share action | Save the current composition, add it to «Улюблені», copy and show its public link |
 | Save to My Memes | Start Google sign-in, preserving the draft; complete the requested save after successful return | Save to their own collection |
 | Open My Memes | Offer sign-in, preserving the destination | List only their saved memes, newest first; allow favourites filtering |
 | Favourite a saved meme | Unavailable | Owner can toggle; this does not delete anything |
@@ -115,21 +115,19 @@ separate deferred work, and authenticated usage can still incur provider costs.
 
 ## Separate guest PNG export allowance (migration 0002; not enabled by merging)
 
-[ADR 0007](adr/0007-distinct-guest-png-exports.md) records the later decision.
-Three distinct PNG exports per guest are independent of the three AI requests.
-Downloading and sharing a PNG file use the **same** export allowance; changing
+[ADR 0007](adr/0007-distinct-guest-png-exports.md) records the separate allowance;
+[ADR 0010](adr/0010-member-link-sharing.md) restricts guest UI to downloads.
+Three distinct PNG downloads per guest are independent of the three AI requests.
+Downloading a PNG file uses the export allowance; changing
 artwork, caption, layout, style or included frame makes a new composition.
 Re-exporting unchanged pixels of the same artwork is free, even at zero remaining.
 Changing only PNG compression or metadata is not a new composition. Copying an
 existing public meme's link does not consume an export; public Storage URLs
 remain accessible and browser tools can bypass this signup gate.
 
-Reserve the slot only after rendering and verifying a PNG. A failed/cancelled
-native share releases its pending reservation; an abandoned reservation expires.
-Native sharing may ask for a second click because browsers require a fresh
-gesture after asynchronous authorization. A blocked download can resume once
-after explicit Google login; a blocked file share asks for another click on
-return. A guest bookmark/save still requires sign-in and must never consume
+Reserve the slot only after rendering and verifying a PNG. A failed download
+releases its reservation; an abandoned reservation expires. A blocked download
+can resume once after explicit Google login. A guest bookmark/save still requires sign-in and must never consume
 either allowance. The ticket explains both separate balances instead of adding
 a second line to the old ribbon.
 

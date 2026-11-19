@@ -16,7 +16,7 @@ export function EditMemePage() {
   const artworkId = meme.data?.artwork.id;
   const artwork = useApi(() => (artworkId ? api.artwork(artworkId) : Promise.resolve(null)), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const { draft, stageRef, save, saving, error, savedId, justSaved } = useMemeEditor(artworkId, { memeId });
+  const { draft, stageRef, save, share, saving, error, savedId, justSaved } = useMemeEditor(artworkId, { memeId });
 
   useEffect(() => {
     if (meme.data && !draft.restored) {
@@ -37,7 +37,7 @@ export function EditMemePage() {
       subtitle="Перетягніть підпис або змініть його стиль"
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save} onShare={share}
         savedId={savedId} stageRef={stageRef}
         toolbarEnd={
           <>

@@ -44,49 +44,66 @@ export function useMemeEditor(
     previous.key === saveKey ? { ...previous, ...patch } : previous,
   );
 
+  const saveIntent = () => {
+    const style = draft.style;
+    const previous = read<{ id: string; style: MemeStyle }>(intentKey);
+    if (previous && JSON.stringify(previous.style) === JSON.stringify(style)) return previous;
+    const intent = { id: crypto.randomUUID(), style };
+    write(intentKey, intent);
+    return intent;
+  };
+
+  const persist = async (intent: { id: string; style: MemeStyle }, favorite: boolean): Promise<string | null> => {
+    if (busy.current.has(saveKey)) return null;
+    busy.current.add(saveKey);
+    updateState({ saving: true, error: null });
+    try {
+      const stage = stageRef.current;
+      if (!stage?.getAttr("exportReady")) throw new Error("Зображення та шрифти ще завантажуються. Спробуйте ще раз");
+      const png = exportPng(stage);
+      const meme = state.savedId
+        ? await api.updateMeme(state.savedId, { style: intent.style, image_data_url: png, ...(favorite ? { is_favorite: true } : {}) })
+        : await api.createMeme(artworkId!, intent.style, png, intent.id);
+      write(saveKey, meme.id);
+      remove(intentKey);
+      updateState({ savedId: meme.id, justSaved: true });
+      if (favorite && !meme.is_favorite) await api.updateMeme(meme.id, { is_favorite: true });
+      return meme.id;
+    } catch (failure) {
+      updateState({ error: failure instanceof Error ? failure.message : "Не вдалося виконати дію" });
+      throw failure;
+    } finally {
+      busy.current.delete(saveKey);
+      updateState({ saving: false });
+    }
+  };
+
   const save = () => {
     if (busy.current.has(saveKey)) return;
     if (!authEnabled || artworkId == null) {
       updateState({ error: "Збереження в акаунт поки недоступне. Завантажте мем як PNG" });
       return;
     }
-    const style = draft.style;
     let intent: { id: string; style: MemeStyle };
     try {
-      const previous = read<{ id: string; style: MemeStyle }>(intentKey);
-      if (previous && JSON.stringify(previous.style) === JSON.stringify(style)) intent = previous;
-      else {
-        intent = { id: crypto.randomUUID(), style };
-        write(intentKey, intent);
-      }
+      intent = saveIntent();
     } catch (failure) {
       updateState({ error: (failure as Error).message });
       return;
     }
-    requireLogin(async () => {
-      busy.current.add(saveKey);
-      updateState({ saving: true, error: null });
-      try {
-        const stage = stageRef.current;
-        if (!stage?.getAttr("exportReady")) throw new Error("Зображення та шрифти ще завантажуються. Спробуйте ще раз");
-        const png = exportPng(stage);
-        const meme = state.savedId
-          ? await api.updateMeme(state.savedId, { style, image_data_url: png })
-          : await api.createMeme(artworkId, style, png, intent.id);
-        write(saveKey, meme.id);
-        remove(intentKey);
-        updateState({ savedId: meme.id, justSaved: true });
-      } catch (failure) {
-        updateState({ error: failure instanceof Error ? failure.message : "Не вдалося виконати дію" });
-      } finally {
-        busy.current.delete(saveKey);
-        updateState({ saving: false });
-      }
-    }, { kind: "save", route: route(), id: intent.id });
+    requireLogin(() => { void persist(intent, false).catch(() => {}); }, { kind: "save", route: route(), id: intent.id });
+  };
+
+  const share = async (): Promise<string> => {
+    if (!authEnabled || !user || artworkId == null) throw new Error("Увійдіть, щоб поділитися мемом");
+    if (busy.current.has(saveKey)) throw new Error("Дочекайтеся збереження мему");
+    const id = await persist(saveIntent(), true);
+    if (!id) throw new Error("Дочекайтеся збереження мему");
+    return id;
   };
 
   return {
-    draft, stageRef, save,
+    draft, stageRef, save, share,
     savedId: state.savedId, saving: state.saving, error: state.error, justSaved: state.justSaved,
   };
 }

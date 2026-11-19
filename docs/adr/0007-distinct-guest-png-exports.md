@@ -4,6 +4,10 @@
 - **Date:** 2026-11-18
 - **Related:** [ADR 0006](0006-google-identity-and-guest-allowance.md), [Authentication map](../AUTHENTICATION.md)
 
+Guest file-sharing UI and its native-share behavior below were superseded by
+[ADR 0010](0010-member-link-sharing.md). The separate guest PNG allowance now
+applies to downloads in the UI.
+
 Keep the existing lifetime allowance of three successful guest AI generations.
 Add a **separate** lifetime allowance of three distinct guest PNG exports.
 Downloading or sharing a PNG file uses the same export allowance; sharing an

@@ -31,7 +31,7 @@ export function PhraseResultPage() {
   const [storyAttempt, setStoryAttempt] = useState(0);
   const selectionEpoch = useRef(0);
   const current = selected ?? (match ? { artwork: match.artwork, story: match.story } : null);
-  const { draft, stageRef, error: saveError, savedId, justSaved, save } =
+  const { draft, stageRef, error: saveError, savedId, justSaved, save, share } =
     useMemeEditor(current?.artwork.id, { initialText: phrase });
 
   useEffect(() => {
@@ -102,6 +102,7 @@ export function PhraseResultPage() {
         editing={editing}
         onEditingChange={setEditing}
         onSave={save}
+        onShare={share}
         savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={editing ? nextAlternative : undefined}
