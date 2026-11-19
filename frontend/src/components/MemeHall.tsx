@@ -4,7 +4,7 @@
  * painting «really» means. Curated here (saved memes are private), drawn like the landing demo.
  */
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { api } from "../api/client";
 import type { ArtworkSummary, Frame } from "../api/types";
 import { useApi } from "../api/useApi";
@@ -43,11 +43,17 @@ export function MemeHall({ n }: { n: number }) {
   const byId = new Map((data?.items ?? []).map((a) => [a.id, a]));
   const hits = HITS.flatMap((h, i) => (byId.has(h.id) ? [{ ...h, artwork: byId.get(h.id)!, frame: FRAMES[i % FRAMES.length] }] : []));
   const cols = useColumnCount();
-  if (!hits.length) return null;
+  const { hash } = useLocation();
+  const ready = hits.length > 0;
+  // «Більше мемів» on the landing links to /gallery#memes: scroll here once the hall has rendered.
+  useEffect(() => {
+    if (ready && hash === "#memes") document.getElementById("memes")?.scrollIntoView({ block: "start" });
+  }, [ready, hash]);
+  if (!ready) return null;
   const columns = Array.from({ length: cols }, (_, c) => hits.filter((_, i) => i % cols === c));
 
   return (
-    <div className="wall wall-memes page-bleed mt-10 py-12 md:mt-16 md:py-20">
+    <div id="memes" className="wall wall-memes page-bleed mt-10 scroll-mt-4 py-12 md:mt-16 md:py-20">
       <div className="mb-8 flex flex-col items-start gap-3 md:mb-12">
         <HallTitle n={n}>Хіти з-під скла</HallTitle>
         <p className="t-body text-[var(--wall-text-2)]">

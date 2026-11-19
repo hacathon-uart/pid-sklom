@@ -12,14 +12,13 @@ import { api } from "../api/client";
 import { useApi } from "../api/useApi";
 import { Artwork, Crack } from "./Artwork";
 
-type Example = { id: number; mode: "phrase" | "painting"; text: string; to: string };
+type Example = { id: number; mode: "phrase" | "painting"; text: string };
 
-const phrase = (s: string) => `/create/result?q=${encodeURIComponent(s)}`;
 const EXAMPLES: Example[] = [
-  { id: 29, mode: "phrase", text: "Коли пара о 8:00", to: phrase("коли пара о 8:00") },
-  { id: 55, mode: "painting", text: "Ще п’ять хвилинок", to: "/create/painting/55/ai" },
-  { id: 107, mode: "phrase", text: "Коли мама кличе вечеряти", to: phrase("коли мама кличе вечеряти") },
-  { id: 88, mode: "painting", text: "Мої плани на вихідні", to: "/create/painting/88/ai" },
+  { id: 29, mode: "phrase", text: "Коли пара о 8:00" },
+  { id: 55, mode: "painting", text: "Ще п’ять хвилинок" },
+  { id: 107, mode: "phrase", text: "Коли мама кличе вечеряти" },
+  { id: 88, mode: "painting", text: "Мої плани на вихідні" },
 ];
 
 const TYPE_MS = 65; // per letter
@@ -132,7 +131,7 @@ export function MemeDemo() {
           )}
         </div>
         <div className="mt-4 flex items-center justify-between gap-4">
-          <Link to={ex.to} className="t-strong inline-flex min-h-11 items-center text-accent hover:underline">Спробувати →</Link>
+          <Link to="/gallery#memes" className="t-strong inline-flex min-h-11 items-center text-accent hover:underline">Більше мемів →</Link>
           <div className="flex" role="group" aria-label="Приклади">
             {EXAMPLES.map((e, i) => (
               <button
