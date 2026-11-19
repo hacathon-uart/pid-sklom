@@ -167,7 +167,7 @@ await runBrowserCheck({
     fail("/api/artworks/99");
     await navigate("/create/painting?artwork=99&mode=own");
     await until(text("Не вдалося завантажити картину за посиланням"));
-    await click("Закрити повідомлення");
+    await click("Приховати");
     assert(!await evaluate(text("Не вдалося завантажити картину за посиланням")));
     await pick(1);
     await until(selected(1));
@@ -200,13 +200,13 @@ await runBrowserCheck({
     hold("/api/artworks/99");
     await navigate("/create/painting?artwork=99&test=dismiss");
     const dismissed = await held("/api/artworks/99");
-    await click("Закрити повідомлення");
+    await click("Приховати");
     await release(dismissed);
     assert(!await evaluate(selected(99)), "Dismissal cancels pending preselection");
 
     await navigate("/create/painting?artwork=invalid");
     await until(text("Не вдалося завантажити картину за посиланням"));
-    await click("Закрити повідомлення");
+    await click("Приховати");
     for (const failure of [false, true]) {
       hold("/api/artworks?random=true");
       await click("Випадкова картина");

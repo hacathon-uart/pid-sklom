@@ -30,6 +30,11 @@ export function PaintingViewer({
   children?: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // Which control gets focus after the stage remounts: «Закрити» on open, the same arrow after prev/next,
+  // so a second Enter moves on instead of closing the viewer.
+  const lastNav = useRef<"close" | "prev" | "next">("close");
+  const prev = onPrev && (() => { lastNav.current = "prev"; onPrev(); });
+  const next = onNext && (() => { lastNav.current = "next"; onNext(); });
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current!;
@@ -54,14 +59,14 @@ export function PaintingViewer({
         onClose();
       }}
       onKeyDown={(e) => {
-        if (e.key === "ArrowLeft" && onPrev) onPrev();
-        else if (e.key === "ArrowRight" && onNext) onNext();
+        if (e.key === "ArrowLeft" && prev) prev();
+        else if (e.key === "ArrowRight" && next) next();
       }}
       className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-[#1c1712] p-0 text-white backdrop:bg-black/60"
     >
       <div className="flex h-full flex-col">
         {/* key: a new painting starts unzoomed */}
-        <ZoomStage key={artwork.id} artwork={artwork} onPrev={onPrev} onNext={onNext} onClose={onClose} />
+        <ZoomStage key={artwork.id} artwork={artwork} onPrev={prev} onNext={next} onClose={onClose} focus={lastNav.current} />
 
         <div className="shrink-0 border-t border-white/10 bg-[#1c1712] px-[var(--page-gutter)] py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           <div className="mx-auto flex max-w-[1150px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -87,11 +92,13 @@ function ZoomStage({
   onPrev,
   onNext,
   onClose,
+  focus,
 }: {
   artwork: ArtworkSummary;
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
+  focus: "close" | "prev" | "next";
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -213,13 +220,13 @@ function ZoomStage({
       <div className="absolute top-3 right-3 flex gap-2 md:top-5 md:right-5">
         <ViewerButton icon="minus" label="Зменшити" onClick={() => zoomAt(view.s / STEP)} disabled={view.s <= MIN} />
         <ViewerButton icon="plus" label="Збільшити" onClick={() => zoomAt(view.s * STEP)} disabled={view.s >= MAX} />
-        <ViewerButton icon="close" label="Закрити" onClick={onClose} autoFocus />
+        <ViewerButton icon="close" label="Закрити" onClick={onClose} autoFocus={focus === "close" || (focus === "prev" && !onPrev) || (focus === "next" && !onNext)} />
       </div>
       {onPrev && (
-        <ViewerButton icon="chevronLeft" label="Попередня картина" onClick={onPrev} className="absolute top-1/2 left-2 -translate-y-1/2 md:left-5" />
+        <ViewerButton icon="chevronLeft" label="Попередня картина" onClick={onPrev} autoFocus={focus === "prev"} className="absolute top-1/2 left-2 -translate-y-1/2 md:left-5" />
       )}
       {onNext && (
-        <ViewerButton icon="chevronRight" label="Наступна картина" onClick={onNext} className="absolute top-1/2 right-2 -translate-y-1/2 md:right-5" />
+        <ViewerButton icon="chevronRight" label="Наступна картина" onClick={onNext} autoFocus={focus === "next"} className="absolute top-1/2 right-2 -translate-y-1/2 md:right-5" />
       )}
     </div>
   );

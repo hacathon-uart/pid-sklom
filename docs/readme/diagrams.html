@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F7F2E9; --card: #FFFDF8; --line: #E4D9C7; --ink: #2E2620; --ink2: #6F6357; --accent: #8B6B4A;
+    --burgundy: #5E1F25; --green: #1F3B2D; --navy: #1C2E4A; --amber: #B4702F;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ddd; font-family: Manrope, sans-serif; color: var(--ink); }
+  .canvas { position: relative; width: 1600px; height: 900px; background: var(--paper); overflow: hidden; margin-bottom: 20px; }
+  .canvas::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255,255,255,.75), transparent 70%); }
+  .head { position: absolute; left: 72px; top: 54px; right: 72px; }
+  .kicker { font: 700 13px/1 Manrope; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); }
+  .title { font: 600 46px/1.05 "Cormorant Garamond"; margin-top: 12px; }
+  .sub { font: 500 18px/1.45 Manrope; color: var(--ink2); margin-top: 10px; max-width: 1100px; }
+  .brand { position: absolute; right: 72px; top: 56px; display: flex; align-items: center; gap: 10px; font: italic 600 24px "Cormorant Garamond"; color: var(--ink); }
+  .zone { position: absolute; border-radius: 26px; border: 1.5px dashed var(--zc); background: color-mix(in srgb, var(--zc) 6%, transparent); }
+  .zone > .zl { position: absolute; left: 22px; top: -14px; padding: 5px 12px; border-radius: 999px; background: var(--paper);
+    border: 1.5px solid var(--zc); color: var(--zc); font: 800 12px/1 Manrope; letter-spacing: .16em; text-transform: uppercase; display: flex; gap: 7px; align-items: center; }
+  .node { position: absolute; background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 16px 18px;
+    box-shadow: 0 10px 24px -12px rgba(46,38,32,.28), 0 1px 0 rgba(255,255,255,.9) inset; display: flex; gap: 14px; align-items: flex-start; }
+  .node .ic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: var(--c, var(--accent));
+    background: color-mix(in srgb, var(--c, var(--accent)) 12%, #fff); }
+  .node .ic svg { width: 26px; height: 26px; }
+  .node h4 { margin: 2px 0 0; font: 700 18px/1.2 Manrope; }
+  .node p { margin: 5px 0 0; font: 500 14px/1.4 Manrope; color: var(--ink2); }
+  .node.dashed { border-style: dashed; border-color: var(--amber); background: #FFF9F0; }
+  .step { position: absolute; width: 212px; height: 142px; }
+  .num { position: absolute; top: -16px; left: 18px; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: #fff;
+    font: 800 15px/32px Manrope; text-align: center; box-shadow: 0 0 0 4px var(--paper); z-index: 2; }
+  .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font: 700 12px/1.2 Manrope; letter-spacing: .04em; }
+  .mono { white-space: nowrap; font: 600 13px/1.4 ui-monospace, Menlo, monospace; color: var(--ink); background: #F1E9DB; padding: 2px 6px; border-radius: 6px; }
+  svg.edges { position: absolute; inset: 0; width: 1600px; height: 900px; pointer-events: none; overflow: visible; }
+  .elabel { position: absolute; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 999px; background: var(--card);
+    border: 1.5px solid var(--line); font: 700 12.5px/1.2 Manrope; color: var(--ink2); white-space: nowrap; z-index: 3; }
+  .elabel.warn { border-color: var(--amber); color: var(--amber); background: #FFF9F0; }
+  .frame { padding: 9px; background: linear-gradient(145deg,#6e4f17 0%,#e3bd62 18%,#a27a2a 35%,#f5dc93 52%,#8a6420 70%,#d9b356 85%,#5c4112 100%);
+    box-shadow: inset 0 0 0 1px #4a340c, inset 0 0 0 3px #b8913c, 0 14px 26px -12px rgba(46,38,32,.55); }
+  .frame .mat { padding: 6px; background: #f4ecdc; }
+  .frame .pic { position: relative; overflow: hidden; background: #ccc; }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .cap { position: absolute; left: 6px; right: 6px; bottom: 8px; text-align: center; text-transform: uppercase; font: 600 20px/1.05 Oswald; color: #fff;
+    text-shadow: 2px 0 0 #000,-2px 0 0 #000,0 2px 0 #000,0 -2px 0 #000,1.5px 1.5px 0 #000,-1.5px 1.5px 0 #000,1.5px -1.5px 0 #000,-1.5px -1.5px 0 #000; }
+  .label { background: #fff; padding: 8px 12px; box-shadow: 0 2px 6px rgba(46,38,32,.12); }
+  .label b { display: block; font: 700 13px Manrope; }
+  .label i { display: block; font: italic 500 16px "Cormorant Garamond"; }
+  .foot { position: absolute; left: 72px; bottom: 34px; font: 500 13px Manrope; color: var(--ink2); }
+  .legend { position: absolute; right: 72px; bottom: 30px; display: flex; gap: 22px; font: 600 13px Manrope; color: var(--ink2); align-items: center; }
+  .legend span { display: inline-flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. SYSTEM ============ -->
+<section class="canvas" id="d-system">
+  <div class="head">
+    <div class="kicker">Архітектура</div>
+    <div class="title">Як влаштовано «Під склом»</div>
+    <div class="sub">Модульний моноліт: один API, статичний сайт на CDN, Supabase для даних і входу, Gemini для пошуку й підписів.</div>
+  </div>
+  <div class="brand" data-logo></div>
+
+  <div class="zone" style="--zc: var(--accent); left:60px; top:250px; width:330px; height:560px"><div class="zl" data-icon="user">Користувачі</div></div>
+  <div class="zone" style="--zc: var(--navy); left:470px; top:250px; width:430px; height:560px"><div class="zl" data-icon="cloud">Render</div></div>
+  <div class="zone" style="--zc: var(--green); left:980px; top:250px; width:560px; height:300px"><div class="zl" data-icon="db">Supabase</div></div>
+  <div class="zone" style="--zc: var(--burgundy); left:980px; top:610px; width:560px; height:200px"><div class="zl" data-icon="spark">Google AI</div></div>
+
+  <div class="node" id="s-browser" style="left:85px; top:300px; width:280px; --c: var(--accent)" data-icon="browser"><div><h4>Сайт у браузері</h4><p>Телефон і комп’ютер<br>React · TypeScript · Vite</p></div></div>
+  <div class="node" id="s-tg" style="left:85px; top:600px; width:280px; --c: #2A8BC9" data-icon="telegram"><div><h4>Telegram-бот</h4><p>Фраза → мем, <span class="mono">/random</span></p></div></div>
+
+  <div class="node" id="s-web" style="left:500px; top:300px; width:370px; --c: var(--navy)" data-icon="cdn"><div><h4>Статичний сайт на CDN</h4><p>Сторінки, стилі, редактор мемів, експорт PNG у браузері</p></div></div>
+  <div class="node" id="s-api" style="left:500px; top:470px; width:370px; --c: var(--navy)" data-icon="server"><div><h4>API · FastAPI у Docker</h4><p>Пошук картин, підписи, меми, вікторина, бот<br>Python 3.11 · 1 інстанс</p></div></div>
+  <div class="node dashed" id="s-fb" style="left:500px; top:668px; width:370px; --c: var(--amber)" data-icon="buoy"><div><h4>Резервний режим</h4><p>Пошук за словами й готові підписи, якщо ШІ недоступний</p></div></div>
+
+  <div class="node" id="s-db" style="left:1010px; top:400px; width:500px; --c: var(--green)" data-icon="db"><div><h4>Postgres</h4><p>110 картин · 111 фактів · меми · 727 векторів</p></div></div>
+  <div class="node" id="s-st" style="left:1010px; top:290px; width:240px; --c: var(--green)" data-icon="image"><div><h4>Storage</h4><p>Зображення картин</p></div></div>
+  <div class="node" id="s-auth" style="left:1270px; top:290px; width:240px; --c: var(--green)" data-icon="lock"><div><h4>Auth</h4><p>Вхід через Google</p></div></div>
+
+  <div class="node" id="s-ai" style="left:1010px; top:660px; width:500px; --c: var(--burgundy)" data-icon="spark"><div><h4>Gemini</h4><p>Ембединги для пошуку картини за змістом фрази · LLM для підписів</p></div></div>
+
+  <div class="legend"><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#8B6B4A" stroke-width="2.2"/></svg>запит</span><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#B4702F" stroke-width="2.2" stroke-dasharray="6 5"/></svg>якщо ШІ не відповів</span></div>
+  <div class="foot">CI на GitHub Actions → автодеплой на Render після зелених тестів</div>
+  <script type="application/json" class="edges-data">[
+    {"from":"s-browser","fs":"right","to":"s-web","ts":"left","label":"сторінки"},
+    {"from":"s-browser","fs":"right","to":"s-api","ts":"left","label":"API-запити"},
+    {"from":"s-tg","fs":"right","to":"s-api","ts":"left","label":"webhook"},
+    {"from":"s-browser","fs":"top","fx":0.86,"to":"s-st","ts":"top","via":[[326,212],[1130,212]],"label":"зображення й вхід напряму","lx":720,"ly":212},
+    {"from":"s-browser","fs":"top","fx":0.86,"to":"s-auth","ts":"top","via":[[326,212],[1390,212]]},
+    {"from":"s-api","fs":"right","to":"s-db","ts":"left"},
+    {"from":"s-api","fs":"right","to":"s-ai","ts":"left"},
+    {"from":"s-api","fs":"bottom","to":"s-fb","ts":"top","dashed":true}
+  ]</script>
+</section>
+
+<!-- ============ 2. PHRASE → PAINTING ============ -->
+<section class="canvas" id="d-phrase">
+  <div class="head">
+    <div class="kicker">Шлях I · Фраза → картина</div>
+    <div class="title">ШІ шукає картину за змістом, а не за словами</div>
+    <div class="sub">У фразі «коли дедлайн був учора» немає слова «погоня», але система знаходить саме її.</div>
+  </div>
+  <div class="brand" data-logo></div>
+
+  <div class="node step" id="p1" style="top:236px; left:72px; --c: var(--accent)" data-icon="chat"><span class="num">1</span><div><h4>Фраза</h4><p>«коли дедлайн був учора»</p></div></div>
+  <div class="node step" id="p2" style="top:236px; left:324px; --c: var(--accent)" data-icon="shield"><span class="num">2</span><div><h4>Перевірка</h4><p>Модерація фрази перед ШІ</p></div></div>
+  <div class="node step" id="p3" style="top:236px; left:576px; --c: var(--burgundy)" data-icon="spark"><span class="num">3</span><div><h4>Ембединг</h4><p>Gemini перетворює фразу на вектор із 768 чисел</p></div></div>
+  <div class="node step" id="p4" style="top:236px; left:828px; --c: var(--burgundy)" data-icon="search"><span class="num">4</span><div><h4>Порівняння</h4><p>з 727 векторами 110 картин</p></div></div>
+  <div class="node step" id="p5" style="top:236px; left:1080px; --c: var(--green)" data-icon="filter"><span class="num">5</span><div><h4>Фільтри</h4><p>Табу картини відсіює, чутливі × 0,9</p></div></div>
+  <div class="node step" id="p6" style="top:236px; left:1332px; width:196px; --c: var(--green)" data-icon="trophy"><span class="num">6</span><div><h4>Топ-5</h4><p>Мем + підпис + перевірений факт</p></div></div>
+
+  <div class="node" style="left:828px; top:428px; width:452px; padding:14px 18px; display:block">
+    <div class="kicker" style="font-size:11px">Оцінка картини</div>
+    <div style="font: 700 19px/1.4 Manrope; margin-top:8px">0,7 × найближча мем-ситуація<br>+ 0,3 × увесь профіль картини</div>
+  </div>
+
+  <div class="node dashed" id="p-fb" style="left:250px; top:452px; width:470px; --c: var(--amber)" data-icon="buoy"><div><h4>Резервний пошук за словами</h4><p>Якщо Gemini мовчить понад 3 с або помиляється.<br>Мем однаково буде: <span class="mono">source: fallback</span></p></div></div>
+
+  <!-- real example -->
+  <div class="kicker" style="position:absolute; left:72px; top:612px">Реальна відповідь системи · топ-5</div>
+  <div id="p-example" style="position:absolute; left:72px; top:640px; display:flex; gap:22px; align-items:flex-end"></div>
+
+  <div class="legend"><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#8B6B4A" stroke-width="2.2"/></svg>основний шлях</span><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#B4702F" stroke-width="2.2" stroke-dasharray="6 5"/></svg>резерв</span></div>
+  <script type="application/json" class="edges-data">[
+    {"from":"p1","fs":"right","to":"p2","ts":"left"},
+    {"from":"p2","fs":"right","to":"p3","ts":"left"},
+    {"from":"p3","fs":"right","to":"p4","ts":"left"},
+    {"from":"p4","fs":"right","to":"p5","ts":"left"},
+    {"from":"p5","fs":"right","to":"p6","ts":"left"},
+    {"from":"p3","fs":"bottom","fx":0.35,"to":"p-fb","ts":"top","tx":0.82,"dashed":true,"label":"> 3 с або помилка"},
+    {"from":"p-fb","fs":"top","to":"p2","ts":"bottom","hidden":true}
+  ]</script>
+</section>
+
+<!-- ============ 3. PAINTING → CAPTIONS ============ -->
+<section class="canvas" id="d-captions">
+  <div class="head">
+    <div class="kicker">Шлях II · Картина → підписи</div>
+    <div class="title">ШІ пише три підписи в різних тонах</div>
+    <div class="sub">Модель бачить не лише назву, а підготовлений профіль картини: що на ній, який настрій, для яких ситуацій вона пасує й на які теми не можна жартувати.</div>
+  </div>
+  <div class="brand" data-logo></div>
+
+  <div id="c-pic" style="position:absolute; left:72px; top:310px; width:250px"></div>
+
+  <div class="node" id="c-prof" style="left:400px; top:330px; width:360px; display:block; --c: var(--green)">
+    <div style="display:flex; gap:14px; align-items:center"><div class="ic" data-icon-inline="frame"></div><h4>Мем-профіль картини</h4></div>
+    <div style="margin-top:14px; display:grid; gap:10px; font: 500 14.5px/1.35 Manrope; color: var(--ink2)">
+      <div><b style="color:var(--ink)">Опис:</b> жінка в чорній сукні з розгорнутою книжкою гладить білого кота на колінах</div>
+      <div><b style="color:var(--ink)">Настрій:</b> затишний, лагідний, спокійний, домашній</div>
+      <div><b style="color:var(--ink)">Ситуації:</b> «коли не можеш встати з крісла, бо на тобі спить кіт» та ще 4</div>
+      <div><b style="color:var(--ink)">Табу:</b> для цієї картини немає; у чутливих тут теми, на які не жартуємо</div>
+    </div>
+    <div style="margin-top:14px; font: 600 12.5px/1.4 Manrope; color: var(--accent)">Створено Gemini за зображенням і перевірено людиною</div>
+  </div>
+
+  <div class="node" id="c-llm" style="left:830px; top:390px; width:250px; --c: var(--burgundy)" data-icon="spark"><div><h4>Gemini LLM</h4><p>Один запит, до 8 с</p></div></div>
+  <div class="node dashed" id="c-fb" style="left:830px; top:590px; width:250px; --c: var(--amber)" data-icon="buoy"><div><h4>Готові підписи</h4><p>З бази, якщо ШІ не встиг</p></div></div>
+
+  <div id="c-out" style="position:absolute; left:1150px; top:300px; width:380px; display:grid; gap:16px"></div>
+
+  <div class="legend"><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#8B6B4A" stroke-width="2.2"/></svg>основний шлях</span><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#B4702F" stroke-width="2.2" stroke-dasharray="6 5"/></svg>резерв</span></div>
+  <div class="foot">Реальні дані з бази для «Дами з кішкою» Миколи Ярошенка</div>
+  <script type="application/json" class="edges-data">[
+    {"from":"c-pic","fs":"right","to":"c-prof","ts":"left"},
+    {"from":"c-prof","fs":"right","to":"c-llm","ts":"left"},
+    {"from":"c-llm","fs":"right","to":"c-out","ts":"left"},
+    {"from":"c-llm","fs":"bottom","to":"c-fb","ts":"top","dashed":true,"label":"помилка або таймаут"},
+    {"from":"c-fb","fs":"right","to":"c-out","ts":"left","dashed":true}
+  ]</script>
+</section>
+
+<!-- ============ 4. DATA PIPELINE ============ -->
+<section class="canvas" id="d-data">
+  <div class="head">
+    <div class="kicker">Дані</div>
+    <div class="title">Звідки картини й факти і як ми їх перевіряємо</div>
+    <div class="sub">Одна команда збирає все про художника. Автоматичні перевірки відсіюють сумнівне, а публікує тільки людина.</div>
+  </div>
+  <div class="brand" data-logo></div>
+
+  <div class="zone" style="--zc: var(--accent); left:60px; top:250px; width:300px; height:470px"><div class="zl">Джерела</div></div>
+  <div class="zone" style="--zc: var(--navy); left:400px; top:250px; width:320px; height:470px"><div class="zl">Автоперевірки</div></div>
+  <div class="zone" style="--zc: var(--burgundy); left:760px; top:250px; width:300px; height:470px"><div class="zl">Gemini</div></div>
+  <div class="zone" style="--zc: var(--green); left:1100px; top:250px; width:440px; height:470px"><div class="zl">Людина → сайт</div></div>
+
+  <div class="node" id="d-wd" style="left:82px; top:292px; width:256px; --c: var(--accent)" data-icon="globe"><div><h4>Wikidata + Commons</h4><p>Картини, роки, ліцензії, зображення</p></div></div>
+  <div class="node" id="d-wp" style="left:82px; top:520px; width:256px; --c: var(--accent)" data-icon="book"><div><h4>Вікіпедія та інші джерела</h4><p>Тексти для фактів і біографій</p></div></div>
+
+  <div class="node" id="d-chk-a" style="left:422px; top:292px; width:276px; display:block; --c: var(--navy)">
+    <div style="display:flex; gap:12px; align-items:center"><div class="ic" data-icon-inline="check"></div><h4>Картини</h4></div>
+    <div class="checks" style="margin-top:10px">Public Domain або CC0|Мінімум 800 px|Рік у межах життя художника|Художник помер у 1955 р. або раніше</div>
+  </div>
+  <div class="node" id="d-chk-f" style="left:422px; top:520px; width:276px; display:block; --c: var(--navy)">
+    <div style="display:flex; gap:12px; align-items:center"><div class="ic" data-icon-inline="quote"></div><h4>Факти</h4></div>
+    <div class="checks" style="margin-top:10px">Цитата дослівно є в джерелі|Кожне число є в цитаті|Назва картини є в цитаті</div>
+  </div>
+
+  <div class="node" id="d-prof" style="left:782px; top:292px; width:256px; --c: var(--burgundy)" data-icon="frame"><div><h4>Мем-профіль</h4><p>Gemini дивиться на картину: опис, настрій, ситуації, табу</p></div></div>
+  <div class="node" id="d-facts" style="left:782px; top:520px; width:256px; --c: var(--burgundy)" data-icon="quote"><div><h4>Факти й біографія</h4><p>Кожне речення з дослівною цитатою</p></div></div>
+
+  <div class="node" id="d-rev" style="left:1122px; top:292px; width:396px; --c: var(--green)" data-icon="eye"><div><h4>Сторінка перевірки</h4><p>Людина схвалює ✅, відхиляє ❌ або виправляє ✏️. Для факту ще й друге джерело</p></div></div>
+  <div class="node" id="d-pub" style="left:1122px; top:470px; width:396px; display:block; --c: var(--green)">
+    <div style="display:flex; gap:12px; align-items:center"><div class="ic" data-icon-inline="upload"></div><h4>Публікація в Supabase</h4></div>
+    <div style="display:flex; gap:10px; margin-top:14px">
+      <div class="stat"><b>110</b><span>картин</span></div><div class="stat"><b>111</b><span>фактів</span></div><div class="stat"><b>727</b><span>векторів</span></div>
+    </div>
+  </div>
+
+  <div class="node dashed" id="d-rej" style="left:422px; top:752px; width:616px; --c: var(--amber)" data-icon="bin"><div><h4>Відсіяно автоматично</h4><p>Не зникає мовчки: людина бачить усе відсіяне на сторінці перевірки</p></div></div>
+
+  <div class="legend"><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#8B6B4A" stroke-width="2.2"/></svg>проходить далі</span><span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="#B4702F" stroke-width="2.2" stroke-dasharray="6 5"/></svg>відсіяно</span></div>
+  <script type="application/json" class="edges-data">[
+    {"from":"d-wd","fs":"right","to":"d-chk-a","ts":"left"},
+    {"from":"d-wp","fs":"right","to":"d-chk-f","ts":"left"},
+    {"from":"d-chk-a","fs":"right","to":"d-prof","ts":"left"},
+    {"from":"d-chk-f","fs":"right","to":"d-facts","ts":"left"},
+    {"from":"d-prof","fs":"right","to":"d-rev","ts":"left"},
+    {"from":"d-facts","fs":"right","to":"d-rev","ts":"left"},
+    {"from":"d-rev","fs":"bottom","to":"d-pub","ts":"top"},
+    {"from":"d-chk-f","fs":"bottom","to":"d-rej","ts":"top","dashed":true,"tx":0.18}
+  ]</script>
+</section>
+
+<script>
+const ICONS = {
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  cloud: '<path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18z"/>',
+  db: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  browser: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="9" cy="6.5" r=".6" fill="currentColor"/>',
+  telegram: '<path d="M21 4.5 3 11.2l6.3 2.1L11.5 20l3.2-4.3 4.8 3.4z"/><path d="M9.3 13.3 18 7"/>',
+  cdn: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  server: '<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01M12 7.5h4M12 16.5h4"/>',
+  buoy: '<path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 4v4h4"/><path d="M12 8v4l2.5 2"/>',
+  image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-9 8"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
+  chat: '<path d="M4 5h16v11H10l-6 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
+  filter: '<path d="M4 5h16l-6 7.5V18l-4 2v-7.5z"/>',
+  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5.5a2.5 2.5 0 0 0 2.6 4M16 6h2.5a2.5 2.5 0 0 1-2.6 4M12 13v4M8.5 21h7M9.5 17h5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',
+  book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"/>',
+  check: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/>',
+  quote: '<path d="M6 7h4v4c0 3-1.6 5-4 6M14 7h4v4c0 3-1.6 5-4 6"/>',
+  frame: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9"/><path d="M7.5 14l2.5-2.5 2 2 1.5-1.5 2.5 2.5"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  bin: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+};
+const svgIcon = (name, size = 26) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+const LOGO = '<svg viewBox="0 0 100 100" width="30" height="30" fill="none" stroke="#2E2620" stroke-linecap="round"><rect x="20" y="12" width="60" height="76" stroke-width="7"/><path d="M34 62 60 30" stroke-width="8"/></svg><span>Під склом</span>';
+
+document.querySelectorAll("[data-logo]").forEach((el) => (el.innerHTML = LOGO));
+document.querySelectorAll(".zl[data-icon]").forEach((el) => el.insertAdjacentHTML("afterbegin", svgIcon(el.dataset.icon, 15)));
+document.querySelectorAll(".node[data-icon]").forEach((el) => el.insertAdjacentHTML("afterbegin", `<div class="ic">${svgIcon(el.dataset.icon)}</div>`));
+document.querySelectorAll("[data-icon-inline]").forEach((el) => (el.innerHTML = svgIcon(el.dataset.iconInline)));
+document.querySelectorAll(".checks").forEach((el) => {
+  el.innerHTML = el.textContent.split("|").map((t) => `<div style="display:flex;gap:9px;align-items:center;margin-top:7px;font:600 14px/1.3 Manrope"><span style="flex:none;width:20px;height:20px;border-radius:50%;background:#E5EFE6;color:#1F3B2D;display:grid;place-items:center">${svgIcon("check", 0).replace(/<path d="M9[^"]*"\/>/, "")}</span>${t}</div>`).join("");
+  el.querySelectorAll("span").forEach((s) => (s.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'));
+});
+document.querySelectorAll(".stat").forEach((el) => {
+  el.style.cssText = "flex:1;background:#F1F6F1;border-radius:14px;padding:10px 12px;text-align:center";
+  el.querySelector("b").style.cssText = "display:block;font:600 34px/1 'Cormorant Garamond';font-variant-numeric:lining-nums;color:#1F3B2D";
+  el.querySelector("span").style.cssText = "display:block;margin-top:4px;font:600 13px Manrope;color:#6F6357";
+});
+
+const T = "https://elahbjciedjfjtlwvnpa.supabase.co/storage/v1/object/public/artworks/";
+const framed = (src, w, h, cap, capSize = 20) => `<div class="frame" style="width:${w}px"><div class="mat"><div class="pic" style="height:${h}px"><img src="${src}">${cap ? `<div class="cap" style="font-size:${capSize}px">${cap}</div>` : ""}</div></div></div>`;
+
+// phrase example: the real top-5 for «коли дедлайн був учора»
+const top5 = [["mykola-samokysh-m5043307-thumb.jpg", "«Погоня»", "Микола Самокиш"], ["serhii-vasylkivsky-m3230561-thumb.jpg", "«Український пейзаж»", "С. Васильківський"], ["oleksa-novakivsky-m23307971-thumb.jpg", "«Повінь»", "О. Новаківський"], ["mykola-pymonenko-m37828498-thumb.jpg", "«Гопак»", "М. Пимоненко"], ["mykola-pymonenko-q111334155-thumb.jpg", "«Автопортрет»", "М. Пимоненко"]];
+document.getElementById("p-example").innerHTML =
+  `<div style="display:flex;gap:14px;align-items:flex-end">${framed(T + top5[0][0], 230, 150, "Коли дедлайн був учора", 20)}
+    <div class="label" style="margin-bottom:6px"><b>№ 1 · ${top5[0][2]}</b><i>${top5[0][1]}, 1908</i></div></div>` +
+  top5.slice(1).map(([f, t, a], i) => `<div style="width:150px"><div style="position:relative">${framed(T + f, 150, 92)}<span class="num" style="top:-12px;left:-10px;width:26px;height:26px;font-size:13px;line-height:26px">${i + 2}</span></div><div style="margin-top:8px;font:700 12.5px Manrope">${a}</div><div style="font:italic 500 15px 'Cormorant Garamond'">${t}</div></div>`).join("");
+
+// captions example
+document.getElementById("c-pic").innerHTML = framed(T + "mykola-yaroshenko-q124988793-thumb.jpg", 250, 300) +
+  `<div class="label" style="margin-top:14px"><b>Микола Ярошенко</b><i>«Дама з кішкою», 1880</i></div>`;
+const caps = [["Щодня", "#8B6B4A", "Коли тільки відкрила книжку чи ноутбук, а кіт прийшов по увагу"], ["Робота", "#1C2E4A", "Коли єдиний, хто розуміє твої смаки в літературі, — це кіт"], ["З історії картини", "#5E1F25", "Коли готуєшся до іспиту, а кіт вмикає режим гіпнозу"]];
+document.getElementById("c-out").innerHTML = caps.map(([k, c, t]) => `<div class="node" style="position:relative;display:block;padding:16px 18px"><span class="chip" style="background:color-mix(in srgb, ${c} 12%, #fff);color:${c}">${k}</span><div style="margin-top:10px;font:600 17px/1.4 Manrope">${t}</div></div>`).join("");
+
+// ---- edges ----
+function anchor(r, side, t = 0.5) {
+  if (side === "left") return [r.left, r.top + r.height * t];
+  if (side === "right") return [r.right, r.top + r.height * t];
+  if (side === "top") return [r.left + r.width * t, r.top];
+  return [r.left + r.width * t, r.bottom];
+}
+const normal = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
+function drawEdges(section) {
+  const data = JSON.parse(section.querySelector(".edges-data").textContent);
+  const base = section.getBoundingClientRect();
+  const rect = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return { left: r.left - base.left, right: r.right - base.left, top: r.top - base.top, bottom: r.bottom - base.top, width: r.width, height: r.height }; };
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "edges");
+  svg.innerHTML = `<defs>
+    <marker id="a-${section.id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 10 5 0 10 2.5 5z" fill="#8B6B4A"/></marker>
+    <marker id="w-${section.id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 10 5 0 10 2.5 5z" fill="#B4702F"/></marker></defs>`;
+  for (const e of data) {
+    if (e.hidden) continue;
+    const [x1, y1] = anchor(rect(e.from), e.fs, e.fx ?? 0.5);
+    const [x2, y2] = anchor(rect(e.to), e.ts, e.tx ?? 0.5);
+    let d, mid;
+    if (e.via) {
+      const pts = [[x1, y1], ...e.via, [x2, y2]];
+      d = "M" + pts.map((p) => p.join(" ")).join(" L");
+      mid = [e.lx, e.ly];
+    } else {
+      const k = Math.max(40, Math.hypot(x2 - x1, y2 - y1) * 0.42);
+      const [n1x, n1y] = normal[e.fs], [n2x, n2y] = normal[e.ts];
+      const c1 = [x1 + n1x * k, y1 + n1y * k], c2 = [x2 + n2x * k, y2 + n2y * k];
+      d = `M${x1} ${y1} C${c1.join(" ")} ${c2.join(" ")} ${x2} ${y2}`;
+      // bezier midpoint
+      mid = [0.125 * x1 + 0.375 * c1[0] + 0.375 * c2[0] + 0.125 * x2, 0.125 * y1 + 0.375 * c1[1] + 0.375 * c2[1] + 0.125 * y2];
+    }
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", d); p.setAttribute("fill", "none");
+    p.setAttribute("stroke", e.dashed ? "#B4702F" : "#8B6B4A"); p.setAttribute("stroke-width", "2.2");
+    p.setAttribute("stroke-linejoin", "round"); p.setAttribute("stroke-linecap", "round");
+    if (e.dashed) p.setAttribute("stroke-dasharray", "7 6");
+    p.setAttribute("marker-end", `url(#${e.dashed ? "w" : "a"}-${section.id})`);
+    svg.appendChild(p);
+    if (e.label) {
+      const l = document.createElement("div");
+      l.className = "elabel" + (e.dashed ? " warn" : "");
+      l.textContent = e.label; l.style.left = mid[0] + "px"; l.style.top = mid[1] + "px";
+      section.appendChild(l);
+    }
+  }
+  section.insertBefore(svg, section.firstChild.nextSibling);
+}
+
+Promise.all([document.fonts.ready, ...[...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; }))]).then(() => {
+  document.querySelectorAll(".canvas").forEach(drawEdges);
+  window.done = true;
+});
+</script>
+</body>
+</html>

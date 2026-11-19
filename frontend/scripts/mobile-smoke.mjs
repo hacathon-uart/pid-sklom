@@ -122,7 +122,7 @@ await runBrowserCheck({
       await visit("/gallery", "main button:has(img)");
       await evaluate("document.querySelector('main a[href=\"/artists/test-artist\"]').click()");
       await ready("main aside button:has(img)");
-      await click("Зробити мем з картини");
+      await click("Зробити мем");
       await ready(".konvajs-content canvas");
       await until("document.body.innerText.includes('Понеділок знову настав')");
       await layout(`${width} artist to AI`);
@@ -281,7 +281,7 @@ await runBrowserCheck({
     for (const id of [1, 2]) {
       await visit(`/create/painting/${id}/own`, "#caption-font");
       await input("input[aria-label='Текст підпису']", "Перший довгий підпис українською");
-      await click("+ Додати ще один текст");
+      await click("+ Додати текст");
       await input("input[aria-label='Текст підпису']", "Другий підпис про мистецтво");
       await click("Вгорі");
       const fonts = await evaluate("[...document.querySelector('#caption-font').options].map(o => o.value)");

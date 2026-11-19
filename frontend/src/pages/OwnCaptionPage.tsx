@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api/client";
 import { useApi } from "../api/useApi";
-import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { CaptionControls } from "../editor/CaptionControls";
@@ -31,9 +30,7 @@ export function OwnCaptionPage() {
   return (
     <Page
       title="Свій підпис"
-      subtitle="Напишіть підпис самі. Історія картини вже поруч, може, вона підкаже ідею. Чернетка залишиться в цій вкладці, якщо повернетеся до вибору картини."
       back={back}
-      actions={<Button variant="soft" onClick={() => navigate(`/create/painting?artwork=${artworkId}`)}>До вибору картини</Button>}
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
@@ -49,7 +46,7 @@ export function OwnCaptionPage() {
         onAnotherPainting={() => navigate("/create/painting")}
       >
         {!editing ? (
-          <p className="t-small text-text-secondary">Натисніть на підпис на картині, щоб змінити його.</p>
+          <p className="t-small text-text-secondary">Натисніть на підпис, щоб змінити його.</p>
         ) : (
         <CaptionControls
           draft={draft}
@@ -57,7 +54,7 @@ export function OwnCaptionPage() {
             <>
               Немає ідей?{" "}
               <Link to={`/create/painting/${artworkId}/ai`} className="font-semibold text-accent">
-                Запропонувати підписи від ШІ →
+                Підписи від ШІ →
               </Link>
             </>
           }

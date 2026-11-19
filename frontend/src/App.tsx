@@ -50,6 +50,8 @@ const router = createBrowserRouter([
       { path: "/artists/:slug", element: <ArtistPage /> }, // 5b
       { path: "/quiz", element: <QuizPage /> }, // ADR 0008
       { path: "/quiz/:game", element: <QuizPlayPage /> },
+      // Google sends the visitor back here; success redirects at once, a failure shows its alert above this.
+      { path: "/auth/callback", element: <Page title="Вхід"><Link to="/" className="t-strong text-accent">На головну →</Link></Page> },
       {
         path: "*",
         element: (

@@ -74,7 +74,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   };
   const toggleSaved = async () => {
     if (mutationLock.current) return;
-    if (!window.confirm("Видалити мем і PNG? Посилання перестане працювати. Завантажені копії залишаться в одержувачів.")) return;
+    if (!window.confirm("Видалити мем? Посилання перестане працювати.")) return;
     mutationLock.current = true;
     setUpdating(true);
     setActionError(null);
@@ -134,7 +134,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             {canEdit && (
               <>
                 <IconButton icon="bookmark" label="Прибрати з «Моїх мемів»" active aria-pressed disabled={updating} onClick={toggleSaved} />
-                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} aria-pressed={m.is_favorite} disabled={updating} onClick={toggleFavorite} />
+                <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених"} active={m.is_favorite} aria-pressed={m.is_favorite} disabled={updating} onClick={toggleFavorite} />
               </>
             )}
             <IconButton icon="download" label="Завантажити" disabled={updating || exporting.busy || !m.image_url} onClick={() => void exporting.run()} />
@@ -153,7 +153,6 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
           }} onClose={() => setShareLink(null)} />}
           {actionError && <ErrorMessage error={actionError} />}
           {exporting.error && <ErrorMessage error={exporting.error} />}
-          {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
           {isPublic && <ArtworkCardLink id={a.id} />}
         </div>
         <section id="meme-story" tabIndex={-1} aria-label="Про картину та автора" className="min-w-0 scroll-mt-6 [overflow-wrap:anywhere]">
@@ -174,7 +173,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
               <p className="t-body mt-2 text-text-secondary">{detail.data.story.about_artwork}</p>
               {detail.data.story.artist_fact && (
                 <>
-                  <h3 className="t-h3 mt-6">Цікаві факти про митця</h3>
+                  <h3 className="t-h3 mt-6">Про автора</h3>
                   <p className="t-body mt-2 text-text-secondary">{detail.data.story.artist_fact.text}</p>
                 </>
               )}
@@ -203,7 +202,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
 function ArtworkCardLink({ id }: { id: number }) {
   return (
     <Link to={`/create/painting?artwork=${id}`} className="t-strong mt-4 flex min-h-11 items-center justify-center rounded-control bg-accent px-4 py-3 text-center text-white sm:inline-flex">
-      Зробити свій мем з цієї картини
+      Зробити свій мем
     </Link>
   );
 }

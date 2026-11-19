@@ -77,11 +77,8 @@ export function GuestAllowance() {
             <AllowanceRow label="Унікальні PNG" remaining={exports} />
           </div>
           <div className="t-caption mt-5 space-y-2 border-t border-line pt-4 text-text-secondary">
-            <p>Два окремі ліміти, без щоденного поновлення. Підбір картини або набір ШІ-підписів — одна генерація.</p>
-            {typeof exports === "number"
-              ? <p>Новий PNG для завантаження — один експорт. Зміна тексту, картини або оформлення створює новий PNG; повтор незміненого — безкоштовний.</p>
-              : <p>Гостьовий ліміт PNG ще не ввімкнено.</p>}
-            <p>Редагування вручну — без обмежень. Щоб зберегти мем і поділитися посиланням, увійдіть через Google.</p>
+            <p>Ліміти не поновлюються. Редагування — без обмежень. Щоб поділитися посиланням, увійдіть.</p>
+            {typeof exports !== "number" && <p>Гостьовий ліміт PNG ще не ввімкнено.</p>}
           </div>
         </>}
         <button type="button" className="t-strong mt-4 w-full rounded-control bg-accent px-3 py-3 text-white" onClick={() => void login()}>

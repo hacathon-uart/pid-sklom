@@ -167,7 +167,7 @@ export function MemeWorkspace({
           />
         </Artwork>
         </div>
-        <a href="#artwork-story" className="t-small mt-3 inline-flex min-h-11 items-center text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent">Читати історію картини ↓</a>
+        <a href="#artwork-story" className="t-small mt-3 inline-flex min-h-11 lg:hidden items-center text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent">Історія картини ↓</a>
         {authEnabled && <p className="t-small mt-4 text-text-secondary">Збережені меми та PNG доступні всім, хто має посилання.</p>}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {!editing && <button type="button" className="t-strong min-h-11 rounded-control border border-accent px-4 text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" onClick={() => onEditingChange(true)}>Редагувати підпис</button>}

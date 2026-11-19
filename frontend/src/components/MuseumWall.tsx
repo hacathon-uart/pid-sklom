@@ -25,10 +25,10 @@ type Slot = {
 // Gold border on top, panelled dado along the bottom (≈ last 19 % of the screen); the middle
 // (≈ 30–70 % × 34–66 %) stays free for the name.
 const SLOTS: Slot[] = [
-  { desk: { l: 5, t: 11, w: 11 }, mob: { l: 7, t: 8, w: 34 }, aspect: "4/5", frame: "gold", tilt: -2, swing: -14, spin: -70, delay: 0 },
-  { desk: { l: 20, t: 8, w: 8 }, aspect: "1/1", frame: "oak", tilt: 1.5, swing: 10, spin: 50, delay: 0.18 },
-  { desk: { l: 35, t: 9, w: 9.5 }, mob: { l: 56, t: 10, w: 36 }, aspect: "4/3", frame: "gallery", tilt: -1, swing: 12, spin: 85, delay: 0.08 },
-  { desk: { l: 54, t: 7, w: 8 }, aspect: "3/4", frame: "gold", tilt: 2, swing: -9, spin: -40, delay: 0.3 },
+  { desk: { l: 5, t: 11, w: 11 }, mob: { l: 7, t: 6, w: 29 }, aspect: "4/5", frame: "gold", tilt: -2, swing: -14, spin: -70, delay: 0 },
+  { desk: { l: 18, t: 8, w: 8 }, aspect: "1/1", frame: "oak", tilt: 1.5, swing: 10, spin: 50, delay: 0.18 },
+  { desk: { l: 30, t: 9, w: 9.5 }, mob: { l: 58, t: 7, w: 32 }, aspect: "4/3", frame: "gallery", tilt: -1, swing: 12, spin: 85, delay: 0.08 },
+  { desk: { l: 60, t: 7, w: 8 }, aspect: "3/4", frame: "gold", tilt: 2, swing: -9, spin: -40, delay: 0.3 },
   { desk: { l: 72, t: 10, w: 13 }, aspect: "4/3", frame: "gold", tilt: 1, swing: 15, spin: 95, delay: 0.04 },
   { desk: { l: 4, t: 52, w: 10 }, mob: { l: 6, t: 58, w: 30 }, aspect: "3/4", frame: "oak", tilt: 2.5, swing: 11, spin: 60, delay: 0.22 },
   { desk: { l: 18, t: 58, w: 8.5 }, aspect: "1/1", frame: "mat", tilt: -3, swing: -12, spin: -55, delay: 0.12 },
@@ -38,13 +38,27 @@ const SLOTS: Slot[] = [
 
 const CORD = 30; // px from the nail to the top of the frame
 
+/** The logo is the wall's own picture: it hangs above the name and swings and falls with the rest. */
+const MARK = { tilt: -0.5, swing: -10, spin: -60, delay: 0.1 };
+
+/** Where a picture is at scroll progress p: swings on its cord (eased), then falls with gravity, spinning. */
+function placement(s: { tilt: number; swing: number; spin: number; delay: number }, p: number) {
+  const t = Math.min(1, Math.max(0, (p - s.delay) / 0.6));
+  const sw = Math.min(1, t / 0.35);
+  const swing = Math.sin((sw * Math.PI) / 2) * s.swing;
+  const f = Math.max(0, (t - 0.35) / 0.65);
+  const fall = f * f * window.innerHeight * 1.25;
+  return `translate3d(0, ${fall}px, 0) rotate(${s.tilt + swing + f * s.spin}deg)`;
+}
+
 const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 .2 .5 .8 1"/><feFuncG type="discrete" tableValues="0 .2 .5 .8 1"/><feFuncB type="discrete" tableValues="0 .2 .5 .8 1"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#g)"/></svg>',
 )}")`;
 
-export function MuseumWall({ children }: { children: ReactNode }) {
+export function MuseumWall({ children, mark }: { children: ReactNode; mark?: ReactNode }) {
   const sectionRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const markRef = useRef<HTMLDivElement>(null);
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const mobile = useMediaQuery("(max-width: 767px)");
 
@@ -55,6 +69,7 @@ export function MuseumWall({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (reduced) {
       itemRefs.current.forEach((el) => el && (el.style.transform = ""));
+      if (markRef.current) markRef.current.style.transform = "";
       return;
     }
     let frame = 0;
@@ -67,15 +82,9 @@ export function MuseumWall({ children }: { children: ReactNode }) {
       const p = Math.min(1, Math.max(0, -r.top / travel));
       SLOTS.forEach((s, i) => {
         const el = itemRefs.current[i];
-        if (!el) return;
-        const t = Math.min(1, Math.max(0, (p - s.delay) / 0.6));
-        // 0 → .35: swings on its cord (eased); .35 → 1: falls with gravity, spinning.
-        const sw = Math.min(1, t / 0.35);
-        const swing = Math.sin((sw * Math.PI) / 2) * s.swing;
-        const f = Math.max(0, (t - 0.35) / 0.65);
-        const fall = f * f * window.innerHeight * 1.25;
-        el.style.transform = `translate3d(0, ${fall}px, 0) rotate(${s.tilt + swing + f * s.spin}deg)`;
+        if (el) el.style.transform = placement(s, p);
       });
+      if (markRef.current) markRef.current.style.transform = placement(MARK, p);
     };
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
     update();
@@ -129,7 +138,22 @@ export function MuseumWall({ children }: { children: ReactNode }) {
 
         {/* soft light on the name, so it reads over the pattern */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_34%_24%_at_50%_50%,rgba(250,245,236,.88),rgba(250,245,236,.5)_55%,transparent_80%)]" />
-        <div className="relative z-10 flex h-full flex-col items-center justify-center px-[var(--page-gutter)] text-center">{children}</div>
+        <div className="relative z-10 flex h-full flex-col items-center justify-center px-[var(--page-gutter)] pb-[16vh] text-center">
+          {mark && (
+            <div aria-hidden className="relative mb-1" style={{ paddingTop: 24, width: mobile ? "min(22vw, 13svh)" : "clamp(84px, 7.5vw, 128px)" }}>
+              <span className="absolute left-1/2 top-0 z-10 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f3d98f,#8a6420_70%)] shadow-[1px_2px_3px_rgba(0,0,0,.45)]" />
+              <div ref={markRef} className="will-change-transform" style={{ transform: `rotate(${MARK.tilt}deg)`, transformOrigin: "50% 0" }}>
+                <svg className="absolute left-0 top-0 w-full overflow-visible" style={{ height: 24 }} viewBox="0 0 100 30" preserveAspectRatio="none">
+                  <path d="M22 30 50 0 78 30" fill="none" stroke="#5b4630" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+                </svg>
+                <div className="pt-[24px] drop-shadow-[5px_10px_8px_rgba(60,40,20,.4)]">
+                  {mark}
+                </div>
+              </div>
+            </div>
+          )}
+          {children}
+        </div>
       </div>
     </section>
   );
