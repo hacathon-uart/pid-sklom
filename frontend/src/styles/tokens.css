@@ -28,7 +28,7 @@
 }
 
 :root {
-  --sidebar-width: 88px;
+  --sidebar-width: 5.5rem;
   --page-gutter: 16px;
   --app-side-offset: 0px;
   --app-bottom-clearance: calc(4.25rem + env(safe-area-inset-bottom, 0px));

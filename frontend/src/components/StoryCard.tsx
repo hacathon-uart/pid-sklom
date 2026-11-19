@@ -8,10 +8,10 @@ import { Portrait } from "./Portrait";
 export function StoryCard({ artwork, story }: { artwork: ArtworkSummary; story: Story }) {
   const { artist } = artwork;
   return (
-    <section className="rounded-story border border-line bg-surface p-5 sm:p-8">
+    <section className="min-w-0 rounded-story border border-line bg-surface p-5 [overflow-wrap:anywhere] sm:p-8">
       <header className="flex flex-col items-start gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:gap-5">
         <Portrait src={artist.portrait_url} name={artist.name} />
-        <div className="min-w-0">
+        <div className="w-full min-w-0">
           <h2 className="t-h2 break-words">
             «{artwork.title}»{artwork.year ? `, ${artwork.year}` : ""}
           </h2>

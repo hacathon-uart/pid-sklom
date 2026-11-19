@@ -101,7 +101,9 @@ function FloorPlan({ info, selected, onSelect }: { info: QuizInfo; selected: Qui
           <p className="t-small mb-3 text-text-secondary">План для огляду. Оберіть залу на картці вище.</p>
         </div>
         <div className="t-label mb-3">План поверху</div>
-        <svg viewBox="0 0 640 450" className="pointer-events-none block h-auto w-full md:hidden" aria-hidden="true" focusable="false"><use href="#quiz-floor-plan-content" /></svg>
+        <div className="md:hidden" inert>
+          <svg viewBox="0 0 640 450" className="pointer-events-none block h-auto w-full" aria-hidden="true" focusable="false"><use href="#quiz-floor-plan-content" /></svg>
+        </div>
         <svg viewBox="0 0 640 450" className="hidden h-auto w-full md:block" role="group" aria-label="План поверху: три зали вікторини">
           <g id="quiz-floor-plan-content">
           <defs>

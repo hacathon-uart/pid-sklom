@@ -8,7 +8,7 @@ export function Layout() {
     <div className="min-h-screen pl-[var(--app-side-offset)] pb-[var(--app-bottom-clearance)]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-control focus:bg-surface focus:px-4 focus:py-3 focus:outline-2 focus:outline-accent">До вмісту</a>
       <Sidebar />
-      <Suspense fallback={<main id="main-content" className="mx-auto max-w-[1280px] px-[var(--page-gutter)] py-7"><Loading text="Завантажуємо сторінку…" /></main>}>
+      <Suspense fallback={<main id="main-content" tabIndex={-1} className="mx-auto max-w-[1280px] px-[var(--page-gutter)] py-7"><Loading text="Завантажуємо сторінку…" /></main>}>
         <Outlet />
       </Suspense>
     </div>
@@ -30,10 +30,10 @@ export function Page({
   children: ReactNode;
 }) {
   return (
-    <main id="main-content" className="mx-auto max-w-[1280px] min-w-0 px-[var(--page-gutter)] py-7 md:py-10 xl:py-12">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1280px] min-w-0 px-[var(--page-gutter)] py-7 md:py-10 xl:py-12">
       {back && <div className="mb-4">{back}</div>}
       <header className="mb-8 flex min-w-0 flex-col items-start justify-between gap-5 lg:mb-10 lg:flex-row lg:gap-6">
-        <div className="min-w-0 flex-1">
+        <div className="w-full min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
             <h1 className="t-h1">{title}</h1>
             <GuestAllowance />

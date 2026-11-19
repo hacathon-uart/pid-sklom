@@ -86,14 +86,14 @@ export function CaptionControls({
       </Row>
 
       <Row label="Розташування">
-        <div className="flex w-full min-w-0 rounded-control bg-muted p-1 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-wrap rounded-control bg-muted p-1 sm:w-auto">
           {(Object.keys(POSITION_LABELS) as Position[]).map((p) => (
             <button
               key={p}
               // picking a preset resets manual drag position
               onClick={() => set({ position: p, x: null, y: null })}
               aria-pressed={b.position === p && b.y === null}
-              className={`min-h-11 min-w-0 flex-1 rounded-control px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-accent sm:px-4 ${b.position === p && b.y === null ? "bg-surface shadow-sm" : "text-text-secondary"}`}
+              className={`min-h-11 min-w-0 max-w-full flex-[1_0_auto] rounded-control px-2 py-1.5 text-sm [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-accent sm:px-4 ${b.position === p && b.y === null ? "bg-surface shadow-sm" : "text-text-secondary"}`}
             >
               {POSITION_LABELS[p]}
             </button>
