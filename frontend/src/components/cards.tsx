@@ -39,12 +39,12 @@ export function ArtworkCard({
   return (
     <div className="relative min-w-0 self-start">
       {card}
-      <ZoomButton label={`Збільшити «${artwork.title}»`} onClick={onZoom} className="absolute top-3 right-3" />
+      <ZoomButton label={`Збільшити «${artwork.title}»`} onClick={onZoom} className="absolute top-6 right-6" />
     </div>
   );
 }
 
-/** Round loupe button laid over a thumbnail. */
+/** Paper loupe disc laid over a thumbnail (styles: .loupe in index.css). */
 export function ZoomButton({ label, onClick, className = "" }: { label: string; onClick: () => void; className?: string }) {
   return (
     <button
@@ -56,7 +56,7 @@ export function ZoomButton({ label, onClick, className = "" }: { label: string; 
         e.stopPropagation();
         onClick();
       }}
-      className={`flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white shadow transition hover:scale-105 hover:bg-black/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`}
+      className={`loupe focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${className}`}
     >
       <Icon name="zoom" size={20} />
     </button>

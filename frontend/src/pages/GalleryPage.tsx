@@ -3,14 +3,16 @@ import { plural } from "../plural";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../api/client";
-import { GENRE_LABELS, type Genre } from "../api/types";
+import { GENRE_LABELS, type ArtworkSummary, type Genre } from "../api/types";
 import { useApi } from "../api/useApi";
 import { useArtworkCatalogue } from "../api/useArtworkCatalogue";
 import { ArtworkPagination } from "../components/ArtworkPagination";
+import { Button } from "../components/Button";
 import { ArtworkCard, AuthorCard } from "../components/cards";
 import { SearchInput } from "../components/Input";
 import { Icon } from "../components/Icon";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
+import { PaintingViewer } from "../components/PaintingViewer";
 import { HallTitle, RopedOff, VelvetRope, Wall } from "../components/Museum";
 import { Tag } from "../components/Tag";
 
@@ -19,6 +21,7 @@ export function GalleryPage() {
   const { query: q, genre, page, result: artworks, setQuery: setQ, setGenre, setPage } = useArtworkCatalogue();
   const artists = useApi(() => api.artists(), []);
   const allCount = useApi(() => api.artworks({ limit: 1 }), []);
+  const [zoomed, setZoomed] = useState<ArtworkSummary | null>(null);
   const changePage = (next: number) => {
     setPage(next);
     document.getElementById("gallery-artworks")?.focus();
@@ -100,7 +103,7 @@ export function GalleryPage() {
           <div className="grid grid-cols-1 gap-x-4 gap-y-8 min-[375px]:grid-cols-2 md:grid-cols-3 md:gap-x-6 md:gap-y-10 xl:grid-cols-5">
             {artworks.data!.items.map((a) => (
               // TODO(team): no artwork detail screen is designed — for now a click opens the picker (2b) preselected
-              <ArtworkCard key={a.id} artwork={a} onClick={() => navigate(`/create/painting?artwork=${a.id}`)} />
+              <ArtworkCard key={a.id} artwork={a} onClick={() => navigate(`/create/painting?artwork=${a.id}`)} onZoom={() => setZoomed(a)} />
             ))}
           </div>
         )}
@@ -115,6 +118,22 @@ export function GalleryPage() {
           </div>
         )}
       </Wall>
+
+      {zoomed && (() => {
+        const items = artworks.data?.items ?? [];
+        const i = items.findIndex((a) => a.id === zoomed.id);
+        return (
+          <PaintingViewer
+            artwork={zoomed}
+            onClose={() => setZoomed(null)}
+            onPrev={i > 0 ? () => setZoomed(items[i - 1]) : undefined}
+            onNext={i >= 0 && i < items.length - 1 ? () => setZoomed(items[i + 1]) : undefined}
+            position={i >= 0 ? `${i + 1} / ${items.length}` : undefined}
+          >
+            <Button onClick={() => navigate(`/create/painting?artwork=${zoomed.id}`)}>Зробити мем</Button>
+          </PaintingViewer>
+        );
+      })()}
     </Page>
   );
 }

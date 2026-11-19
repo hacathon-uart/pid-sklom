@@ -61,7 +61,7 @@ export function ArtistPage() {
                 <button type="button" className="block w-full cursor-zoom-in" aria-label={`Збільшити «${artist.featured_artwork.title}»`} onClick={() => setZoomedId(artist.featured_artwork!.id)}>
                   <Artwork src={artist.featured_artwork.image_url} alt={artist.featured_artwork.title} />
                 </button>
-                <span aria-hidden className="pointer-events-none absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white">
+                <span aria-hidden className="loupe pointer-events-none absolute top-9 right-9">
                   <Icon name="zoom" size={20} />
                 </span>
               </div>
@@ -83,8 +83,8 @@ export function ArtistPage() {
               <button key={w.id} type="button" title={w.title} onClick={() => setZoomedId(w.id)} className="group min-w-0 cursor-zoom-in self-start break-words text-left">
                 <div className="relative">
                   <Artwork src={w.thumb_url} alt={w.title} aspect="4/5" size="sm" />
-                  <span aria-hidden className="pointer-events-none absolute top-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition group-hover:scale-105 group-hover:opacity-100">
-                    <Icon name="zoom" size={18} />
+                  <span aria-hidden className="loupe loupe-sm pointer-events-none absolute top-6 right-6">
+                    <Icon name="zoom" size={17} />
                   </span>
                 </div>
                 <span className="t-small mt-2 block">{w.title}</span>

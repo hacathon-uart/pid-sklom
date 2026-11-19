@@ -10,6 +10,7 @@ import { useApi } from "../api/useApi";
 import { Button, IconButton } from "../components/Button";
 import { ArtworkCard } from "../components/cards";
 import { Input } from "../components/Input";
+import { PaintingViewer } from "../components/PaintingViewer";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { CaptionControls } from "../editor/CaptionControls";
@@ -25,6 +26,7 @@ export function PhraseResultPage() {
   const { data: match, error, loading, reload } = useApi(() => api.match(phrase, description), [phrase, description]);
   const [selected, setSelected] = useTabState<{ artwork: ArtworkSummary; story: Story | null } | null>("selected", null);
   const [editing, setEditing] = useState(false);
+  const [zoomed, setZoomed] = useState<ArtworkSummary | null>(null);
   const [storyRequest, setStoryRequest] = useState<{ artworkId: number; state: StoryState } | null>(null);
   const [storyAttempt, setStoryAttempt] = useState(0);
   const selectionEpoch = useRef(0);
@@ -132,11 +134,32 @@ export function PhraseResultPage() {
                 selected={artwork.id === current.artwork.id}
                 meta={score !== null ? `Збіг ${Math.round(score * 100)}%` : undefined}
                 onClick={() => pick(artwork)}
+                onZoom={() => setZoomed(artwork)}
               />
             ))}
           </div>
         </section>
       )}
+
+      {zoomed && (() => {
+        const items = match.alternatives.map((a) => a.artwork);
+        const i = items.findIndex((a) => a.id === zoomed.id);
+        return (
+          <PaintingViewer
+            artwork={zoomed}
+            onClose={() => setZoomed(null)}
+            onPrev={i > 0 ? () => setZoomed(items[i - 1]) : undefined}
+            onNext={i >= 0 && i < items.length - 1 ? () => setZoomed(items[i + 1]) : undefined}
+            position={i >= 0 ? `${i + 1} / ${items.length}` : undefined}
+          >
+            {zoomed.id === current.artwork.id ? (
+              <Button variant="secondary" className="border-white/60 text-white hover:bg-white/10" onClick={() => setZoomed(null)}>Вже обрано · Повернутися</Button>
+            ) : (
+              <Button onClick={() => { pick(zoomed); setZoomed(null); }}>Обрати цю картину</Button>
+            )}
+          </PaintingViewer>
+        );
+      })()}
     </Page>
   );
 }
