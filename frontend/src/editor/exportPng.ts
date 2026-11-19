@@ -35,25 +35,6 @@ export async function urlToDataUrl(url: string): Promise<string> {
   });
 }
 
-export class ShareGestureRequired extends Error {}
-
-/** Web Share API with file (mobile), with a download or explicit-link fallback. */
-export async function shareMeme(dataUrl: string, url?: string) {
-  const blob = await (await fetch(dataUrl)).blob();
-  const file = new File([blob], "pidsklom-meme.png", { type: "image/png" });
-  if (navigator.canShare?.({ files: [file] })) {
-    if (navigator.userActivation?.isActive === false) {
-      throw new ShareGestureRequired("PNG готовий. Натисніть «Поділитися» ще раз, щоб відкрити меню.");
-    }
-    await navigator.share({ files: [file], title: "Під склом" });
-  } else if (url) {
-    await navigator.clipboard.writeText(url);
-    alert("Посилання скопійовано");
-  } else {
-    downloadDataUrl(dataUrl);
-  }
-}
-
 /**
  * «Завантажити з рамкою»: draws the picture frame (same look as the CSS frames in index.css)
  * around a frameless meme PNG. `src` is a data URL or a CORS-enabled image URL.

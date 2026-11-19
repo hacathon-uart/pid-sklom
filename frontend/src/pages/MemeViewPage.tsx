@@ -8,6 +8,7 @@ import { Artwork } from "../components/Artwork";
 import { Button, IconButton } from "../components/Button";
 import { years } from "../components/cards";
 import { Icon } from "../components/Icon";
+import { copyPublicMemeUrl, copyShareUrl, ShareLinkPanel } from "../components/ShareLinkPanel";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { Portrait } from "../components/Portrait";
 import { framePng, urlToDataUrl } from "../editor/exportPng";
@@ -21,7 +22,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const meme = useApi(() => api.meme(memeId), [memeId]);
   const mutationLock = useRef(false);
   const [updating, setUpdating] = useState(false);
-  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<{ url: string; copied: boolean } | null>(null);
   const [sharing, setSharing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
@@ -86,16 +87,17 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
     } finally { mutationLock.current = false; setUpdating(false); }
   };
   const share = async () => {
-    setShareNotice(null);
+    if (mutationLock.current || !canEdit) return;
+    mutationLock.current = true;
+    setShareLink(null);
     setActionError(null);
     setSharing(true);
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/m/${m.id}`);
-      setShareNotice("Посилання скопійовано");
-    } catch {
-      setActionError("Не вдалося скопіювати посилання. Спробуйте ще раз або скопіюйте його нижче.");
-      setShareNotice(`${window.location.origin}/m/${m.id}`);
-    } finally { setSharing(false); }
+      if (!m.is_favorite) meme.setData(await api.updateMeme(m.id, { is_favorite: true }));
+      setShareLink(await copyPublicMemeUrl(m.id));
+    } catch (failure) {
+      setActionError(failure instanceof Error ? failure.message : "Не вдалося підготувати посилання");
+    } finally { mutationLock.current = false; setSharing(false); }
   };
   const savedOn = new Date(m.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
 
@@ -135,8 +137,8 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
                 <IconButton icon="heart" label={m.is_favorite ? "Прибрати з улюблених" : "Додати до улюблених (скло трісне)"} active={m.is_favorite} aria-pressed={m.is_favorite} disabled={updating} onClick={toggleFavorite} />
               </>
             )}
-            <IconButton icon="download" label="Завантажити" disabled={updating || exporting.busy || !m.image_url} onClick={() => void exporting.run("download")} />
-            <Button variant="secondary" className="min-h-11 whitespace-normal" disabled={sharing} onClick={share}>{sharing ? "Копіюємо…" : "Поділитися посиланням"}</Button>
+            <IconButton icon="download" label="Завантажити" disabled={updating || exporting.busy || !m.image_url} onClick={() => void exporting.run()} />
+            {canEdit && <Button variant="secondary" className="min-h-11 whitespace-normal" disabled={sharing || updating} onClick={share}>{sharing ? "Готуємо посилання…" : "Поділитися посиланням"}</Button>}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             {canEdit && <Link to={`/me/memes/${m.id}/edit`} className="t-strong inline-flex min-h-11 items-center text-accent">Редагувати підпис →</Link>}
@@ -146,10 +148,11 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             <legend className="sr-only">Рамка та завантаження</legend>
             <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
           </fieldset>
-          {shareNotice && <p role="status" className="t-small mt-3 break-words select-text">{shareNotice}</p>}
+          {shareLink && <ShareLinkPanel {...shareLink} onCopy={() => {
+            void copyShareUrl(shareLink.url).then((copied) => setShareLink((current) => current?.url === shareLink.url ? { ...current, copied } : current));
+          }} onClose={() => setShareLink(null)} />}
           {actionError && <ErrorMessage error={actionError} />}
           {exporting.error && <ErrorMessage error={exporting.error} />}
-          {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
           {canEdit && <p className="t-small mt-4 text-text-secondary">Натисніть на мем, щоб змінити підпис.</p>}
           {isPublic && <ArtworkCardLink id={a.id} />}
         </div>

@@ -24,6 +24,7 @@ import { Artwork } from "../components/Artwork";
 import { Icon, type IconName } from "../components/Icon";
 import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
+import { copyPublicMemeUrl, copyShareUrl, ShareLinkPanel } from "../components/ShareLinkPanel";
 import type { Frame } from "../api/types";
 import { exportPng, framePng } from "./exportPng";
 import { FramePicker } from "./FramePicker";
@@ -44,6 +45,7 @@ export function MemeWorkspace({
   editing,
   onEditingChange,
   onSave,
+  onShare,
   savedId = null,
   stageRef,
   onAnotherPainting,
@@ -56,6 +58,7 @@ export function MemeWorkspace({
   editing: boolean;
   onEditingChange: (editing: boolean) => void;
   onSave: () => void;
+  onShare: () => Promise<string>;
   savedId?: string | null; // fills the bookmark
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
@@ -65,6 +68,8 @@ export function MemeWorkspace({
   const saved = !!savedId;
   const { user } = useAuth();
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<{ url: string; copied: boolean } | null>(null);
+  const [sharing, setSharing] = useState(false);
   const canvasZone = useRef<HTMLDivElement>(null);
   const [withFrame, setWithFrame] = useTabState(`export-frame:artwork:${artwork.id}`, true);
 
@@ -88,6 +93,20 @@ export function MemeWorkspace({
     `artwork:${artwork.id}`, artwork.id, png,
     () => Boolean(stageRef.current?.getAttr("exportReady")) && !stageRef.current?.getAttr("exportError"),
   );
+  const share = async () => {
+    if (sharing) return;
+    setSharing(true);
+    setWorkspaceError(null);
+    setShareLink(null);
+    try {
+      const id = await onShare();
+      setShareLink(await copyPublicMemeUrl(id));
+    } catch (failure) {
+      setWorkspaceError(failure instanceof Error ? failure.message : "Не вдалося створити посилання");
+    } finally {
+      setSharing(false);
+    }
+  };
   const controlsZone = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -158,20 +177,23 @@ export function MemeWorkspace({
             label="Завантажити PNG"
             visibleLabel="Завантажити"
             disabled={exporting.busy}
-            onClick={() => void exporting.run("download")}
+            onClick={() => void exporting.run()}
           />
-          <WorkspaceAction
+          {authEnabled && user && <WorkspaceAction
             icon="share"
-            label="Поділитися"
-            disabled={exporting.busy}
-            onClick={() => void exporting.run("share")}
-          />
+            label="Поділитися посиланням"
+            visibleLabel="Поділитися"
+            disabled={sharing || exporting.busy}
+            onClick={() => void share()}
+          />}
           {onAnotherPainting && <WorkspaceAction icon="refresh" label="Інша картина" onClick={onAnotherPainting} />}
           {toolbarEnd && <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto">{toolbarEnd}</div>}
         </div>
         {workspaceError && <ErrorMessage error={workspaceError} />}
         {exporting.error && <ErrorMessage error={exporting.error} />}
-        {exporting.notice && <p role="status" className="t-small mt-3">{exporting.notice}</p>}
+        {shareLink && <ShareLinkPanel {...shareLink} onCopy={() => {
+          void copyShareUrl(shareLink.url).then((copied) => setShareLink((current) => current?.url === shareLink.url ? { ...current, copied } : current));
+        }} onClose={() => setShareLink(null)} />}
         <div className="mt-5">
           <FramePicker frame={draft.frame} onFrameChange={changeFrame} withFrame={withFrame} onWithFrameChange={setWithFrame} />
         </div>

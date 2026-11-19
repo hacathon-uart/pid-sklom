@@ -15,7 +15,7 @@ export function OwnCaptionPage() {
   const navigate = useNavigate();
   const artwork = useApi(() => api.artwork(artworkId), [artworkId]);
   const [editing, setEditing] = useState(true);
-  const { draft, stageRef, error: saveError, savedId, justSaved, save } =
+  const { draft, stageRef, error: saveError, savedId, justSaved, save, share } =
     useMemeEditor(artworkId, { initialText: "Ваш підпис тут", position: "top" });
 
   const back = (
@@ -43,6 +43,7 @@ export function OwnCaptionPage() {
         editing={editing}
         onEditingChange={setEditing}
         onSave={save}
+        onShare={share}
         savedId={savedId}
         stageRef={stageRef}
         onAnotherPainting={() => navigate("/create/painting")}
