@@ -8,11 +8,11 @@ import { Portrait } from "./Portrait";
 export function StoryCard({ artwork, story }: { artwork: ArtworkSummary; story: Story }) {
   const { artist } = artwork;
   return (
-    <section className="rounded-story border border-line bg-surface p-8">
-      <header className="flex items-center gap-5 border-b border-line pb-6">
+    <section className="min-w-0 rounded-story border border-line bg-surface p-5 [overflow-wrap:anywhere] sm:p-8">
+      <header className="flex flex-col items-start gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:gap-5">
         <Portrait src={artist.portrait_url} name={artist.name} />
-        <div>
-          <h2 className="t-h2">
+        <div className="w-full min-w-0">
+          <h2 className="t-h2 break-words">
             «{artwork.title}»{artwork.year ? `, ${artwork.year}` : ""}
           </h2>
           <div className="t-body mt-1 text-text-secondary">
@@ -30,7 +30,7 @@ export function StoryCard({ artwork, story }: { artwork: ArtworkSummary; story: 
       )}
 
       {story.artwork_fact && (
-        <div className="mt-6 rounded-card bg-muted p-6">
+        <div className="mt-6 rounded-card bg-muted p-4 sm:p-6">
           <div className="t-label">Несподіваний факт</div>
           <p className="t-quote mt-2">«{story.artwork_fact.text}»</p>
         </div>
@@ -43,7 +43,7 @@ export function StoryCard({ artwork, story }: { artwork: ArtworkSummary; story: 
         </>
       )}
 
-      <footer className="mt-6 flex items-center justify-between gap-4">
+      <footer className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <Link to={`/artists/${artist.slug}`} className="t-strong flex items-center gap-2 text-accent">
           Більше про автора <Icon name="arrowRight" size={18} />
         </Link>

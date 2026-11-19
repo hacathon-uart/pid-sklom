@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onContinue={() => startLogin(saveOffer)}
         onCancel={() => { setOffered(null); setError(null); }}
       />}
-      {!saveOffer && (error || offered) && <div role="alert" className="relative z-50 ml-[var(--sidebar-width)] border-b border-line bg-surface p-5">
+      {!saveOffer && (error || offered) && <div role="alert" className="relative z-50 ml-[var(--app-side-offset)] border-b border-line bg-surface p-5">
         <p>{error ?? (offered?.kind === "export"
           ? "Три унікальні PNG використано. Увійдіть через Google, щоб завантажувати й поширювати нові. Повтори незмінених мемів залишаються безкоштовними."
           : "Три гостьові генерації використано. Увійдіть через Google, щоб продовжити.")}</p>

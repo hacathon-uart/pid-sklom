@@ -8,6 +8,12 @@ This folder is the single source of truth for how the product should look and be
 **Language of the UI:** Ukrainian only  
 **Screen size designed:** desktop, 1440 px wide (mobile is not designed yet)
 
+**Mobile direction:** [responsive frontend plan](../MOBILE_FRONTEND_PLAN.md) and
+[implementation sequence](../MOBILE_FRONTEND_IMPLEMENTATION.md), governed by
+[ADR 0009](../adr/0009-one-responsive-frontend.md). Mobile reference frames remain
+to be designed; the desktop Figma file and tokens guide their visual language.
+The current build and release gaps are in the [mobile handoff](../MOBILE_FRONTEND_HANDOFF.md).
+
 ---
 
 ## 1. How to use the Figma file

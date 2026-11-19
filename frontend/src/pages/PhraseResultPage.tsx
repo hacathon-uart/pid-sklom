@@ -2,7 +2,7 @@
  * Screen 3 · Конструктор — результат  +  3b · Редагування підпису (US-01, US-03, US-04).
  * URL: /create/result?q=<phrase>&d=<description>
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api } from "../api/client";
 import type { ArtworkSummary, Story } from "../api/types";
@@ -13,7 +13,7 @@ import { Input } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { CaptionControls } from "../editor/CaptionControls";
-import { MemeWorkspace, SaveStatus } from "../editor/MemeWorkspace";
+import { MemeWorkspace, SaveStatus, type StoryState } from "../editor/MemeWorkspace";
 import { useMemeEditor } from "../editor/useMemeEditor";
 import { useTabState } from "../auth/workflow";
 
@@ -25,7 +25,9 @@ export function PhraseResultPage() {
   const { data: match, error, loading, reload } = useApi(() => api.match(phrase, description), [phrase, description]);
   const [selected, setSelected] = useTabState<{ artwork: ArtworkSummary; story: Story | null } | null>("selected", null);
   const [editing, setEditing] = useState(false);
-  const [selectionError, setSelectionError] = useState<{ artworkId: number; message: string } | null>(null);
+  const [storyRequest, setStoryRequest] = useState<{ artworkId: number; state: StoryState } | null>(null);
+  const [storyAttempt, setStoryAttempt] = useState(0);
+  const selectionEpoch = useRef(0);
   const current = selected ?? (match ? { artwork: match.artwork, story: match.story } : null);
   const { draft, stageRef, error: saveError, savedId, justSaved, save } =
     useMemeEditor(current?.artwork.id, { initialText: phrase });
@@ -38,20 +40,42 @@ export function PhraseResultPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match]);
 
-  const pick = async (artwork: ArtworkSummary) => {
-    setSelected({ artwork, story: null });
-    setSelectionError(null);
-    try {
-      const detail = await api.artwork(artwork.id);
+  useEffect(() => {
+    const epoch = ++selectionEpoch.current;
+    if (!current || current.story) return;
+    const { artwork } = current;
+    const retry = () => {
+      selectionEpoch.current += 1;
+      setStoryRequest({ artworkId: artwork.id, state: { status: "loading" } });
+      setStoryAttempt((attempt) => attempt + 1);
+    };
+    setStoryRequest({ artworkId: artwork.id, state: { status: "loading" } });
+    api.artwork(artwork.id).then((detail) => {
+      if (epoch !== selectionEpoch.current) return;
       setSelected((previous) => previous?.artwork.id === artwork.id ? { artwork, story: detail.story } : previous);
-    } catch (failure) {
-      setSelectionError({ artworkId: artwork.id, message: (failure as Error).message });
-    }
+      setStoryRequest({ artworkId: artwork.id, state: detail.story ? { status: "ready", story: detail.story } : { status: "unavailable" } });
+    }).catch(() => {
+      if (epoch !== selectionEpoch.current) return;
+      setStoryRequest({ artworkId: artwork.id, state: {
+        status: "error", message: "Не вдалося завантажити історію картини. Спробуйте ще раз.", retry,
+      } });
+    });
+    return () => { selectionEpoch.current += 1; };
+    // Story completion must not start another request; selection and retries own this lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.artwork.id, phrase, description, storyAttempt]);
+
+  const pick = (artwork: ArtworkSummary) => {
+    if (artwork.id === current?.artwork.id) return;
+    selectionEpoch.current += 1;
+    setStoryRequest({ artworkId: artwork.id, state: { status: "loading" } });
+    setSelected({ artwork, story: artwork.id === match?.artwork.id ? match.story : null });
   };
 
   const nextAlternative = () => {
     if (!match || !current) return;
     const alts = match.alternatives;
+    if (!alts.length) return;
     const i = alts.findIndex((a) => a.artwork.id === current.artwork.id);
     pick(alts[(i + 1) % alts.length].artwork);
   };
@@ -63,16 +87,15 @@ export function PhraseResultPage() {
   return (
     <Page
       title={editing ? "Редагування" : "Ваш мем"}
-      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Натисніть на підпис, щоб його змінити."}
+      subtitle={editing ? "Перетягніть підпис на картині або змініть його стиль під нею" : "Ми підібрали картину. Не те? Оберіть іншу з топ-5 нижче. Підпис можна змінити кнопкою під картиною."}
       actions={
         editing ? null : <ModeSwitch />
       }
     >
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
-      {selectionError?.artworkId === current.artwork.id && <ErrorMessage error={selectionError.message} />}
       <MemeWorkspace
         artwork={current.artwork}
-        story={current.story}
+        story={current.story ? { status: "ready", story: current.story } : storyRequest?.artworkId === current.artwork.id ? storyRequest.state : { status: "loading" }}
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}
@@ -87,7 +110,7 @@ export function PhraseResultPage() {
           <>
             <div className="t-label mb-3">Підпис</div>
             <div className="flex gap-3">
-              <Input value={draft.blocks[0].text} onChange={(e) => draft.setText(e.target.value)} maxLength={200} />
+              <Input aria-label="Підпис мему" value={draft.blocks[0].text} onChange={(e) => draft.setText(e.target.value)} maxLength={200} />
               {/* TODO(team): design shows a refresh icon here — regenerate caption? another painting? */}
               <IconButton icon="refresh" label="Інша картина" onClick={nextAlternative} />
             </div>
@@ -101,14 +124,14 @@ export function PhraseResultPage() {
       {!editing && (
         <section className="mt-16">
           <h3 className="t-h3 mb-6">Топ-5 збігів</h3>
-          <div className="grid grid-cols-5 gap-6">
-            {match.alternatives.map(({ artwork, score }, i) => (
+          <div className="grid grid-cols-1 gap-5 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 xl:gap-6">
+            {match.alternatives.map(({ artwork, score }) => (
               <ArtworkCard
                 key={artwork.id}
                 artwork={artwork}
                 selected={artwork.id === current.artwork.id}
                 meta={score !== null ? `Збіг ${Math.round(score * 100)}%` : undefined}
-                onClick={() => (i === 0 ? setSelected({ artwork: match.artwork, story: match.story }) : pick(artwork))}
+                onClick={() => pick(artwork)}
               />
             ))}
           </div>

@@ -27,7 +27,8 @@ export function EditMemePage() {
   }, [meme.data]);
 
   if (meme.loading || artwork.loading) return <Page title="Редагування"><Loading /></Page>;
-  if (meme.error || !meme.data || !artwork.data) return <Page title="Редагування"><ErrorMessage error={meme.error ?? "Помилка"} /></Page>;
+  if (meme.error || !meme.data) return <Page title="Редагування"><ErrorMessage error={meme.error ?? "Помилка"} onRetry={meme.reload} /></Page>;
+  if (artwork.error || !artwork.data) return <Page title="Редагування"><ErrorMessage error={artwork.error ?? "Не вдалося завантажити картину"} onRetry={artwork.reload} /></Page>;
   if (!meme.data.can_edit) return <Page title="Редагування"><ErrorMessage error="Мем не знайдено у вашій колекції" /></Page>;
 
   return (
@@ -36,7 +37,7 @@ export function EditMemePage() {
       subtitle="Перетягніть підпис на картині або змініть його стиль під нею. Незбережені зміни залишаться в цій вкладці; опублікований мем не зміниться без збереження."
     >
       <SaveStatus error={error} savedId={savedId} justSaved={justSaved} />
-      <MemeWorkspace artwork={artwork.data} story={artwork.data.story} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
+      <MemeWorkspace artwork={artwork.data} story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }} draft={draft} editing={editing} onEditingChange={setEditing} onSave={save}
         savedId={savedId} stageRef={stageRef}
         toolbarEnd={
           <>

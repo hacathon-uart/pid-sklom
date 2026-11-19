@@ -4,10 +4,14 @@ import type { Frame } from "../api/types";
 /** PNG data URL with the «Під склом» watermark, at roughly the source image resolution. */
 export function exportPng(stage: Konva.Stage, targetWidth = 1200): string {
   const watermark = stage.findOne(".watermark");
+  const captions = stage.find(".caption") as Konva.Text[];
+  const shadows = captions.map((node) => ({ node, blur: node.shadowBlur(), color: node.shadowColor() }));
   watermark?.visible(true);
+  captions.forEach((node) => { node.shadowBlur(0); node.shadowColor("transparent"); });
   try {
     return stage.toDataURL({ mimeType: "image/png", pixelRatio: targetWidth / stage.width() });
   } finally {
+    shadows.forEach(({ node, blur, color }) => { node.shadowBlur(blur); node.shadowColor(color); });
     watermark?.visible(false);
   }
 }

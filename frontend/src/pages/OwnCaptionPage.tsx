@@ -38,7 +38,7 @@ export function OwnCaptionPage() {
       <SaveStatus error={saveError} savedId={savedId} justSaved={justSaved} />
       <MemeWorkspace
         artwork={artwork.data}
-        story={artwork.data.story}
+        story={artwork.data.story ? { status: "ready", story: artwork.data.story } : { status: "unavailable" }}
         draft={draft}
         editing={editing}
         onEditingChange={setEditing}

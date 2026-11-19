@@ -40,7 +40,7 @@ export function SaveLoginDialog({
         event.preventDefault();
         if (!submitting) onCancel();
       }}
-      className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-lg rounded-story border border-line bg-surface p-6 text-text shadow-xl backdrop:bg-black/50"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-story border border-line bg-surface p-5 text-text shadow-xl backdrop:bg-black/50 sm:p-6"
     >
       <h2 id="save-login-title" className="t-h3">Увійдіть, щоб зберегти мем</h2>
       <p id="save-login-description" className="t-body mt-3">

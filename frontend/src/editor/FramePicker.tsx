@@ -18,16 +18,15 @@ export function FramePicker({
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
       {onFrameChange && <>
       <div className="t-label">Рамка</div>
-      <div className="flex gap-2" role="radiogroup" aria-label="Рамка">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Рамка">
         {FRAMES.map((f) => (
           <button
             key={f}
             type="button"
-            role="radio"
-            aria-checked={frame === f}
+            aria-pressed={frame === f}
             title={FRAME_LABELS[f]}
             onClick={() => onFrameChange(f)}
-            className={`flex flex-col items-center gap-1 rounded-control border p-1.5 text-[11px] transition ${frame === f ? "border-accent text-accent" : "border-line hover:bg-muted"}`}
+            className={`flex min-h-11 min-w-11 flex-col items-center gap-1 rounded-control border p-1.5 text-[11px] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${frame === f ? "border-accent text-accent" : "border-line hover:bg-muted"}`}
           >
             <span className={`frame frame-${f} frame-sm block`} style={{ ["--fw" as string]: "4px" }}>
               <span className="frame-inner block">
@@ -39,7 +38,7 @@ export function FramePicker({
         ))}
       </div>
       </>}
-      <label className="t-small flex cursor-pointer items-center gap-2">
+      <label className="t-small flex min-h-11 cursor-pointer items-center gap-2">
         <input type="checkbox" checked={withFrame} onChange={(e) => onWithFrameChange(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
         Завантажувати з рамкою
       </label>

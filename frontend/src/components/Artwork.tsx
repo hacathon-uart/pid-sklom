@@ -35,7 +35,7 @@ export function Artwork({
 }) {
   const sizeClass = size === "md" ? "" : `frame-${size}`;
   return (
-    <div className={`frame frame-${frame} ${sizeClass} ${selected ? "frame-selected" : ""} ${className}`}>
+    <div className={`min-w-0 max-w-full frame frame-${frame} ${sizeClass} ${selected ? "frame-selected" : ""} ${className}`}>
       <div className="frame-inner">
         <div className="glass flex items-center justify-center bg-image" style={aspect ? { aspectRatio: aspect } : undefined}>
           {children ??

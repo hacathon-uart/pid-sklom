@@ -1,11 +1,9 @@
 /**
  * The meme itself: painting + draggable caption blocks. Owner: B — T15, T28, T29.
  *
- * TODO(B):
- *  - resize handles (Konva <Transformer>) that change block.width instead of scaling
- *  - touch support check on phones (US-11)
+ * TODO(B): resize handles (Konva <Transformer>) that change block.width instead of scaling.
  */
-import type Konva from "konva";
+import Konva from "konva";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Image as KImage, Layer, Stage, Text } from "react-konva";
 import useImage from "use-image";
@@ -31,14 +29,15 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   // crossOrigin="anonymous" is REQUIRED, otherwise PNG export throws (tainted canvas).
   const [image, imageStatus] = useImage(imageUrl, "anonymous");
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(560);
+  const [width, setWidth] = useState(0);
   const [fontsReady, setFontsReady] = useState("");
   const [fontError, setFontError] = useState(false);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    const ro = new ResizeObserver(() => setWidth(Math.max(0, el.clientWidth)));
+    setWidth(Math.max(0, el.clientWidth));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -58,28 +57,35 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontsKey]);
 
-  const height = image ? (width * image.height) / image.width : (width * 3) / 4;
-  const scale = width / REFERENCE_WIDTH;
+  // A canonical stage keeps rasterized PNG pixels independent of viewport width.
+  // Only its DOM presentation scales; draft coordinates remain normalized.
+  const height = image ? (REFERENCE_WIDTH * image.height) / image.width : (REFERENCE_WIDTH * 3) / 4;
+  const displayScale = width / REFERENCE_WIDTH;
+
+  const keepInside = (node: Konva.Text) => {
+    node.x(Math.min(Math.max(0, node.x()), Math.max(0, REFERENCE_WIDTH - node.width())));
+    node.y(Math.min(Math.max(0, node.y()), Math.max(0, height - node.height())));
+  };
 
   return (
-    <div ref={wrapRef} className="w-full">
+    <div ref={wrapRef} className="relative w-full" style={{ height: height * displayScale }}>
       <Stage
-        exportReady={Boolean(image) && fontsReady === fontsKey && !fontError}
+        exportReady={width > 0 && Boolean(image) && fontsReady === fontsKey && !fontError}
         exportError={imageStatus === "failed" || fontError}
-        width={width}
+        width={REFERENCE_WIDTH}
         height={height}
+        style={{ position: "absolute", left: 0, top: 0, transform: `scale(${displayScale})`, transformOrigin: "top left", touchAction: editable ? "none" : "auto" }}
         ref={stageRef}
         onMouseDown={(e) => e.target === e.target.getStage() || e.target.name() === "bg" ? onBackgroundClick?.() : undefined}
         onTouchStart={(e) => e.target === e.target.getStage() || e.target.name() === "bg" ? onBackgroundClick?.() : undefined}
       >
         <Layer>
-          {image && <KImage name="bg" image={image} width={width} height={height} />}
+          {image && <KImage name="bg" image={image} width={REFERENCE_WIDTH} height={height} />}
           {blocks.map((b, i) => {
-            const fontSize = b.size * scale;
-            const boxW = (b.width ?? 0.9) * width;
-            const lines = Math.max(1, estimateLines(b.text, fontSize, boxW));
-            const boxH = lines * fontSize * 1.1;
-            const x = b.x !== null ? b.x * width : (width - boxW) / 2;
+            const fontSize = b.size;
+            const boxW = (b.width ?? 0.9) * REFERENCE_WIDTH;
+            const boxH = measureCaptionHeight(b.text, b.font, fontSize, boxW);
+            const x = b.x !== null ? b.x * REFERENCE_WIDTH : (REFERENCE_WIDTH - boxW) / 2;
             const y =
               b.y !== null
                 ? b.y * height
@@ -91,6 +97,7 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
             return (
               <Text
                 key={i}
+                name="caption"
                 text={b.text.toUpperCase()}
                 x={x}
                 y={y}
@@ -102,16 +109,20 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
                 lineHeight={1.1}
                 fill={b.color}
                 stroke={b.outline ? "#000000" : undefined}
-                strokeWidth={b.outline ? Math.max(2, fontSize / 12) : 0}
+                strokeWidth={b.outline ? fontSize / 12 : 0}
                 fillAfterStrokeEnabled
-                draggable
+                draggable={editable}
                 onMouseEnter={(e) => (e.target.getStage()!.container().style.cursor = "pointer")}
                 onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = "")}
                 shadowColor={editable && active === i ? "#C9B08F" : undefined}
                 shadowBlur={editable && active === i ? 12 : 0}
                 onMouseDown={() => onSelect?.(i)}
                 onTouchStart={() => onSelect?.(i)}
-                onDragEnd={(e) => onMove?.(i, clamp01(e.target.x() / width), clamp01(e.target.y() / height))}
+                onDragMove={(e) => keepInside(e.target as Konva.Text)}
+                onDragEnd={(e) => {
+                  keepInside(e.target as Konva.Text);
+                  onMove?.(i, e.target.x() / REFERENCE_WIDTH, e.target.y() / height);
+                }}
               />
             );
           })}
@@ -122,12 +133,12 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
             text="Під склом"
             fontFamily="Cormorant Garamond" // same face as the «Під склом» title
             fontStyle="italic 600"
-            fontSize={18 * scale}
+            fontSize={18}
             fill={blocks[0]?.color ?? "#FFFFFF"} // single colour, same as the caption
-            width={140 * scale}
+            width={140}
             align="right"
-            x={width - 148 * scale}
-            y={height - 26 * scale}
+            x={REFERENCE_WIDTH - 148}
+            y={height - 26}
           />
         </Layer>
       </Stage>
@@ -135,10 +146,13 @@ export function MemeCanvas({ imageUrl, blocks, editable = false, active, onSelec
   );
 }
 
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-
-/** Rough line count for preset positioning (Konva wraps the real text itself). */
-function estimateLines(text: string, fontSize: number, boxW: number) {
-  const charsPerLine = Math.max(1, Math.floor(boxW / (fontSize * 0.5)));
-  return Math.ceil(text.length / charsPerLine);
+/** Measure with the same Konva text layout used for rendering. */
+function measureCaptionHeight(text: string, font: string, fontSize: number, boxW: number) {
+  const probe = new Konva.Text({
+    text: text.toUpperCase(), width: boxW, fontFamily: font,
+    fontStyle: String(fontWeight(font)), fontSize, lineHeight: 1.1,
+  });
+  const height = probe.height();
+  probe.destroy();
+  return height;
 }

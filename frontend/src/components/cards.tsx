@@ -21,10 +21,10 @@ export function ArtworkCard({
   return (
     // self-start: a button centres its content vertically, so in a grid row the cards with a short
     // label were pushed down relative to the ones with a two-line title.
-    <button onClick={onClick} className="block w-full self-start text-left">
+    <button onClick={onClick} className="block w-full min-w-0 self-start text-left [overflow-wrap:anywhere]">
       <Artwork src={artwork.thumb_url} alt={artwork.title} selected={selected} aspect="4/5" size="sm" />
       <WallLabel
-        className={`mt-4 ${selected ? "ring-2 ring-accent" : ""}`}
+        className={`mt-3 max-md:[&_.wl-who]:whitespace-normal md:mt-4 ${selected ? "ring-2 ring-accent" : ""}`}
         who={artwork.artist.name}
         what={`${artwork.title}${artwork.year ? `, ${artwork.year}` : ""}`}
         inv={meta ?? `Інв. № ${inventoryNo(artwork.id)}`}
@@ -36,8 +36,8 @@ export function ArtworkCard({
 
 export function AuthorCard({ artist }: { artist: ArtistSummary }) {
   return (
-    <Link to={`/artists/${artist.slug}`} className="flex flex-col items-center text-center">
-      <Portrait src={artist.portrait_url} name={artist.name} size={124} />
+    <Link to={`/artists/${artist.slug}`} className="flex min-w-0 flex-col items-center text-center [overflow-wrap:anywhere]">
+      <Portrait src={artist.portrait_url} name={artist.name} size={124} className="max-md:h-24 max-md:w-20" />
       <div className="t-strong mt-4">{artist.name}</div>
       <div className="t-small mt-1 text-text-secondary">{years(artist)}</div>
     </Link>
@@ -48,7 +48,7 @@ export function AuthorCard({ artist }: { artist: ArtistSummary }) {
 export function MemeCard({ meme }: { meme: Meme }) {
   const date = new Date(meme.created_at).toLocaleDateString("uk-UA", { day: "numeric", month: "numeric", year: "numeric" });
   return (
-    <Link to={`/me/memes/${meme.id}`} className="block">
+    <Link to={`/me/memes/${meme.id}`} className="block min-w-0 [overflow-wrap:anywhere]">
       <Artwork
         src={meme.image_url ?? meme.artwork.thumb_url}
         alt={meme.caption}
@@ -58,7 +58,7 @@ export function MemeCard({ meme }: { meme: Meme }) {
         crack={meme.is_favorite ? "static" : null}
       />
       <WallLabel
-        className="mt-4"
+        className="mt-3 max-md:[&_.wl-who]:whitespace-normal md:mt-4"
         who={meme.artwork.artist.name}
         what={meme.artwork.title}
         inv={date}

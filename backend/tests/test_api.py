@@ -49,6 +49,11 @@ def test_content(client):
     page = client.get("/api/artworks", params={"genre": "landscape"}).json()
     assert page["total"] >= 1 and all(w["genre"] == "landscape" for w in page["items"])
 
+    first = client.get("/api/artworks", params={"limit": 2, "offset": 0}).json()
+    second = client.get("/api/artworks", params={"limit": 2, "offset": 2}).json()
+    assert first["total"] == second["total"] and first["total"] >= 4
+    assert {w["id"] for w in first["items"]}.isdisjoint(w["id"] for w in second["items"])
+
     art = client.get(f"/api/artworks/{page['items'][0]['id']}").json()
     assert "story" in art and art["artist"]["name"]
     assert client.get("/api/artworks/999999").status_code == 404

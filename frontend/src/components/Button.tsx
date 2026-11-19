@@ -16,7 +16,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`rounded-control px-6 py-3 text-[15px] font-semibold leading-[1.2] transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-control px-6 py-3 text-center text-[15px] font-semibold leading-[1.2] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
@@ -34,7 +34,7 @@ export function IconButton({
     <button
       aria-label={label}
       title={label}
-      className={`flex h-11 w-11 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-surface ${active ? "text-accent" : "text-text"} ${className}`}
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 disabled:hover:bg-surface ${active ? "text-accent" : "text-text"} ${className}`}
       {...props}
     >
       <Icon name={icon} filled={active} size={20} />
