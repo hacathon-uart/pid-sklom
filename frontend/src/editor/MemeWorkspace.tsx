@@ -21,6 +21,7 @@ import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
 import { pending, RESUME, remove, route, useTabState } from "../auth/workflow";
 import { Artwork } from "../components/Artwork";
+import { IconButton } from "../components/Button";
 import { Icon, type IconName } from "../components/Icon";
 import { ErrorMessage } from "../components/Layout";
 import { StoryCard } from "../components/StoryCard";
@@ -47,6 +48,7 @@ export function MemeWorkspace({
   onSave,
   onShare,
   savedId = null,
+  showShareFavoriteNotice = true,
   stageRef,
   onAnotherPainting,
   toolbarEnd,
@@ -60,6 +62,7 @@ export function MemeWorkspace({
   onSave: () => void;
   onShare: () => Promise<string>;
   savedId?: string | null; // fills the bookmark
+  showShareFavoriteNotice?: boolean;
   stageRef: RefObject<Konva.Stage | null>;
   onAnotherPainting?: () => void;
   toolbarEnd?: ReactNode; // right end of the icon row under the meme (e.g. «Скасувати» / «Зберегти зміни»)
@@ -72,6 +75,7 @@ export function MemeWorkspace({
   const [sharing, setSharing] = useState(false);
   const shareEpoch = useRef(0);
   const shareBusy = useRef(false);
+  const shareTrigger = useRef<HTMLButtonElement>(null);
   const shareScope = `${user?.id ?? "guest"}:${route()}:${artwork.id}`;
   useLayoutEffect(() => {
     shareEpoch.current += 1;
@@ -199,10 +203,10 @@ export function MemeWorkspace({
             disabled={exporting.busy}
             onClick={() => void exporting.run()}
           />
-          {authEnabled && user && <WorkspaceAction
+          {authEnabled && user && <IconButton
+            ref={shareTrigger}
             icon="share"
             label="Поділитися посиланням"
-            visibleLabel="Поділитися"
             disabled={sharing || exporting.busy}
             onClick={() => void share()}
           />}
@@ -211,7 +215,7 @@ export function MemeWorkspace({
         </div>
         {workspaceError && <ErrorMessage error={workspaceError} />}
         {exporting.error && <ErrorMessage error={exporting.error} />}
-        {shareLink && <ShareLinkPanel {...shareLink} onCopy={() => {
+        {shareLink && <ShareLinkPanel {...shareLink} triggerRef={shareTrigger} showFavoriteNotice={showShareFavoriteNotice} onCopy={() => {
           const epoch = shareEpoch.current;
           void copyShareUrl(shareLink.url).then((copied) => {
             if (epoch === shareEpoch.current) {
