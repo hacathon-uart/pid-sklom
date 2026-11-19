@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import type { Genre } from "../api/types";
 
 /** Logo L4 «Відблиск»: a pane of glass with a glare. Uses currentColor. Same drawing as public/favicon.svg. */
-export function LogoMark({ size = 40, className = "" }: { size?: number; className?: string }) {
+/** tight: crop the empty margin, so the mark fills its box (used as a picture on the landing wall). */
+export function LogoMark({ size = 40, className = "", tight = false }: { size?: number; className?: string; tight?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeLinecap="round" className={className} aria-hidden>
+    <svg width={size} height={size} viewBox={tight ? "14 7 72 86" : "0 0 100 100"} fill="none" stroke="currentColor" strokeLinecap="round" className={className} aria-hidden>
       <rect x="20" y="12" width="60" height="76" strokeWidth={size < 48 ? 6 : 5} />
       <path d="M34 62 60 30" strokeWidth={size < 48 ? 7 : 6} />
       {size >= 48 && <path d="M44 70 66 43" strokeWidth="3" />}

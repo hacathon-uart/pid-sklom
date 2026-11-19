@@ -10,6 +10,7 @@ import { api } from "../api/client";
 import type { QuizGame, QuizInfo } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { authEnabled } from "../auth/supabase";
+import { Artwork } from "../components/Artwork";
 import { Button } from "../components/Button";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { GAME_ORDER, GAMES } from "../quiz/games";
@@ -115,9 +116,12 @@ function FloorPlan({ info }: { info: QuizInfo }) {
   const status = (game: QuizGame) => hallStatus(game, info);
 
   return (
-    <div className="hidden min-w-0 rounded-card border border-line bg-surface p-4 md:block">
+    // The plan hangs like a picture: framed, behind glass, on drawing paper.
+    <div className="hidden min-w-0 md:block">
+     <Artwork frame="gold">
       <svg viewBox="0 0 1000 600" className="block h-auto w-full" role="group" aria-label="План музею: три зали вікторини">
         <PlanDefs />
+        <rect width="1000" height="600" fill="#F8F2E6" />
         <rect x="20" y="20" width="960" height="520" fill="#FFFDF8" />
         <Vestibule />
 
@@ -149,6 +153,7 @@ function FloorPlan({ info }: { info: QuizInfo }) {
 
         <Walls />
       </svg>
+     </Artwork>
     </div>
   );
 }

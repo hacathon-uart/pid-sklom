@@ -56,9 +56,8 @@ export function HomePage() {
   return (
     <>
       <main id="main-content" tabIndex={-1}>
-      <MuseumWall>
-        <LogoMark size={84} className="text-[#2E2620] [filter:drop-shadow(0_1px_0_rgba(255,255,255,.7))_drop-shadow(0_4px_14px_rgba(250,245,236,.95))]" />
-        <h1 className="t-logo mt-3 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
+      <MuseumWall mark={<LogoMark tight size={100} className="h-auto w-full text-[#2E2620] [&_rect]:fill-[rgba(247,240,225,.78)]" />}>
+        <h1 className="t-logo mt-1 !text-[clamp(64px,16vw,190px)] text-[#2E2620] [text-shadow:0_1px_0_rgba(255,255,255,.7),0_6px_24px_rgba(250,245,236,.9)]">Під склом</h1>
         <p className="t-quote mt-3 text-[#5a4a3c] md:!text-[1.9rem]">Мистецтво крізь жарти</p>
         <a href="#start" className="t-small mt-10 flex flex-col items-center gap-1 rounded-control px-3 py-2 text-[#5a4a3c] hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
           <span className="sr-only">Гортайте вниз</span><span className="animate-bounce"><Icon name="chevronDown" size={28} /></span>
