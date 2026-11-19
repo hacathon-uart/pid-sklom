@@ -12,7 +12,7 @@ const routes = [
   ["/create/result?q=hello", ".konvajs-content canvas"],
   ["/create/painting/1/own", "#caption-font"], ["/create/painting/2/ai", ".konvajs-content canvas"],
   ["/gallery", "main button:has(img)"], ["/artists", "main a[href='/artists/test-artist']"],
-  ["/artists/test-artist", "main a[href='/create/painting?artwork=1']"],
+  ["/artists/test-artist", "main aside button:has(img)"], // the author's paintings open the full-screen viewer
   ["/m/public-fixture", "#meme-story"], ["/quiz", ".plan-room"],
   ["/quiz/who", "button.catalogue-card"], ["/quiz/titles", "button.catalogue-card"],
   ["/quiz/pairs", "button[aria-label='Картина 1']"],
@@ -121,7 +121,7 @@ await runBrowserCheck({
       await reference(`story-${width}`, "#artwork-story");
       await visit("/gallery", "main button:has(img)");
       await evaluate("document.querySelector('main a[href=\"/artists/test-artist\"]').click()");
-      await ready("main a[href='/create/painting?artwork=1']");
+      await ready("main aside button:has(img)");
       await click("Зробити мем з картини");
       await ready(".konvajs-content canvas");
       await until("document.body.innerText.includes('Понеділок знову настав')");
