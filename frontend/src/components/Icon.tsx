@@ -14,6 +14,12 @@ const PATHS = {
   chevronDown: "m6 9 6 6 6-6",
   arrowRight: "M5 12h14m0 0-5-5m5 5-5 5",
   arrowLeft: "M19 12H5m0 0 5-5m-5 5 5 5",
+  chevronLeft: "m15 6-6 6 6 6",
+  chevronRight: "m9 6 6 6-6 6",
+  close: "M6 6l12 12M18 6 6 18",
+  plus: "M12 5v14M5 12h14",
+  minus: "M5 12h14",
+  zoom: "M10.5 16a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM14.5 14.5 20 20M10.5 8v5M8 10.5h5", // loupe with a plus
   search: "M10.5 16a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM14.5 14.5 20 20M7.5 9a3 3 0 0 1 2.5-2", // restorer's loupe
 } as const;
 

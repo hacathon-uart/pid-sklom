@@ -11,6 +11,7 @@ import { SearchInput } from "../components/Input";
 import { ErrorMessage, Loading, Page } from "../components/Layout";
 import { ModeSwitch } from "../components/ModeSwitch";
 import { VelvetRope } from "../components/Museum";
+import { PaintingViewer } from "../components/PaintingViewer";
 import { Tag } from "../components/Tag";
 
 export function ChoosePaintingPage() {
@@ -18,6 +19,7 @@ export function ChoosePaintingPage() {
   const [params] = useSearchParams();
   const { query: q, genre, page, result: catalogue, setQuery: setQ, setGenre, setPage } = useArtworkCatalogue();
   const [selected, setSelected] = useState<ArtworkSummary | null>(null);
+  const [zoomed, setZoomed] = useState<ArtworkSummary | null>(null);
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState<string | null>(null);
   const [preselection, setPreselection] = useState<"loading" | "error" | null>(null);
@@ -138,7 +140,7 @@ export function ChoosePaintingPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 xl:gap-6">
           {data!.items.map((a) => (
-            <ArtworkCard key={a.id} artwork={a} selected={selected?.id === a.id} onClick={() => choose(a)} />
+            <ArtworkCard key={a.id} artwork={a} selected={selected?.id === a.id} onClick={() => choose(a)} onZoom={() => setZoomed(a)} />
           ))}
         </div>
       )}
@@ -154,7 +156,9 @@ export function ChoosePaintingPage() {
         <div className="fixed right-0 bottom-[calc(var(--app-bottom-clearance)+8px)] left-[var(--app-side-offset)] z-20 px-[var(--page-gutter)] md:bottom-6">
           <div ref={panelRef} className="mx-auto max-h-[min(55dvh,360px)] max-w-[1150px] overflow-y-auto rounded-story border border-accent bg-surface p-4 shadow-lg lg:flex lg:items-center lg:gap-5">
             <div className="flex min-w-0 items-center gap-3 md:gap-5 lg:flex-1">
-              <img src={selected.thumb_url} alt="" className="h-16 w-14 shrink-0 rounded-control object-cover md:h-24 md:w-20" />
+              <button type="button" aria-label={`Збільшити «${selected.title}»`} title="Збільшити" onClick={() => setZoomed(selected)} className="shrink-0 cursor-zoom-in rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                <img src={selected.thumb_url} alt="" crossOrigin="anonymous" className="h-16 w-14 rounded-control object-cover md:h-24 md:w-20" />
+              </button>
               <div className="min-w-0 flex-1" role="status">
                 <div className="t-label">Обрано</div>
                 <div className="t-strong break-words">{selected.title}{selected.year ? `, ${selected.year}` : ""}</div>
@@ -170,6 +174,26 @@ export function ChoosePaintingPage() {
           </div>
         </div>
       )}
+
+      {zoomed && (() => {
+        const items = data?.items ?? [];
+        const i = items.findIndex((a) => a.id === zoomed.id);
+        return (
+          <PaintingViewer
+            artwork={zoomed}
+            onClose={() => setZoomed(null)}
+            onPrev={i > 0 ? () => setZoomed(items[i - 1]) : undefined}
+            onNext={i >= 0 && i < items.length - 1 ? () => setZoomed(items[i + 1]) : undefined}
+            position={i >= 0 ? `${i + 1} / ${items.length}` : undefined}
+          >
+            {selected?.id === zoomed.id ? (
+              <Button variant="secondary" className="border-white/60 text-white hover:bg-white/10" onClick={() => setZoomed(null)}>Вже обрано · Повернутися</Button>
+            ) : (
+              <Button onClick={() => { choose(zoomed); setZoomed(null); }}>Обрати цю картину</Button>
+            )}
+          </PaintingViewer>
+        );
+      })()}
     </Page>
   );
 }
