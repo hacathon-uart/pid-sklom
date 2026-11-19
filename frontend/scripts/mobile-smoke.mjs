@@ -1,165 +1,259 @@
-/**
- * Local responsive smoke check with no browser-test dependency.
- * Start the offline stub API and Vite, then launch Chrome with
- * --headless=new --remote-debugging-port=9222 --user-data-dir=/tmp/pidsklom-smoke.
- * Run `npm run smoke:mobile` from frontend/. Set SMOKE_EXPORT=1 and
- * SMOKE_FLOWS=1 for PNG and quiz interactions; use only with the offline stub API.
- */
+// Self-owned loopback fixtures, private Chrome and build; never uses a configured backend.
+import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { runBrowserCheck } from "../../scripts/lib/browser-harness.mjs";
+import { createMobileFixtures } from "../../scripts/lib/mobile-fixtures.mjs";
 
-const appUrl = process.env.SMOKE_APP_URL ?? "http://127.0.0.1:5173";
-const cdpUrl = process.env.SMOKE_CDP_URL ?? "http://127.0.0.1:9222";
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const widths = [320, 375, 390, 430, 768, 1024, 1440];
+const routes = [
+  ["/", "form"], ["/create", "form"], ["/create/painting", "main button:has(img)"],
+  ["/create/result?q=hello", ".konvajs-content canvas"],
+  ["/create/painting/1/own", "#caption-font"], ["/create/painting/2/ai", ".konvajs-content canvas"],
+  ["/gallery", "main button:has(img)"], ["/artists", "main a[href='/artists/test-artist']"],
+  ["/artists/test-artist", "main a[href='/create/painting?artwork=1']"],
+  ["/m/public-fixture", "#meme-story"], ["/quiz", ".plan-room"],
+  ["/quiz/who", "button.catalogue-card"], ["/quiz/titles", "button.catalogue-card"],
+  ["/quiz/pairs", "button[aria-label='Картина 1']"],
+];
+const fixtures = createMobileFixtures();
+let referenceCount = 0;
+const screenshotDir = process.env.SMOKE_SCREENSHOT_DIR ? resolve(process.env.SMOKE_SCREENSHOT_DIR) : null;
+if (screenshotDir) mkdirSync(screenshotDir, { recursive: true });
 
-if (!["127.0.0.1", "localhost"].includes(new URL(appUrl).hostname)) {
-  throw new Error("The mobile smoke check runs against a local frontend only");
-}
-
-const tab = await (await fetch(`${cdpUrl}/json/new?about:blank`, { method: "PUT" })).json();
-const socket = new WebSocket(tab.webSocketDebuggerUrl);
-await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
-let nextId = 0;
-const pending = new Map();
-socket.onmessage = ({ data }) => {
-  const message = JSON.parse(data);
-  if (!message.id || !pending.has(message.id)) return;
-  const { resolve, reject } = pending.get(message.id);
-  pending.delete(message.id);
-  message.error ? reject(new Error(message.error.message)) : resolve(message.result);
-};
-function send(method, params = {}) {
-  const id = ++nextId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    socket.send(JSON.stringify({ id, method, params }));
-  });
-}
-async function evaluate(expression) {
-  const response = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
-  if (response.exceptionDetails) throw new Error(response.exceptionDetails.text);
-  return response.result.value;
-}
-async function setWidth(width) {
-  await send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
-  await sleep(100);
-}
-async function visit(path) {
-  await send("Page.navigate", { url: `${appUrl}${path}` });
-  await sleep(1000);
-  return evaluate(`({
-    client: document.documentElement.clientWidth,
-    scroll: document.documentElement.scrollWidth,
-    nav: [...document.querySelectorAll('nav')].filter(n => getComputedStyle(n).display !== 'none')
-      .map(n => ({right: n.getBoundingClientRect().right, selected: !!n.querySelector('[aria-current="page"]')})),
-    heading: !!document.querySelector('h1'),
-  })`);
-}
-
-await send("Page.enable");
-await send("Runtime.enable");
-const routes = ["/", "/create", "/create/painting", "/create/result?q=hello", "/gallery", "/artists", "/quiz", "/quiz/who", "/quiz/pairs"];
-const widths = [320, 390, 768, 1024, 1440];
-const failures = [];
-try {
-  for (const width of widths) {
-    await setWidth(width);
-    for (const path of routes) {
-      const state = await visit(path);
-      if (state.scroll > state.client + 1) failures.push(`${width} ${path}: horizontal overflow ${state.scroll} > ${state.client}`);
-      if (!state.heading) failures.push(`${width} ${path}: missing heading`);
-      if (state.nav.length !== 1 || state.nav[0].right > state.client + 1 || !state.nav[0].selected) {
-        failures.push(`${width} ${path}: primary navigation is missing, overflowing, or inactive`);
-      }
-    }
-  }
-
-  await setWidth(320);
-  await visit("/create");
-  const enlarged = await evaluate(`(() => {
-    document.documentElement.style.fontSize = '32px';
-    const nav = [...document.querySelectorAll('nav')].find(n => getComputedStyle(n).display !== 'none');
-    const last = nav.querySelector('a:last-child');
-    last.scrollIntoView({ block: 'nearest', inline: 'end' });
-    return { page: document.documentElement.scrollWidth, width: document.documentElement.clientWidth,
-      lastRight: last.getBoundingClientRect().right, navRight: nav.getBoundingClientRect().right };
-  })()`);
-  if (enlarged.page > enlarged.width + 1 || enlarged.lastRight > enlarged.navRight + 1) {
-    failures.push("Enlarged navigation must remain reachable without page overflow");
-  }
-
-  if (process.env.SMOKE_FLOWS === "1") {
-    await setWidth(320);
-    await visit("/create/painting");
-    await evaluate("document.querySelector('main button:has(img)')?.click()");
-    await sleep(120);
-    const picker = await evaluate("!![...document.querySelectorAll('button')].find(b => b.textContent.includes('Згенерувати підпис'))");
-    if (!picker) failures.push("Painting selection did not reveal caption actions");
-
-    for (const game of ["who", "titles"]) {
-      await visit(`/quiz/${game}`);
-      const options = await evaluate("document.querySelectorAll('button.catalogue-card').length");
-      if (!options) { failures.push(`${game}: no answer cards`); continue; }
-      await evaluate("document.querySelector('button.catalogue-card').click()");
-      await sleep(350);
-      const revealed = await evaluate("!!document.querySelector('.wall-label') && !![...document.querySelectorAll('button')].find(b => /Далі|Підсумки/.test(b.textContent))");
-      if (!revealed) failures.push(`${game}: answer did not reveal a fact and next action`);
-    }
-
-    await visit("/quiz/pairs");
-    for (let index = 0; index < 3; index++) {
-      const assigned = await evaluate(`(() => {
-        const tray = document.querySelector('.label-tray[role="group"]');
-        const option = [...(tray?.querySelectorAll('button') ?? [])].find(b => !b.disabled);
-        if (!option) return false;
-        option.click();
-        return true;
+await runBrowserCheck({
+  authMode: "supabase",
+  handleRequest: fixtures.handleRequest,
+  run: async ({ command, evaluate, until, navigate, click }) => {
+    const setWidth = (width) => command("Emulation.setDeviceMetricsOverride", {
+      width, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+    const ready = async (selector) => {
+      await until(`document.querySelector(${JSON.stringify(selector)}) && document.querySelector('h1')?.textContent.trim()`);
+      await evaluate("document.fonts.ready.then(() => true)");
+      await evaluate("[...document.images].forEach(i => { i.loading = 'eager'; })");
+      await until("[...document.images].every(i => i.complete && i.naturalWidth > 0)", "All visible artwork images loaded");
+      await evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))");
+    };
+    const visit = async (path, selector = "h1") => { await navigate(path); await ready(selector); };
+    const layout = async (label) => {
+      const state = await evaluate(`(() => {
+        const nav = [...document.querySelectorAll('nav')].filter(n => n.getClientRects().length);
+        const clipped = [...document.querySelectorAll('button,a,input,select,summary')].filter(e => {
+          if (!e.getClientRects().length) return false;
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && (r.left < -1 || r.right > innerWidth + 1);
+        }).map(e => (e.getAttribute('aria-label') || e.textContent.trim()).slice(0, 100));
+        return { width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth,
+          nav: nav.length, active: nav.every(n => !!n.querySelector('[aria-current="page"]')),
+          publicView: location.pathname.startsWith('/m/'), clipped };
       })()`);
-      if (!assigned) { failures.push(`pairs: could not assign label ${index + 1}`); break; }
-      await sleep(60);
-    }
-    const canCheck = await evaluate(`(() => {
-      const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Перевірити');
-      if (!button || button.disabled) return false;
-      button.click();
-      return true;
-    })()`);
-    if (!canCheck) failures.push("pairs: assigned labels did not enable checking");
-    else {
-      await sleep(400);
-      const revealed = await evaluate("!!document.querySelector('[role=status] .t-label')");
-      if (!revealed) failures.push("pairs: submitted labels did not reveal a result");
-    }
-  }
+      assert(state.scroll <= state.width + 1, `${label}: overflow ${JSON.stringify(state)}`);
+      assert.equal(state.nav, 1, `${label}: exactly one visible primary navigation`);
+      assert.equal(state.active, !state.publicView, `${label}: active navigation matches route ownership`);
+      assert.deepEqual(state.clipped, [], `${label}: horizontally clipped controls`);
+    };
+    const reference = async (name, selector) => {
+      if (!screenshotDir) return;
+      await evaluate(selector
+        ? `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'start', behavior: 'instant' })`
+        : "window.scrollTo({ top: 0, behavior: 'instant' })");
+      await evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))");
+      const image = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      writeFileSync(resolve(screenshotDir, `${name}.png`), Buffer.from(image.data, "base64"));
+      referenceCount++;
+    };
+    const input = async (selector, value) => {
+      await evaluate(`(() => {
+        const e = document.querySelector(${JSON.stringify(selector)});
+        if (!e) throw new Error('Missing input: ' + ${JSON.stringify(selector)});
+        Object.getOwnPropertyDescriptor(${selector === "#caption-font" ? "HTMLSelectElement" : "HTMLInputElement"}.prototype, 'value').set.call(e, ${JSON.stringify(value)});
+        e.dispatchEvent(new Event('${selector === "#caption-font" ? "change" : "input"}', { bubbles: true }));
+      })()`);
+      await until(`document.querySelector(${JSON.stringify(selector)}).value === ${JSON.stringify(value)}`);
+      await evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))");
+    };
+    await command("Page.addScriptToEvaluateOnNewDocument", { source: `
+      window.exportedPNGs = [];
+      const anchorClick = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function() {
+        if (this.download && this.href.startsWith('data:image/png')) { window.exportedPNGs.push(this.href); return; }
+        return anchorClick.call(this);
+      };
+    ` });
 
-  if (process.env.SMOKE_EXPORT === "1") {
-    await setWidth(390);
-    await visit("/create/result?q=hello");
-    await evaluate(`HTMLAnchorElement.prototype.click = function() { window.__smokePng = this.href; }`);
-    async function pngHash() {
-      await evaluate(`window.__smokePng = null; document.querySelector('button[aria-label="Завантажити PNG"]').click()`);
-      for (let attempt = 0; attempt < 30; attempt++) {
-        await sleep(150);
-        const png = await evaluate("window.__smokePng");
-        if (png) return createHash("sha256").update(Buffer.from(png.split(",")[1], "base64")).digest("hex");
+    for (const width of widths) {
+      await setWidth(width);
+      for (const [path, selector] of routes) {
+        await visit(path, selector);
+        await layout(`${width} ${path}`);
       }
-      throw new Error("PNG export did not complete against the offline stub API");
     }
-    const wide = await pngHash();
-    await setWidth(320);
-    const narrow = await pngHash();
-    await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Редагувати підпис'))?.click()`);
-    await sleep(200);
-    const editing = await pngHash();
-    if (wide !== narrow || wide !== editing) failures.push("Unchanged PNG pixels differ by viewport or editor state");
-  }
-} finally {
-  socket.close();
-  await fetch(`${cdpUrl}/json/close/${tab.id}`).catch(() => {});
-}
 
-if (failures.length) {
-  console.error(failures.join("\n"));
-  process.exitCode = 1;
-} else {
-  console.log(`Mobile smoke passed: ${routes.length} routes × ${widths.length} widths${process.env.SMOKE_FLOWS === "1" ? ", picker and quiz interactions" : ""}${process.env.SMOKE_EXPORT === "1" ? ", canonical PNG" : ""}`);
-}
+    for (const width of [320, 390, 1440]) {
+      await setWidth(width);
+      await visit("/", "form");
+      await reference(`home-${width}`);
+      const links = await evaluate("[...document.querySelectorAll('footer a')].map(a => a.getAttribute('href'))");
+      assert(links.includes("https://t.me/pid_sklom_bot"), "Footer links the production bot");
+      assert(links.includes("https://github.com/hacathon-uart/pid-sklom"), "Footer links project source");
+      await visit("/create/painting", "main button:has(img)");
+      await evaluate("document.querySelector('main button:has(img)').click()");
+      await until("document.body.innerText.includes('Згенерувати підпис')");
+      await layout(`${width} selected picker`);
+      await reference(`picker-${width}`);
+      await click("Написати свій підпис");
+      await ready("#caption-font");
+      await input("input[aria-label='Текст підпису']", "Довгий український підпис для перевірки вузького екрана");
+      await layout(`${width} own caption`);
+      await reference(`editor-${width}`);
+      await reference(`editor-controls-${width}`, "#caption-font");
+      await reference(`story-${width}`, "#artwork-story");
+      await visit("/gallery", "main button:has(img)");
+      await evaluate("document.querySelector('main a[href=\"/artists/test-artist\"]').click()");
+      await ready("main a[href='/create/painting?artwork=1']");
+      await click("Зробити мем з картини");
+      await ready(".konvajs-content canvas");
+      await until("document.body.innerText.includes('Понеділок знову настав')");
+      await layout(`${width} artist to AI`);
+    }
+
+    await setWidth(390);
+    fixtures.state.empty = true;
+    await visit("/gallery");
+    await until("document.body.innerText.includes('У цьому залі такої картини немає')");
+    await layout("Empty catalogue");
+    fixtures.state.empty = false;
+    fixtures.state.failCatalogue = true;
+    await visit("/create/painting");
+    await until("document.body.innerText.includes('Не вдалося завантажити колекцію')");
+    await layout("Failed catalogue");
+    await reference("catalogue-error-390");
+    fixtures.state.failCatalogue = false;
+    await click("Спробувати ще раз");
+    await ready("main button:has(img)");
+
+    async function quiz(game, signedIn) {
+      const rounds = signedIn ? 3 : 2;
+      await visit(`/quiz/${game}`, game === "pairs" ? "button[aria-label='Картина 1']" : "button.catalogue-card");
+      for (let round = 0; round < rounds; round++) {
+        if (game === "pairs") {
+          await until("document.querySelector('button[aria-label=\"Картина 1\"]:not(:disabled)') && !document.querySelector('button[aria-label^=\"Зняти\"]')");
+          for (let i = 0; i < 3; i++) {
+            await evaluate(`document.querySelector('button[aria-label="Картина ${i + 1}"]').click()`);
+            await until(`document.querySelector('button[aria-label="Картина ${i + 1}"]').getAttribute('aria-pressed') === 'true'`);
+            await evaluate(`(() => {
+              const groups = [...document.querySelectorAll('.label-tray')].filter(e => e.getClientRects().length);
+              const options = groups.flatMap(g => [...g.querySelectorAll('button')]).filter(b => b.getClientRects().length && !b.disabled && b.querySelector('.wl-who'));
+              if (!options[0]) throw new Error('No available curator label');
+              options[0].click();
+            })()`);
+            await until(`document.querySelectorAll('button[aria-label^="Зняти"]').length === ${i + 1}`);
+          }
+          await click("Перевірити");
+        } else {
+          await until("document.querySelector('button.catalogue-card:not(:disabled)')");
+          await evaluate("document.querySelector('button.catalogue-card:not(:disabled)').click()");
+        }
+        await until("document.querySelector('[role=status]') && [...document.querySelectorAll('button')].some(b => /^(Далі|Підсумки)$/.test(b.textContent.trim()))");
+        await layout(`${game} reveal ${round}`);
+        await click(round === rounds - 1 ? "Підсумки" : "Далі");
+      }
+      await until("document.querySelector('.certificate')");
+      await layout(`${signedIn ? 'Member' : 'Guest'} ${game} certificate`);
+      async function certificateClearance() {
+        assert(await evaluate(`(() => {
+          const stamp = document.querySelector('.certificate .ink-stamp').getBoundingClientRect();
+          return [...document.querySelectorAll('.certificate p, .certificate h2')].every(e => {
+            const r = e.getBoundingClientRect();
+            return r.right <= stamp.left || r.left >= stamp.right || r.bottom <= stamp.top || r.top >= stamp.bottom;
+          });
+        })()`), `${game}: decorative stamp must not obscure certificate copy`);
+      }
+      await certificateClearance();
+      if (!signedIn) {
+        assert(await evaluate("document.body.innerText.includes('Далі — лише для відвідувачів з акаунтом.')"), "Guest run stops at its allowance");
+        for (const width of [320, 390, 1440]) {
+          await setWidth(width);
+          await evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))");
+          await layout(`${game} certificate ${width}`);
+          await certificateClearance();
+          await reference(`certificate-${game}-${width}`);
+        }
+        await setWidth(390);
+      } else {
+        assert.equal(fixtures.state.best[game === "titles" ? "titles:all" : game], 3, "Member best persisted");
+        await visit("/quiz", ".plan-room");
+        assert(await evaluate("document.body.innerText.includes('РЕКОРД 3')"), "Reloaded lobby restores best");
+      }
+    }
+    for (const game of ["who", "pairs", "titles"]) await quiz(game, false);
+    await visit("/");
+    await click("Увійти з Google");
+    await until("location.pathname === '/' && document.body.innerText.includes('Тестовий відвідувач')");
+    for (const game of ["who", "pairs", "titles"]) await quiz(game, true);
+
+    async function pngHash() {
+      const before = await evaluate("window.exportedPNGs.length");
+      await until("document.querySelector('button[aria-label=\"Завантажити PNG\"]:not(:disabled)')");
+      await evaluate("document.querySelector('button[aria-label=\"Завантажити PNG\"]').click()", true);
+      await until(`window.exportedPNGs.length === ${before + 1}`, "PNG export completes");
+      const png = await evaluate("window.exportedPNGs.at(-1)");
+      return createHash("sha256").update(Buffer.from(png.split(",")[1], "base64")).digest("hex");
+    }
+    await visit("/create/result?q=unchanged-export", ".konvajs-content canvas");
+    const collapsed = await pngHash();
+    await setWidth(320);
+    assert.equal(await pngHash(), collapsed, "Collapsed editor export survives resize");
+    await click("Редагувати підпис");
+    await ready("#caption-font");
+    assert.equal(await pngHash(), collapsed, "Opening caption controls does not change PNG pixels");
+
+    for (const id of [1, 2]) {
+      await visit(`/create/painting/${id}/own`, "#caption-font");
+      await input("input[aria-label='Текст підпису']", "Перший довгий підпис українською");
+      await click("+ Додати ще один текст");
+      await input("input[aria-label='Текст підпису']", "Другий підпис про мистецтво");
+      await click("Вгорі");
+      const fonts = await evaluate("[...document.querySelector('#caption-font').options].map(o => o.value)");
+      const hashes = new Set();
+      for (let index = 0; index < fonts.length; index++) {
+        await input("#caption-font", fonts[index]);
+        await evaluate("document.fonts.ready.then(() => true)");
+        await evaluate(`document.querySelectorAll('[role=group][aria-label="Рамка"] button')[${index % 4}].click()`);
+        const baseline = await pngHash();
+        hashes.add(baseline);
+        for (const width of [320, 1440]) {
+          await setWidth(width);
+          await layout(`${id} ${fonts[index]} export`);
+          assert.equal(await pngHash(), baseline, `${id} ${fonts[index]}: unchanged PNG across widths`);
+        }
+      }
+      assert(hashes.size > 1, "Export variants must exercise distinct compositions");
+      await setWidth(390);
+      const framed = await pngHash();
+      await evaluate("document.querySelector('input[type=checkbox]').click()");
+      const unframed = await pngHash();
+      assert.notEqual(framed, unframed, "Frame inclusion changes exported pixels");
+      await setWidth(320);
+      assert.equal(await pngHash(), unframed, "Unframed PNG is viewport independent");
+    }
+    console.log(`Mobile journeys passed: ${routes.length} routes × ${widths.length} widths; catalogue states, all guest/member quizzes, two-block/font-control/frame PNG variants${referenceCount ? `, ${referenceCount} screenshots` : ""}`);
+    console.log("Offline font evidence: bundled Oswald; other font families use deterministic browser fallbacks, not production glyph acceptance.");
+  },
+});
+
+await runBrowserCheck({
+  handleRequest: createMobileFixtures().handleRequest,
+  run: async ({ command, navigate, until, evaluate }) => {
+    await command("Emulation.setDeviceMetricsOverride", { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
+    for (const route of ["/", "/create", "/quiz", "/m/public-fixture"]) {
+      await navigate(route);
+      await until("document.querySelector('h1')?.textContent.trim()");
+      assert.equal(await evaluate("document.querySelectorAll('summary[aria-label^=\"Гостьовий квиток\"]').length"), 0);
+      assert.equal(await evaluate("[...document.querySelectorAll('nav a')].some(a => a.getAttribute('href') === '/me')"), false);
+    }
+    console.log("Auth-disabled mobile navigation passed");
+  },
+});

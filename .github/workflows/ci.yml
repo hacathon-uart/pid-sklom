@@ -30,6 +30,11 @@ jobs:
       - run: npm run build
       - run: node scripts/check_auth_browser.mjs
         working-directory: .
+      - run: BROWSER_WIDTH=390 node scripts/check_auth_browser.mjs
+        working-directory: .
+      - run: node scripts/check_story_browser.mjs && node scripts/check_accessibility_browser.mjs
+        working-directory: .
+      - run: npm run smoke:mobile
 
   containers:
     runs-on: ubuntu-latest
