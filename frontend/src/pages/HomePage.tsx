@@ -39,7 +39,11 @@ const FEATURES = [
   ["Історія за кожним мемом", "Коротка історія картини й факти про автора."],
   ["ШІ на підхваті", "Підбере картину до фрази або підпис до картини."],
 ];
-const TEAM = ["Алла Ковальчук", "Герман Гавва", "Вікторія Лозяк"];
+const TEAM = [
+  { name: "Alla Kovalchuk", href: "https://www.linkedin.com/in/alla-kovalchuk-81a2b7326/" },
+  { name: "Herman Havva", href: "https://www.linkedin.com/in/hermanhavva/" },
+  { name: "Victoria Loziak", href: "https://www.linkedin.com/in/victoria-loziak-b1a313326/" },
+];
 const EMAIL = "kov.koalla@gmail.com";
 
 export function HomePage() {
@@ -159,9 +163,11 @@ export function HomePage() {
           />
           <FooterCol title="Проєкт" items={[
             <a key="code" href="https://github.com/hacathon-uart/pid-sklom" className="hover:text-accent">Код на GitHub</a>,
-            <Link key="gallery" to="/gallery" className="hover:text-accent">Картини та їхні історії</Link>,
+            <Link key="gallery" to="/gallery" className="hover:text-accent">Картини та їх історії</Link>,
           ]} />
-          <FooterCol title="Команда" items={TEAM} />
+          <FooterCol title="© 2026 Під склом" items={TEAM.map(({ name, href }) => (
+            <a key={href} href={href} className="hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" target="_blank" rel="noopener noreferrer">{name}</a>
+          ))} />
         </div>
       </footer>
     </>
