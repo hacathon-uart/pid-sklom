@@ -78,6 +78,7 @@ await runBrowserCheck({
       const selector = `document.querySelector('button img[alt="Картина ${id}"]')?.closest('button')`;
       await until(selector);
       await evaluate(`(${selector}).click()`, true);
+      await until(`(${selector})?.querySelector('.frame-selected')`, `Painting ${id} selected`);
     };
     const held = async (path) => {
       const deadline = Date.now() + 20000;
