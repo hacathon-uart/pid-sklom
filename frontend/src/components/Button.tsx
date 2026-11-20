@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, ComponentProps } from "react";
 import { Icon, type IconName } from "./Icon";
 
 type Variant = "primary" | "secondary" | "soft";
@@ -29,7 +29,7 @@ export function IconButton({
   active = false,
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string; active?: boolean }) {
+}: ComponentProps<"button"> & { icon: IconName; label: string; active?: boolean }) {
   return (
     <button
       aria-label={label}

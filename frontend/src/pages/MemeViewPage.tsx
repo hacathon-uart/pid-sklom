@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import type { Frame } from "../api/types";
 import { useApi } from "../api/useApi";
 import { Artwork } from "../components/Artwork";
-import { Button, IconButton } from "../components/Button";
+import { IconButton } from "../components/Button";
 import { years } from "../components/cards";
 import { Icon } from "../components/Icon";
 import { copyPublicMemeUrl, copyShareUrl, ShareLinkPanel } from "../components/ShareLinkPanel";
@@ -24,6 +24,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
   const [updating, setUpdating] = useState(false);
   const [shareLink, setShareLink] = useState<{ url: string; copied: boolean } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const shareTrigger = useRef<HTMLButtonElement>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [justLiked, setJustLiked] = useState(false); // play the crack only when ♥ is pressed now
   const [withFrame, setWithFrame] = useTabState(`export-frame:meme:${memeId}`, true);
@@ -138,7 +139,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
               </>
             )}
             <IconButton icon="download" label="Завантажити" disabled={updating || exporting.busy || !m.image_url} onClick={() => void exporting.run()} />
-            {canEdit && <Button variant="secondary" className="min-h-11 whitespace-normal" disabled={sharing || updating} onClick={share}>{sharing ? "Готуємо посилання…" : "Поділитися посиланням"}</Button>}
+            {canEdit && <IconButton ref={shareTrigger} icon="share" label="Поділитися посиланням" disabled={sharing || updating} onClick={() => void share()} />}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             {canEdit && <Link to={`/me/memes/${m.id}/edit`} className="t-strong inline-flex min-h-11 items-center text-accent">Редагувати підпис →</Link>}
@@ -148,7 +149,7 @@ export function MemeViewPage({ isPublic = false }: { isPublic?: boolean }) {
             <legend className="sr-only">Рамка та завантаження</legend>
             <FramePicker frame={frame} onFrameChange={canEdit ? changeFrame : undefined} withFrame={withFrame} onWithFrameChange={setWithFrame} />
           </fieldset>
-          {shareLink && <ShareLinkPanel {...shareLink} onCopy={() => {
+          {shareLink && <ShareLinkPanel {...shareLink} triggerRef={shareTrigger} showFavoriteNotice={false} onCopy={() => {
             void copyShareUrl(shareLink.url).then((copied) => setShareLink((current) => current?.url === shareLink.url ? { ...current, copied } : current));
           }} onClose={() => setShareLink(null)} />}
           {actionError && <ErrorMessage error={actionError} />}
